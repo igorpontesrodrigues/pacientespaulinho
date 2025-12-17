@@ -8,7 +8,7 @@
     <!-- Estilos (Tailwind CSS) -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Configuração para carregar React e bibliotecas direto do navegador -->
+    <!-- Configuração para carregar React e bibliotecas -->
     <script type="importmap">
     {
       "imports": {
@@ -25,7 +25,6 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
     <style>
-        /* Ajustes finos de rolagem */
         .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
@@ -40,7 +39,6 @@
 <body class="bg-slate-50 text-slate-800">
     <div id="root"></div>
 
-    <!-- CÓDIGO DO DASHBOARD -->
     <script type="text/babel" data-type="module">
         import React, { useState, useMemo, useEffect } from 'react';
         import { createRoot } from 'react-dom/client';
@@ -58,15 +56,10 @@
         // --- CONFIGURAÇÃO DA API ---
         const API_URL = "https://script.google.com/macros/s/AKfycbxNtohug1LnuzYn56ySQ97SvcmNbpxLeZgYYAeKwy_9tyWrH_l3SZKdcJElYQ2eVbEn3w/exec";
 
-        // --- PALETA DE CORES (GLOBAL) ---
+        // --- PALETA DE CORES ---
         const COLORS = {
-            primary: '#0ea5e9',
-            secondary: '#6366f1',
-            success: '#22c55e',
-            warning: '#eab308',
-            danger: '#ef4444',
-            gray: '#64748b',
-            purple: '#a855f7',
+            primary: '#0ea5e9', secondary: '#6366f1', success: '#22c55e', warning: '#eab308',
+            danger: '#ef4444', gray: '#64748b', purple: '#a855f7',
             pie: ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d']
         };
 
@@ -86,11 +79,27 @@
             return PROCEDURE_VALUES['DEFAULT'];
         };
 
-        // --- HELPERS DE DATA ---
+        // --- FUNÇÕES DE NORMALIZAÇÃO E DATA ---
+        const normalizeData = (list) => {
+            if (!Array.isArray(list)) return [];
+            return list.map(item => {
+                const newItem = {};
+                Object.keys(item).forEach(key => {
+                    const newKey = key.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "_");
+                    newItem[newKey] = item[key];
+                });
+                return newItem;
+            });
+        };
+
         const parseDate = (value) => {
             if (!value) return null;
             const date = new Date(value);
             if (!isNaN(date.getTime())) return date;
+            if (typeof value === 'string' && value.includes('/')) {
+                const parts = value.split('/');
+                if (parts.length === 3) return new Date(parts[2], parts[1] - 1, parts[0]);
+            }
             if (typeof value === 'number') {
                 return new Date(Math.round((value - 25569) * 86400 * 1000));
             }
@@ -140,20 +149,26 @@
             return { status: 'ok', msg: `Válido até ${dtVencimento.toLocaleDateString('pt-BR')}`, color: 'text-green-600 bg-green-50 border-green-200' };
         };
 
-        // --- SUB COMPONENTS (Declarados antes do App para evitar erros de hoisting) ---
+        // --- SUB COMPONENTS ---
         
-        function Input({ label, type = "text", placeholder, className, onChange }) {
+        function Input({ label, type = "text", placeholder, className, onChange, value }) {
             return (
                 <label className={`block ${className}`}>
                     <span className="text-xs font-bold text-slate-500 uppercase">{label}</span>
-                    <input type={type} placeholder={placeholder} onChange={e => onChange(e.target.value)} className="w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-sky-500 outline-none" />
+                    <input 
+                        type={type} 
+                        placeholder={placeholder} 
+                        value={value || ''}
+                        onChange={e => onChange(e.target.value)} 
+                        className="w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-sky-500 outline-none" 
+                    />
                 </label>
             );
         }
 
         function StatusBadge({ status }) {
             let styles = "bg-gray-100 text-gray-800";
-            const st = String(status).toUpperCase();
+            const st = String(status || '').toUpperCase();
             if (st.includes("CONCLUI") || st.includes("CONCLUÍ")) styles = "bg-green-100 text-green-800";
             else if (st.includes("PENDENTE")) styles = "bg-red-100 text-red-800";
             else if (st.includes("CANCELADO")) styles = "bg-red-100 text-red-800 line-through";
@@ -196,6 +211,9 @@
 
         function PatientDetail({ patient, attendances, onBack, onAddAttendance, userMode }) {
             const handlePrint = () => window.print();
+            
+            if (!patient) return <div>Carregando...</div>;
+
             return (
                 <div className="max-w-5xl mx-auto">
                     <div className="flex justify-between items-center mb-6 no-print">
@@ -207,31 +225,31 @@
                     </div>
                     <div className="bg-white p-8 rounded-xl shadow-lg border border-slate-200 print:shadow-none print:border-none">
                         <div className="border-b-2 border-slate-100 pb-4 mb-6 flex justify-between">
-                            <div><h2 className="text-3xl font-bold text-slate-800">{patient.NOME}</h2>{patient.APELIDO && <p className="text-lg text-slate-500 italic">"{patient.APELIDO}"</p>}</div>
-                            <div className="text-right"><p className="text-xs text-slate-400 uppercase font-bold">Prontuário</p><p className="text-xl font-mono text-slate-700">{patient.PRONTUÁRIO || '---'}</p></div>
+                            <div><h2 className="text-3xl font-bold text-slate-800">{patient.nome}</h2>{patient.apelido && <p className="text-lg text-slate-500 italic">"{patient.apelido}"</p>}</div>
+                            <div className="text-right"><p className="text-xs text-slate-400 uppercase font-bold">Prontuário</p><p className="text-xl font-mono text-slate-700">{patient.prontuario || '---'}</p></div>
                         </div>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8 bg-slate-50 p-4 rounded-xl print:bg-transparent print:p-0">
-                            <div><label className="text-xs text-slate-400 font-bold block">CPF</label>{patient.CPF}</div>
-                            <div><label className="text-xs text-slate-400 font-bold block">SUS</label>{patient.SUS}</div>
-                            <div><label className="text-xs text-slate-400 font-bold block">Nascimento</label>{formatDate(patient.DATA_NASCIMENTO)}</div>
-                            <div><label className="text-xs text-slate-400 font-bold block">Telefone</label>{patient.TELEFONE_1}</div>
-                            <div className="col-span-2"><label className="text-xs text-slate-400 font-bold block">Endereço</label>{patient.LOGRADOURO}, {patient.BAIRRO}</div>
-                            <div><label className="text-xs text-slate-400 font-bold block">Indicação</label>{patient.FAMILIA || patient.INDICAÇÃO || patient.INDICACAO}</div>
-                            <div className="col-span-4 mt-2 pt-2 border-t border-slate-200"><label className="text-xs text-slate-400 font-bold block mb-1">Observações do Cadastro</label><p className="text-sm text-slate-700 italic">{patient.OBSERVACOES_FIXAS || "Nenhuma observação registrada."}</p></div>
+                            <div><label className="text-xs text-slate-400 font-bold block">CPF</label>{patient.cpf || '-'}</div>
+                            <div><label className="text-xs text-slate-400 font-bold block">SUS</label>{patient.sus || '-'}</div>
+                            <div><label className="text-xs text-slate-400 font-bold block">Nascimento</label>{formatDate(patient.data_nascimento)}</div>
+                            <div><label className="text-xs text-slate-400 font-bold block">Telefone</label>{patient.telefone_1 || '-'}</div>
+                            <div className="col-span-2"><label className="text-xs text-slate-400 font-bold block">Endereço</label>{patient.logradouro}, {patient.bairro}</div>
+                            <div><label className="text-xs text-slate-400 font-bold block">Indicação</label>{patient.familia || patient.indicacao || '-'}</div>
+                            <div className="col-span-4 mt-2 pt-2 border-t border-slate-200"><label className="text-xs text-slate-400 font-bold block mb-1">Observações do Cadastro</label><p className="text-sm text-slate-700 italic">{patient.observacoes_fixas || "Nenhuma observação registrada."}</p></div>
                         </div>
                         <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2"><History size={20}/> Histórico de Atendimentos</h3>
-                        {attendances.map(att => {
-                            const risk = checkSurgicalRisk(att.DATA_RISCO, att.LOCAL);
+                        {attendances.map((att, index) => {
+                            const risk = checkSurgicalRisk(att.data_risco, att.local);
                             return (
-                                <div key={att.id} className="border border-slate-200 rounded-lg p-4 mb-3 hover:bg-slate-50 transition-colors print-break-inside-avoid">
+                                <div key={att.id || index} className="border border-slate-200 rounded-lg p-4 mb-3 hover:bg-slate-50 transition-colors print-break-inside-avoid">
                                     <div className="flex justify-between items-start mb-2">
                                         <div>
-                                            <div className="flex items-center gap-2"><span className="font-bold text-sky-700">{att.PROCEDIMENTO}</span><span className="text-xs bg-slate-200 px-2 py-0.5 rounded text-slate-600">{att.ESPECIALIDADE}</span></div>
-                                            <p className="text-xs text-slate-500 mt-1">Abertura: {formatDate(att.DATA_ABERTURA)} | Local: {att.LOCAL} ({att.PARCEIRO})</p>
+                                            <div className="flex items-center gap-2"><span className="font-bold text-sky-700">{att.procedimento}</span><span className="text-xs bg-slate-200 px-2 py-0.5 rounded text-slate-600">{att.especialidade}</span></div>
+                                            <p className="text-xs text-slate-500 mt-1">Abertura: {formatDate(att.data_abertura)} | Local: {att.local} ({att.parceiro})</p>
                                         </div>
-                                        <div className="text-right"><StatusBadge status={att.STATUS} /></div>
+                                        <div className="text-right"><StatusBadge status={att.status} /></div>
                                     </div>
-                                    {att.OBS_ATENDIMENTO && <div className="bg-yellow-50 text-yellow-800 text-sm p-2 rounded border border-yellow-100 mb-2">Obs: {att.OBS_ATENDIMENTO}</div>}
+                                    {att.obs_atendimento && <div className="bg-yellow-50 text-yellow-800 text-sm p-2 rounded border border-yellow-100 mb-2">Obs: {att.obs_atendimento}</div>}
                                     {risk.status !== 'none' && <div className={`text-xs p-2 rounded border flex justify-between items-center ${risk.color}`}><span className="flex items-center gap-1 font-bold"><HeartPulse size={12}/> Risco Cirúrgico</span><span>{risk.msg}</span></div>}
                                 </div>
                             );
@@ -270,14 +288,18 @@
                 setLoading(true);
                 setError(null);
                 try {
-                    const response = await fetch(API_URL);
+                    const response = await fetch(API_URL, { redirect: "follow" });
                     if (!response.ok) throw new Error('Falha na resposta da rede');
                     
                     const json = await response.json();
                     
                     if (json.status === 'success') {
-                        setRawData(json.data);
-                        processData(json.data.pacientes, json.data.atendimentos);
+                        // Normaliza os dados antes de salvar no estado
+                        const normPacientes = normalizeData(json.data.pacientes);
+                        const normAtendimentos = normalizeData(json.data.atendimentos);
+                        
+                        setRawData({ pacientes: normPacientes, atendimentos: normAtendimentos });
+                        processData(normPacientes, normAtendimentos);
                     } else {
                         throw new Error('Formato de dados inválido da API.');
                     }
@@ -291,20 +313,13 @@
 
             const processData = (pacientes, atendimentos) => {
                 const joined = atendimentos.map(att => {
-                    const pacCPF = String(att.CPF_PACIENTE || '').trim();
-                    const pac = pacientes.find(p => String(p.CPF || '').trim() === pacCPF) || {};
+                    const pacCPF = String(att.cpf_paciente || '').trim();
+                    const pac = pacientes.find(p => String(p.cpf || '').trim() === pacCPF) || {};
                     
                     return { 
                         ...att, 
                         ...pac, 
-                        id: att.ID_ATENDIMENTO || Math.random(), 
-                        dataAbertura: att.DATA_ABERTURA,
-                        indicacao: att['INDICAÇÃO'],
-                        status: att.STATUS,
-                        procedimento: att.PROCEDIMENTO,
-                        especialidade: att.ESPECIALIDADE,
-                        dataMarcacao: att.DATA_MARCACAO,
-                        local: att.LOCAL 
+                        id: att.id_atendimento || Math.random(), 
                     };
                 });
                 setJoinedData(joined);
@@ -313,6 +328,38 @@
             useEffect(() => {
                 if (userMode) fetchData();
             }, [userMode]);
+
+            // --- CÁLCULO DE PACIENTES ÚNICOS (CORRIGIDO) ---
+            const uniquePatients = useMemo(() => {
+                if (!rawData.pacientes) return [];
+                
+                // Mapa para associar paciente e histórico
+                const patientsMap = {};
+                
+                // 1. Carrega pacientes
+                rawData.pacientes.forEach(p => {
+                    const key = String(p.cpf || p.id_paciente).trim(); 
+                    patientsMap[key] = { ...p, historico: [] };
+                });
+
+                // 2. Anexa histórico de atendimentos
+                if (rawData.atendimentos) {
+                    rawData.atendimentos.forEach(att => {
+                         const key = String(att.cpf_paciente).trim();
+                         if (patientsMap[key]) {
+                             patientsMap[key].historico.push(att);
+                         }
+                    });
+                }
+
+                // 3. Filtra pela busca
+                const term = searchTerm.toLowerCase();
+                return Object.values(patientsMap).filter(p => 
+                    (p.nome && String(p.nome).toLowerCase().includes(term)) ||
+                    (p.cpf && String(p.cpf).includes(term)) ||
+                    (p.prontuario && String(p.prontuario).includes(term))
+                );
+            }, [rawData, searchTerm]);
 
             const handleLogin = (e) => {
                 e.preventDefault();
@@ -331,8 +378,8 @@
                 if (modalType === 'NEW_PATIENT') action = 'CREATE_PACIENTE';
                 if (modalType === 'NEW_ATTENDANCE') {
                     action = 'CREATE_ATENDIMENTO';
-                    payload.cpfPaciente = selectedPatient?.CPF;
-                    payload.nomePaciente = selectedPatient?.NOME;
+                    payload.cpfPaciente = selectedPatient?.cpf;
+                    payload.nomePaciente = selectedPatient?.nome;
                 }
                 
                 try {
@@ -359,7 +406,7 @@
             const availableYears = useMemo(() => {
                 const years = new Set();
                 joinedData.forEach(item => {
-                    const y = getYear(item.dataAbertura);
+                    const y = getYear(item.data_abertura);
                     if (y !== 'Desconhecido') years.add(y);
                 });
                 return Array.from(years).sort().reverse();
@@ -368,8 +415,8 @@
             const availableMonths = useMemo(() => {
                 const months = new Set();
                 joinedData.forEach(item => {
-                    if (selectedYear === 'Geral' || getYear(item.dataAbertura) === selectedYear) {
-                        const name = getMonthName(item.dataAbertura);
+                    if (selectedYear === 'Geral' || getYear(item.data_abertura) === selectedYear) {
+                        const name = getMonthName(item.data_abertura);
                         if (name !== 'Desconhecido') months.add(name);
                     }
                 });
@@ -379,10 +426,10 @@
             const filteredData = useMemo(() => {
                 let data = joinedData;
                 if (selectedYear !== 'Geral') {
-                    data = data.filter(item => getYear(item.dataAbertura) === selectedYear);
+                    data = data.filter(item => getYear(item.data_abertura) === selectedYear);
                 }
                 if (selectedMonth !== 'Geral') {
-                    data = data.filter(item => getMonthName(item.dataAbertura) === selectedMonth);
+                    data = data.filter(item => getMonthName(item.data_abertura) === selectedMonth);
                 }
                 return data;
             }, [selectedMonth, selectedYear, joinedData]);
@@ -401,8 +448,8 @@
                 let totalDias = 0;
                 let countComDatas = 0;
                 filteredData.forEach(d => {
-                    const dtSolicitacao = parseDate(d.dataAbertura);
-                    const dtAtendimento = parseDate(d.dataMarcacao);
+                    const dtSolicitacao = parseDate(d.data_abertura);
+                    const dtAtendimento = parseDate(d.data_marcacao);
                     if (dtSolicitacao && dtAtendimento) {
                         const diffTime = Math.abs(dtAtendimento - dtSolicitacao);
                         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
@@ -419,10 +466,10 @@
                 }, {});
 
                 const chartEsp = Object.keys(agg('especialidade')).map(k => ({ name: k, value: agg('especialidade')[k] })).sort((a,b) => b.value - a.value);
-                const chartBairro = Object.keys(agg('BAIRRO')).map(k => ({ name: k, value: agg('BAIRRO')[k] })).sort((a,b) => b.value - a.value);
+                const chartBairro = Object.keys(agg('bairro')).map(k => ({ name: k, value: agg('bairro')[k] })).sort((a,b) => b.value - a.value);
                 
-                const m = filteredData.filter(d => String(d.SEXO).toUpperCase().startsWith('M')).length;
-                const f = filteredData.filter(d => String(d.SEXO).toUpperCase().startsWith('F')).length;
+                const m = filteredData.filter(d => String(d.sexo).toUpperCase().startsWith('M')).length;
+                const f = filteredData.filter(d => String(d.sexo).toUpperCase().startsWith('F')).length;
                 const totalS = m + f || 1;
 
                 return { total, concluidos, pendentes, cancelados, totalValor, pctM: Math.round(m/totalS*100), pctF: Math.round(f/totalS*100), chartEsp, chartBairro };
@@ -433,7 +480,7 @@
                     const st = d.status ? String(d.status).toUpperCase().trim() : "";
                     if (st.includes("CONCLUI") || st.includes("CONCLUÍ") || st.includes("REALIZADO") || st.includes("CANCELADO")) return false;
                     const isPendente = st.includes("PENDENTE") || st.includes("ANÁLISE") || st.includes("ANALISE");
-                    return isPendente || !d.dataMarcacao;
+                    return isPendente || !d.data_marcacao;
                 });
 
                 const hoje = new Date(); 
@@ -441,7 +488,7 @@
                 const tempoPorEsp = {};
                 
                 pendingItems.forEach(item => {
-                    const dtSolicitacao = parseDate(item.dataAbertura);
+                    const dtSolicitacao = parseDate(item.data_abertura);
                     if (!dtSolicitacao) return;
                     const diffTime = Math.abs(hoje - dtSolicitacao);
                     const diasEspera = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -466,7 +513,7 @@
                     totalPendentes: pendingItems.length, 
                     chartDataFaixas, 
                     chartDataTempoEsp, 
-                    pendingItems: pendingItems.sort((a, b) => (parseDate(a.dataAbertura) || 0) - (parseDate(b.dataAbertura) || 0)) 
+                    pendingItems: pendingItems.sort((a, b) => (parseDate(a.data_abertura) || 0) - (parseDate(b.data_abertura) || 0)) 
                 };
             }, [filteredData]);
 
@@ -494,7 +541,7 @@
             const birthdaysToday = useMemo(() => {
                 const today = new Date();
                 return rawData.pacientes.filter(item => {
-                    const birthDate = parseDate(item.DATA_NASCIMENTO);
+                    const birthDate = parseDate(item.data_nascimento);
                     if (!birthDate) return false;
                     return birthDate.getDate() === today.getDate() && birthDate.getMonth() === today.getMonth();
                 });
@@ -574,8 +621,11 @@
                                         <KpiCard title="Tempo Médio" value={`${stats.mediaDias} dias`} icon={<Clock className="text-indigo-500"/>} borderColor="border-l-4 border-indigo-500" />
                                     </div>
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                        <ChartContainer title="Especialidades"><ResponsiveContainer width="100%" height={300}><BarChart data={stats.chartEsp} layout="vertical" margin={{left: 40}}><XAxis type="number" hide /><YAxis dataKey="name" type="category" width={100} tick={{fontSize: 11}} /><RechartsTooltip /><Bar dataKey="value" fill={COLORS.primary} radius={[0, 4, 4, 0]} barSize={20} /></BarChart></ResponsiveContainer></ChartContainer>
+                                        <ChartContainer title="Especialidades"><ScrollableChartContainer height={Math.max(300, stats.chartEsp.length * 40)}><BarChart data={stats.chartEsp} layout="vertical" margin={{left: 40}}><XAxis type="number" hide /><YAxis dataKey="name" type="category" width={100} tick={{fontSize: 11}} /><RechartsTooltip /><Bar dataKey="value" fill={COLORS.primary} radius={[0, 4, 4, 0]} barSize={20} /></BarChart></ScrollableChartContainer></ChartContainer>
                                         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200"><h3 className="font-bold text-slate-700 mb-4">Demografia</h3><div className="flex justify-center gap-12 items-end h-[220px]"><GenderBody type="male" percentage={stats.pctM} /><GenderBody type="female" percentage={stats.pctF} /></div></div>
+                                    </div>
+                                    <div className="grid grid-cols-1 gap-6 mb-6">
+                                        <ChartContainer title="Distribuição Geográfica (Bairros)"><ScrollableChartContainer height={Math.max(300, stats.chartBairro.length * 40)}><BarChart data={stats.chartBairro} layout="vertical" margin={{top: 20, right: 30, left: 20, bottom: 5}}><CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} /><XAxis type="number" hide /><YAxis dataKey="name" type="category" width={150} tick={{fontSize: 11}} /><RechartsTooltip /><Bar dataKey="value" fill={COLORS.secondary} radius={[0, 4, 4, 0]} barSize={20} /></BarChart></ScrollableChartContainer></ChartContainer>
                                     </div>
                                 </div>
                             )}
@@ -589,13 +639,13 @@
                                                 <table className="w-full text-sm text-left">
                                                     <thead className="bg-slate-50 text-xs uppercase text-slate-500"><tr><th className="p-4 w-16 text-center">#</th><th className="p-4">Nome</th><th className="p-4">CPF</th><th className="p-4">Bairro</th><th className="p-4">Telefone</th><th className="p-4">Ação</th></tr></thead>
                                                     <tbody>
-                                                        {rawData.pacientes.filter(p => (p.NOME && p.NOME.toLowerCase().includes(searchTerm.toLowerCase())) || (p.CPF && String(p.CPF).includes(searchTerm))).map((p, index) => (
-                                                            <tr key={p.ID_PACIENTE || Math.random()} className="border-b hover:bg-slate-50">
+                                                        {uniquePatients.map((p, index) => (
+                                                            <tr key={p.id_paciente || Math.random()} className="border-b hover:bg-slate-50">
                                                                 <td className="p-4 text-center text-slate-400 font-mono">{index + 1}</td>
-                                                                <td className="p-4 font-medium">{p.NOME}</td>
-                                                                <td className="p-4">{p.CPF}</td>
-                                                                <td className="p-4">{p.BAIRRO}</td>
-                                                                <td className="p-4">{p.TELEFONE_1}</td>
+                                                                <td className="p-4 font-medium">{p.nome}</td>
+                                                                <td className="p-4">{p.cpf}</td>
+                                                                <td className="p-4">{p.bairro}</td>
+                                                                <td className="p-4">{p.telefone_1}</td>
                                                                 <td className="p-4"><button onClick={() => setSelectedPatient(p)} className="text-sky-600 font-bold hover:underline">Ficha</button></td>
                                                             </tr>
                                                         ))}
@@ -604,18 +654,22 @@
                                             </div>
                                         </>
                                     ) : (
-                                        <PatientDetail patient={selectedPatient} attendances={joinedData.filter(a => String(a.CPF_PACIENTE).trim() === String(selectedPatient.CPF).trim())} onBack={() => setSelectedPatient(null)} onAddAttendance={() => { setModalType('NEW_ATTENDANCE'); setFormData({}); setIsModalOpen(true); }} userMode={userMode} />
+                                        <PatientDetail patient={selectedPatient} attendances={joinedData.filter(a => String(a.cpf_paciente).trim() === String(selectedPatient.cpf).trim())} onBack={() => setSelectedPatient(null)} onAddAttendance={() => { setModalType('NEW_ATTENDANCE'); setFormData({}); setIsModalOpen(true); }} userMode={userMode} />
                                     )}
                                 </div>
                             )}
                             {activeTab === 'Relatorios' && (
                                 <div className="animate-in fade-in duration-500">
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8"><div className="bg-red-50 border border-red-200 p-6 rounded-xl flex items-center gap-4"><div className="p-3 bg-red-100 text-red-600 rounded-full"><AlertTriangle size={24} /></div><div><p className="text-sm text-red-600 font-medium">Total de Pendências</p><h3 className="text-2xl font-bold text-red-800">{reportStats.totalPendentes}</h3></div></div><div className="bg-orange-50 border border-orange-200 p-6 rounded-xl flex items-center gap-4"><div className="p-3 bg-orange-100 text-orange-600 rounded-full"><Clock size={24} /></div><div><p className="text-sm text-orange-600 font-medium">Críticos (+30 dias)</p><h3 className="text-2xl font-bold text-orange-800">{reportStats.chartDataFaixas.find(f => f.name === '+30 dias')?.value || 0}</h3></div></div></div>
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                                        <ChartContainer title="Pendências por Tempo"><ResponsiveContainer width="100%" height={300}><BarChart data={reportStats.chartDataFaixas}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="name" /><YAxis /><RechartsTooltip /><Bar dataKey="value" name="Qtd. Pacientes">{reportStats.chartDataFaixas.map((entry, index) => <Cell key={`cell-${index}`} fill={index === 2 ? COLORS.danger : index === 1 ? COLORS.warning : COLORS.success} />)}</Bar></BarChart></ResponsiveContainer></ChartContainer>
+                                        <ChartContainer title="Tempo Médio de Espera (Dias)"><ScrollableChartContainer height={Math.max(300, reportStats.chartDataTempoEsp.length * 40)}><BarChart data={reportStats.chartDataTempoEsp} layout="vertical" margin={{left: 20}}><CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} /><XAxis type="number" /><YAxis dataKey="name" type="category" width={100} tick={{fontSize: 12}} /><RechartsTooltip /><Bar dataKey="dias" fill={COLORS.warning} radius={[0, 4, 4, 0]} barSize={20} /></BarChart></ScrollableChartContainer></ChartContainer>
+                                    </div>
                                     <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden"><div className="px-6 py-4 border-b border-slate-100 bg-slate-50"><h3 className="font-semibold text-slate-800">Fila de Espera Detalhada</h3></div>
                                         <div className="overflow-x-auto">
                                             <table className="w-full text-sm text-left">
                                                 <thead className="text-xs text-slate-500 uppercase bg-slate-50"><tr><th className="p-3 w-16 text-center">#</th><th className="p-3">Paciente</th><th className="p-3">Especialidade</th><th className="p-3">Data Abertura</th><th className="p-3">Status</th></tr></thead>
-                                                <tbody>{reportStats.pendingItems.map((item, idx) => (<tr key={item.id} className="border-b hover:bg-slate-50"><td className="p-3 text-center text-slate-400 font-mono">{idx + 1}</td><td className="p-3 font-medium">{item.NOME}</td><td className="p-3">{item.especialidade}</td><td className="p-3 font-bold text-red-600">{formatDate(item.dataAbertura)}</td><td className="p-3"><StatusBadge status={item.status} /></td></tr>))}</tbody>
+                                                <tbody>{reportStats.pendingItems.map((item, idx) => (<tr key={item.id} className="border-b hover:bg-slate-50"><td className="p-3 text-center text-slate-400 font-mono">{idx + 1}</td><td className="p-3 font-medium">{item.nome}</td><td className="p-3">{item.especialidade}</td><td className="p-3 font-bold text-red-600">{formatDate(item.data_abertura)}</td><td className="p-3"><StatusBadge status={item.status} /></td></tr>))}</tbody>
                                             </table>
                                         </div>
                                     </div>
@@ -623,14 +677,14 @@
                             )}
                             {activeTab === 'Parceiros' && (
                                 <div className="animate-in fade-in duration-500">
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8"><div className="bg-gradient-to-r from-purple-500 to-indigo-600 rounded-xl p-6 text-white relative overflow-hidden shadow-lg"><div className="relative z-10"><p className="text-purple-100 text-sm font-medium mb-1 flex items-center gap-2"><Trophy size={16} /> Campeão de Indicações</p><h3 className="text-2xl font-bold truncate">{partnerStats.topParceiro.name}</h3><p className="text-3xl font-extrabold mt-2">{partnerStats.topParceiro.value} <span className="text-lg font-normal opacity-80">solicitações</span></p></div><Trophy className="absolute right-0 bottom-0 opacity-10 transform translate-x-4 translate-y-4" size={120} /></div></div>
-                                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6"><div className="lg:col-span-2"><ChartContainer title="Ranking por Indicação"><ResponsiveContainer width="100%" height={350}><BarChart data={partnerStats.chartDataRanking} layout="vertical" margin={{top: 5, right: 30, left: 40, bottom: 5}}><CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} /><XAxis type="number" /><YAxis dataKey="name" type="category" width={140} tick={{fontSize: 12}} /><RechartsTooltip /><Bar dataKey="value" fill={COLORS.purple} radius={[0, 4, 4, 0]} barSize={25} /></BarChart></ResponsiveContainer></ChartContainer></div></div>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8"><div className="bg-gradient-to-r from-purple-500 to-indigo-600 rounded-xl p-6 text-white relative overflow-hidden shadow-lg"><div className="relative z-10"><p className="text-purple-100 text-sm font-medium mb-1 flex items-center gap-2"><Trophy size={16} /> Campeão de Indicações</p><h3 className="text-2xl font-bold truncate">{partnerStats.topParceiro.name}</h3><p className="text-3xl font-extrabold mt-2">{partnerStats.topParceiro.value} <span className="text-lg font-normal opacity-80">solicitações</span></p></div><Trophy className="absolute right-0 bottom-0 opacity-10 transform translate-x-4 translate-y-4" size={120} /></div><div className="bg-white border border-slate-200 p-6 rounded-xl flex flex-col justify-center shadow-sm"><p className="text-slate-500 text-sm mb-1">Total de Indicadores</p><div className="flex items-center gap-3"><div className="p-2 bg-slate-100 rounded-lg text-slate-600"><Handshake size={24} /></div><h3 className="text-3xl font-bold text-slate-800">{partnerStats.chartDataRanking.length}</h3></div></div><div className="bg-white border border-slate-200 p-6 rounded-xl flex flex-col justify-center shadow-sm"><p className="text-slate-500 text-sm mb-1">Taxa Média de Sucesso</p><div className="flex items-center gap-3"><div className="p-2 bg-green-100 rounded-lg text-green-600"><TrendingUp size={24} /></div><h3 className="text-3xl font-bold text-slate-800">{Math.round(partnerStats.chartDataRanking.reduce((acc, curr) => acc + curr.taxaSucesso, 0) / (partnerStats.chartDataRanking.length || 1))}%</h3></div></div></div>
+                                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6"><div className="lg:col-span-2"><ChartContainer title="Ranking por Indicação"><ScrollableChartContainer height={Math.max(350, partnerStats.chartDataRanking.length * 40)}><BarChart data={partnerStats.chartDataRanking} layout="vertical" margin={{top: 5, right: 30, left: 40, bottom: 5}}><CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} /><XAxis type="number" /><YAxis dataKey="name" type="category" width={140} tick={{fontSize: 12}} /><RechartsTooltip /><Bar dataKey="value" fill={COLORS.purple} radius={[0, 4, 4, 0]} barSize={25} /></BarChart></ScrollableChartContainer></ChartContainer></div><div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-[400px]"><div className="px-6 py-4 border-b border-slate-100 bg-slate-50 font-semibold text-slate-700">Detalhes de Performance</div><div className="flex-1 overflow-auto custom-scrollbar"><table className="w-full text-sm text-left"><thead className="bg-slate-50 text-xs text-slate-500 uppercase sticky top-0"><tr><th className="px-4 py-3">Indicado Por</th><th className="px-4 py-3 text-right">Total</th><th className="px-4 py-3 text-right">Sucesso</th></tr></thead><tbody className="divide-y divide-slate-100">{partnerStats.chartDataRanking.map((p, idx) => (<tr key={idx} className="hover:bg-slate-50"><td className="px-4 py-3 font-medium text-slate-700 truncate max-w-[120px]" title={p.name}>{p.name}</td><td className="px-4 py-3 text-right">{p.value}</td><td className="px-4 py-3 text-right"><span className={`px-2 py-0.5 rounded text-xs font-bold ${p.taxaSucesso > 70 ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>{p.taxaSucesso}%</span></td></tr>))}</tbody></table></div></div></div>
                                 </div>
                             )}
                             {activeTab === 'Aniversariantes' && (
                                 <div className="animate-in fade-in duration-500">
                                     <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 mb-6 flex flex-col md:flex-row items-center justify-between gap-4"><div className="flex items-center gap-4"><div className="p-4 bg-pink-100 text-pink-600 rounded-full"><Cake size={32} /></div><div><h2 className="text-xl font-bold text-slate-800">Hoje é dia de festa!</h2><p className="text-slate-500">{birthdaysToday.length} paciente(s) fazem aniversário hoje.</p></div></div></div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">{birthdaysToday.map(person => (<div key={person.ID_PACIENTE} className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow"><h3 className="font-bold text-lg text-slate-800">{person.NOME}</h3><p className="text-sm text-slate-500">{person.BAIRRO}</p><p className="text-xs text-slate-400 mb-4">{person.TELEFONE_1}</p><button className="w-full bg-green-500 text-white py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2"><MessageCircle size={16}/> Parabenizar no Zap</button></div>))}</div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">{birthdaysToday.map(person => (<div key={person.id_paciente} className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow"><h3 className="font-bold text-lg text-slate-800">{person.nome}</h3><p className="text-sm text-slate-500">{person.bairro}</p><p className="text-xs text-slate-400 mb-4">{person.telefone_1}</p><button className="w-full bg-green-500 text-white py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2"><MessageCircle size={16}/> Parabenizar no Zap</button></div>))}</div>
                                 </div>
                             )}
                         </div>
@@ -640,8 +694,8 @@
                             <div className="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6">
                                 <div className="flex justify-between items-center mb-6"><h3 className="text-xl font-bold">{modalType === 'NEW_PATIENT' ? 'Novo Paciente' : 'Novo Atendimento'}</h3><button onClick={() => setIsModalOpen(false)}><X/></button></div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {modalType === 'NEW_PATIENT' && (<><Input label="Nome Completo" onChange={v => setFormData({...formData, nome: v})} /><Input label="CPF" onChange={v => setFormData({...formData, cpf: v})} /><Input label="Telefone" onChange={v => setFormData({...formData, tel1: v})} /><Input label="Bairro" onChange={v => setFormData({...formData, bairro: v})} /></>)}
-                                    {modalType === 'NEW_ATTENDANCE' && (<><div className="col-span-2 bg-slate-50 p-3 rounded mb-2 border border-slate-200"><p className="text-sm font-bold text-slate-700">Paciente: {selectedPatient.NOME}</p></div><Input label="Data Abertura" type="date" onChange={v => setFormData({...formData, dataAbertura: v})} /><Input label="Especialidade" onChange={v => setFormData({...formData, especialidade: v})} /><Input label="Procedimento" onChange={v => setFormData({...formData, procedimento: v})} /><Input label="Local" onChange={v => setFormData({...formData, local: v})} /></>)}
+                                    {modalType === 'NEW_PATIENT' && (<><Input label="Nome Completo" value={formData.nome} onChange={v => setFormData({...formData, nome: v})} /><Input label="CPF" value={formData.cpf} onChange={v => setFormData({...formData, cpf: v})} /><Input label="Telefone" value={formData.tel1} onChange={v => setFormData({...formData, tel1: v})} /><Input label="Bairro" value={formData.bairro} onChange={v => setFormData({...formData, bairro: v})} /></>)}
+                                    {modalType === 'NEW_ATTENDANCE' && (<><div className="col-span-2 bg-slate-50 p-3 rounded mb-2 border border-slate-200"><p className="text-sm font-bold text-slate-700">Paciente: {selectedPatient.nome}</p></div><Input label="Data Abertura" type="date" value={formData.dataAbertura} onChange={v => setFormData({...formData, dataAbertura: v})} /><Input label="Especialidade" value={formData.especialidade} onChange={v => setFormData({...formData, especialidade: v})} /><Input label="Procedimento" value={formData.procedimento} onChange={v => setFormData({...formData, procedimento: v})} /><Input label="Local" value={formData.local} onChange={v => setFormData({...formData, local: v})} /></>)}
                                 </div>
                                 <div className="mt-8 flex justify-end gap-3"><button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded-lg">Cancelar</button><button onClick={handleSave} disabled={saving} className="px-6 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 flex items-center gap-2 disabled:opacity-50">{saving ? <Loader2 className="animate-spin" size={18}/> : <Save size={18}/>} Salvar</button></div>
                             </div>
