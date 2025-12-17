@@ -50,7 +50,7 @@
             Users, Activity, Clock, CheckCircle, AlertCircle, MapPin, FileText, Menu, X, 
             PieChart as PieChartIcon, BarChart2, Calendar, Filter, AlertTriangle, Handshake, Trophy, TrendingUp, 
             Cake, Phone, Printer, Search, ArrowLeft, History, MessageCircle, CreditCard, Home, 
-            UserCheck, XCircle, DollarSign, HeartPulse, Loader2, LogIn, Lock, Plus, Save 
+            UserCheck, XCircle, DollarSign, HeartPulse, Loader2, LogIn, Lock, Plus, Save, Edit, UserPlus
         } from 'lucide-react';
 
         // --- CONFIGURAÇÃO DA API ---
@@ -151,7 +151,7 @@
 
         // --- SUB COMPONENTS ---
         
-        function Input({ label, type = "text", placeholder, className, onChange, value }) {
+        function Input({ label, type = "text", placeholder, className, onChange, value, readOnly }) {
             return (
                 <label className={`block ${className}`}>
                     <span className="text-xs font-bold text-slate-500 uppercase">{label}</span>
@@ -159,8 +159,9 @@
                         type={type} 
                         placeholder={placeholder} 
                         value={value || ''}
+                        readOnly={readOnly}
                         onChange={e => onChange(e.target.value)} 
-                        className="w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-sky-500 outline-none" 
+                        className={`w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-sky-500 outline-none ${readOnly ? 'bg-slate-100 text-slate-500' : ''}`}
                     />
                 </label>
             );
@@ -209,7 +210,7 @@
             );
         }
 
-        function PatientDetail({ patient, attendances, onBack, onAddAttendance, userMode }) {
+        function PatientDetail({ patient, attendances, onBack, onAddAttendance, userMode, onEditPatient, onEditAttendance }) {
             const handlePrint = () => window.print();
             
             if (!patient) return <div>Carregando...</div>;
@@ -219,7 +220,12 @@
                     <div className="flex justify-between items-center mb-6 no-print">
                         <button onClick={onBack} className="flex items-center gap-2 text-slate-500 hover:text-slate-800"><ArrowLeft size={20}/> Voltar</button>
                         <div className="flex gap-2">
-                            {userMode === 'admin' && <button onClick={onAddAttendance} className="bg-emerald-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-emerald-700"><Plus size={18}/> Novo Atendimento</button>}
+                             {userMode === 'admin' && (
+                                <>
+                                    <button onClick={onEditPatient} className="bg-amber-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-amber-600"><Edit size={18}/> Editar Cadastro</button>
+                                    <button onClick={onAddAttendance} className="bg-emerald-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-emerald-700"><Plus size={18}/> Novo Atendimento</button>
+                                </>
+                            )}
                             <button onClick={handlePrint} className="bg-slate-800 text-white px-4 py-2 rounded-lg flex gap-2 hover:bg-slate-700"><Printer size={18}/> Imprimir</button>
                         </div>
                     </div>
@@ -241,8 +247,11 @@
                         {attendances.map((att, index) => {
                             const risk = checkSurgicalRisk(att.data_risco, att.local);
                             return (
-                                <div key={att.id || index} className="border border-slate-200 rounded-lg p-4 mb-3 hover:bg-slate-50 transition-colors print-break-inside-avoid">
-                                    <div className="flex justify-between items-start mb-2">
+                                <div key={att.id || index} className="border border-slate-200 rounded-lg p-4 mb-3 hover:bg-slate-50 transition-colors print-break-inside-avoid relative">
+                                    {userMode === 'admin' && (
+                                        <button onClick={() => onEditAttendance(att)} className="absolute top-4 right-4 text-slate-400 hover:text-sky-600 no-print"><Edit size={16}/></button>
+                                    )}
+                                    <div className="flex justify-between items-start mb-2 pr-8">
                                         <div>
                                             <div className="flex items-center gap-2"><span className="font-bold text-sky-700">{att.procedimento}</span><span className="text-xs bg-slate-200 px-2 py-0.5 rounded text-slate-600">{att.especialidade}</span></div>
                                             <p className="text-xs text-slate-500 mt-1">Abertura: {formatDate(att.data_abertura)} | Local: {att.local} ({att.parceiro})</p>
@@ -278,9 +287,11 @@
             const [searchTerm, setSearchTerm] = useState('');
             const [selectedPatient, setSelectedPatient] = useState(null);
 
+            // Modal States
             const [isModalOpen, setIsModalOpen] = useState(false);
             const [modalType, setModalType] = useState(null); 
             const [formData, setFormData] = useState({});
+            const [checkCpf, setCheckCpf] = useState('');
             const [saving, setSaving] = useState(false);
 
             // --- BUSCA DADOS ---
@@ -294,7 +305,6 @@
                     const json = await response.json();
                     
                     if (json.status === 'success') {
-                        // Normaliza os dados antes de salvar no estado
                         const normPacientes = normalizeData(json.data.pacientes);
                         const normAtendimentos = normalizeData(json.data.atendimentos);
                         
@@ -329,20 +339,14 @@
                 if (userMode) fetchData();
             }, [userMode]);
 
-            // --- CÁLCULO DE PACIENTES ÚNICOS (CORRIGIDO) ---
+            // --- CÁLCULO DE PACIENTES ÚNICOS ---
             const uniquePatients = useMemo(() => {
                 if (!rawData.pacientes) return [];
-                
-                // Mapa para associar paciente e histórico
                 const patientsMap = {};
-                
-                // 1. Carrega pacientes
                 rawData.pacientes.forEach(p => {
                     const key = String(p.cpf || p.id_paciente).trim(); 
                     patientsMap[key] = { ...p, historico: [] };
                 });
-
-                // 2. Anexa histórico de atendimentos
                 if (rawData.atendimentos) {
                     rawData.atendimentos.forEach(att => {
                          const key = String(att.cpf_paciente).trim();
@@ -351,8 +355,6 @@
                          }
                     });
                 }
-
-                // 3. Filtra pela busca
                 const term = searchTerm.toLowerCase();
                 return Object.values(patientsMap).filter(p => 
                     (p.nome && String(p.nome).toLowerCase().includes(term)) ||
@@ -360,6 +362,8 @@
                     (p.prontuario && String(p.prontuario).includes(term))
                 );
             }, [rawData, searchTerm]);
+
+            // --- HANDLERS ---
 
             const handleLogin = (e) => {
                 e.preventDefault();
@@ -370,16 +374,56 @@
                 }
             };
 
+            const startNewEntry = () => {
+                setModalType('CHECK_CPF_FLOW');
+                setCheckCpf('');
+                setIsModalOpen(true);
+            };
+
+            const verifyCpf = () => {
+                if (!checkCpf) return;
+                const found = rawData.pacientes.find(p => String(p.cpf).trim() === checkCpf.trim());
+                
+                if (found) {
+                    // PACIENTE EXISTE
+                    setSelectedPatient(found); // Carrega ele no contexto
+                    setModalType('PATIENT_FOUND_OPTIONS');
+                } else {
+                    // NOVO PACIENTE
+                    setModalType('NEW_PATIENT');
+                    setFormData({ cpf: checkCpf }); // Já preenche o CPF
+                }
+            };
+
+            const handleEditPatient = () => {
+                setModalType('EDIT_PATIENT');
+                setFormData({ ...selectedPatient }); // Carrega dados
+                setIsModalOpen(true);
+            };
+
+            const handleEditAttendance = (attendance) => {
+                setModalType('EDIT_ATTENDANCE');
+                setFormData({ ...attendance }); // Carrega dados
+                setIsModalOpen(true);
+            }
+
             const handleSave = async () => {
                 setSaving(true);
                 let action = '';
                 let payload = { ...formData };
 
                 if (modalType === 'NEW_PATIENT') action = 'CREATE_PACIENTE';
+                if (modalType === 'EDIT_PATIENT') action = 'UPDATE_PACIENTE';
+                
                 if (modalType === 'NEW_ATTENDANCE') {
                     action = 'CREATE_ATENDIMENTO';
                     payload.cpfPaciente = selectedPatient?.cpf;
                     payload.nomePaciente = selectedPatient?.nome;
+                }
+                if (modalType === 'EDIT_ATTENDANCE') {
+                    action = 'UPDATE_ATENDIMENTO';
+                    // Garante que ID está presente para update
+                    payload.idAtendimento = formData.id_atendimento; 
                 }
                 
                 try {
@@ -393,7 +437,7 @@
                     setTimeout(() => {
                         setSaving(false);
                         setIsModalOpen(false);
-                        alert("Dados enviados com sucesso! A planilha será atualizada em breve.");
+                        alert("Operação realizada! Aguarde a atualização.");
                         fetchData(); 
                     }, 2000);
                     
@@ -608,7 +652,7 @@
                                     </>
                                 )}
                                 {activeTab === 'Pacientes' && !selectedPatient && userMode === 'admin' && (
-                                    <button onClick={() => { setModalType('NEW_PATIENT'); setFormData({}); setIsModalOpen(true); }} className="bg-sky-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-sky-700"><Plus size={18}/> Novo Paciente</button>
+                                    <button onClick={startNewEntry} className="bg-sky-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-sky-700"><UserPlus size={18}/> Novo Cadastro</button>
                                 )}
                             </div>
                         </div>
@@ -654,7 +698,15 @@
                                             </div>
                                         </>
                                     ) : (
-                                        <PatientDetail patient={selectedPatient} attendances={joinedData.filter(a => String(a.cpf_paciente).trim() === String(selectedPatient.cpf).trim())} onBack={() => setSelectedPatient(null)} onAddAttendance={() => { setModalType('NEW_ATTENDANCE'); setFormData({}); setIsModalOpen(true); }} userMode={userMode} />
+                                        <PatientDetail 
+                                            patient={selectedPatient} 
+                                            attendances={joinedData.filter(a => String(a.cpf_paciente).trim() === String(selectedPatient.cpf).trim())} 
+                                            onBack={() => setSelectedPatient(null)} 
+                                            onAddAttendance={() => { setModalType('NEW_ATTENDANCE'); setFormData({}); setIsModalOpen(true); }}
+                                            userMode={userMode}
+                                            onEditPatient={handleEditPatient}
+                                            onEditAttendance={handleEditAttendance}
+                                        />
                                     )}
                                 </div>
                             )}
@@ -692,12 +744,94 @@
                     {isModalOpen && (
                         <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
                             <div className="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6">
-                                <div className="flex justify-between items-center mb-6"><h3 className="text-xl font-bold">{modalType === 'NEW_PATIENT' ? 'Novo Paciente' : 'Novo Atendimento'}</h3><button onClick={() => setIsModalOpen(false)}><X/></button></div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {modalType === 'NEW_PATIENT' && (<><Input label="Nome Completo" value={formData.nome} onChange={v => setFormData({...formData, nome: v})} /><Input label="CPF" value={formData.cpf} onChange={v => setFormData({...formData, cpf: v})} /><Input label="Telefone" value={formData.tel1} onChange={v => setFormData({...formData, tel1: v})} /><Input label="Bairro" value={formData.bairro} onChange={v => setFormData({...formData, bairro: v})} /></>)}
-                                    {modalType === 'NEW_ATTENDANCE' && (<><div className="col-span-2 bg-slate-50 p-3 rounded mb-2 border border-slate-200"><p className="text-sm font-bold text-slate-700">Paciente: {selectedPatient.nome}</p></div><Input label="Data Abertura" type="date" value={formData.dataAbertura} onChange={v => setFormData({...formData, dataAbertura: v})} /><Input label="Especialidade" value={formData.especialidade} onChange={v => setFormData({...formData, especialidade: v})} /><Input label="Procedimento" value={formData.procedimento} onChange={v => setFormData({...formData, procedimento: v})} /><Input label="Local" value={formData.local} onChange={v => setFormData({...formData, local: v})} /></>)}
+                                <div className="flex justify-between items-center mb-6">
+                                    <h3 className="text-xl font-bold">
+                                        {modalType === 'CHECK_CPF_FLOW' && 'Novo Cadastro'}
+                                        {modalType === 'PATIENT_FOUND_OPTIONS' && 'Paciente Encontrado'}
+                                        {(modalType === 'NEW_PATIENT' || modalType === 'EDIT_PATIENT') && 'Dados do Paciente'}
+                                        {(modalType === 'NEW_ATTENDANCE' || modalType === 'EDIT_ATTENDANCE') && 'Dados do Atendimento'}
+                                    </h3>
+                                    <button onClick={() => setIsModalOpen(false)}><X/></button>
                                 </div>
-                                <div className="mt-8 flex justify-end gap-3"><button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded-lg">Cancelar</button><button onClick={handleSave} disabled={saving} className="px-6 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 flex items-center gap-2 disabled:opacity-50">{saving ? <Loader2 className="animate-spin" size={18}/> : <Save size={18}/>} Salvar</button></div>
+                                
+                                {modalType === 'CHECK_CPF_FLOW' && (
+                                    <div className="space-y-4">
+                                        <p className="text-slate-600">Informe o CPF do paciente para iniciar:</p>
+                                        <Input label="CPF" value={checkCpf} onChange={v => setCheckCpf(v)} placeholder="000.000.000-00" />
+                                        <button onClick={verifyCpf} className="w-full bg-sky-600 text-white py-3 rounded-lg font-bold hover:bg-sky-700">Verificar CPF</button>
+                                    </div>
+                                )}
+
+                                {modalType === 'PATIENT_FOUND_OPTIONS' && (
+                                    <div className="space-y-4 text-center">
+                                        <div className="p-4 bg-green-50 text-green-800 rounded-lg border border-green-200 mb-4">
+                                            <p className="font-bold text-lg">{selectedPatient.nome}</p>
+                                            <p className="text-sm">CPF: {selectedPatient.cpf}</p>
+                                        </div>
+                                        <p className="text-slate-600 mb-4">O que deseja fazer?</p>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <button onClick={handleEditPatient} className="flex flex-col items-center justify-center gap-2 p-4 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors">
+                                                <Edit className="text-amber-500" size={32}/>
+                                                <span className="font-bold text-slate-700">Editar Cadastro</span>
+                                            </button>
+                                            <button onClick={() => { setModalType('NEW_ATTENDANCE'); setFormData({}); }} className="flex flex-col items-center justify-center gap-2 p-4 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors">
+                                                <Plus className="text-emerald-500" size={32}/>
+                                                <span className="font-bold text-slate-700">Novo Atendimento</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {(modalType === 'NEW_PATIENT' || modalType === 'EDIT_PATIENT') && (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <Input label="Nome Completo" value={formData.nome} onChange={v => setFormData({...formData, nome: v})} />
+                                        <Input label="CPF" value={formData.cpf} onChange={v => setFormData({...formData, cpf: v})} readOnly={modalType === 'EDIT_PATIENT'} />
+                                        <Input label="Telefone 1" value={formData.telefone_1} onChange={v => setFormData({...formData, telefone_1: v})} />
+                                        <Input label="Telefone 2" value={formData.telefone_2} onChange={v => setFormData({...formData, telefone_2: v})} />
+                                        <Input label="Bairro" value={formData.bairro} onChange={v => setFormData({...formData, bairro: v})} />
+                                        <Input label="Logradouro" value={formData.logradouro} onChange={v => setFormData({...formData, logradouro: v})} />
+                                        <Input label="Data Nasc." type="date" value={formData.data_nascimento} onChange={v => setFormData({...formData, data_nascimento: v})} />
+                                        <Input label="SUS" value={formData.sus} onChange={v => setFormData({...formData, sus: v})} />
+                                        <Input label="Título Eleitor" value={formData.titulo} onChange={v => setFormData({...formData, titulo: v})} />
+                                        <div className="flex gap-2">
+                                            <Input label="Zona" className="w-1/2" value={formData.zona} onChange={v => setFormData({...formData, zona: v})} />
+                                            <Input label="Seção" className="w-1/2" value={formData.secao} onChange={v => setFormData({...formData, secao: v})} />
+                                        </div>
+                                        <Input label="Indicação" value={formData.indicacao} onChange={v => setFormData({...formData, indicacao: v})} />
+                                        <Input label="Família" value={formData.familia} onChange={v => setFormData({...formData, familia: v})} />
+                                        <div className="col-span-1 md:col-span-2">
+                                            <label className="block">
+                                                <span className="text-xs font-bold text-slate-500 uppercase">Observações Fixas</span>
+                                                <textarea className="w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-sky-500 outline-none" rows="3" value={formData.observacoes_fixas || ''} onChange={e => setFormData({...formData, observacoes_fixas: e.target.value})}></textarea>
+                                            </label>
+                                        </div>
+                                        <div className="col-span-1 md:col-span-2 flex justify-end gap-3 mt-4">
+                                            <button onClick={handleSave} disabled={saving} className="px-6 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 flex items-center gap-2 disabled:opacity-50">{saving ? <Loader2 className="animate-spin" size={18}/> : <Save size={18}/>} {modalType === 'NEW_PATIENT' ? 'Cadastrar' : 'Atualizar'}</button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {(modalType === 'NEW_ATTENDANCE' || modalType === 'EDIT_ATTENDANCE') && (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="col-span-2 bg-slate-50 p-3 rounded mb-2 border border-slate-200"><p className="text-sm font-bold text-slate-700">Paciente: {selectedPatient?.nome || formData.nomePaciente}</p></div>
+                                        <Input label="Data Abertura" type="date" value={formData.data_abertura} onChange={v => setFormData({...formData, data_abertura: v})} />
+                                        <Input label="Especialidade" value={formData.especialidade} onChange={v => setFormData({...formData, especialidade: v})} />
+                                        <Input label="Procedimento" value={formData.procedimento} onChange={v => setFormData({...formData, procedimento: v})} />
+                                        <Input label="Local" value={formData.local} onChange={v => setFormData({...formData, local: v})} />
+                                        <Input label="Parceiro Médico" value={formData.parceiro} onChange={v => setFormData({...formData, parceiro: v})} />
+                                        <Input label="Status (Pendente/Concluido)" value={formData.status} onChange={v => setFormData({...formData, status: v})} />
+                                        <Input label="Data Risco Cirúrgico" type="date" value={formData.data_risco} onChange={v => setFormData({...formData, data_risco: v})} />
+                                        <div className="col-span-1 md:col-span-2">
+                                            <label className="block">
+                                                <span className="text-xs font-bold text-slate-500 uppercase">Observações do Atendimento</span>
+                                                <textarea className="w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-sky-500 outline-none" rows="3" value={formData.obs_atendimento || ''} onChange={e => setFormData({...formData, obs_atendimento: e.target.value})}></textarea>
+                                            </label>
+                                        </div>
+                                        <div className="col-span-1 md:col-span-2 flex justify-end gap-3 mt-4">
+                                            <button onClick={handleSave} disabled={saving} className="px-6 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 flex items-center gap-2 disabled:opacity-50">{saving ? <Loader2 className="animate-spin" size={18}/> : <Save size={18}/>} {modalType === 'NEW_ATTENDANCE' ? 'Criar Atendimento' : 'Atualizar Atendimento'}</button>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}
