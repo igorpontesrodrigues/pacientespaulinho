@@ -138,7 +138,7 @@ export default function App() {
       }
     } catch (err) {
       console.error(err);
-      setError("Não foi possível conectar à planilha. Se você estiver vendo isso no ambiente de testes (Canvas), é esperado devido a bloqueios de segurança. Ao publicar no GitHub Pages, funcionará normalmente.");
+      setError("Não foi possível conectar à planilha. Certifique-se de que o Apps Script está publicado como 'Qualquer pessoa'. Se estiver no Canvas, erros de CORS são esperados.");
     } finally {
       setLoading(false);
     }
@@ -358,7 +358,6 @@ export default function App() {
   // --- ANIVERSARIANTES ---
   const birthdaysToday = useMemo(() => {
     const today = new Date();
-    // Usa rawData.pacientes pois aniversário é dado do paciente
     return rawData.pacientes.filter(item => {
       const birthDate = parseDate(item.DATA_NASCIMENTO);
       if (!birthDate) return false;
@@ -485,18 +484,40 @@ export default function App() {
             <div className="animate-in fade-in duration-500">
               {!selectedPatient ? (
                 <>
+                  {/* COUNTERS */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <div className="bg-white p-4 rounded-xl border border-slate-200 flex items-center gap-4 shadow-sm">
+                      <div className="p-3 bg-sky-100 text-sky-600 rounded-full"><Users size={24}/></div>
+                      <div><p className="text-sm text-slate-500">Pacientes Cadastrados</p><h3 className="text-2xl font-bold">{uniquePatients.length}</h3></div>
+                    </div>
+                    <div className="bg-white p-4 rounded-xl border border-slate-200 flex items-center gap-4 shadow-sm">
+                      <div className="p-3 bg-indigo-100 text-indigo-600 rounded-full"><FileText size={24}/></div>
+                      <div><p className="text-sm text-slate-500">Total de Atendimentos</p><h3 className="text-2xl font-bold">{uniquePatients.reduce((acc, p) => acc + p.historico.length, 0)}</h3></div>
+                    </div>
+                  </div>
+
                   <div className="mb-6 relative">
                     <Search className="absolute left-3 top-3.5 text-slate-400" size={20} />
                     <input type="text" placeholder="Buscar por Nome, CPF ou Prontuário..." className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-sky-500" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
                   </div>
                   <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
                     <table className="w-full text-sm text-left">
-                      <thead className="bg-slate-50 text-xs uppercase text-slate-500"><tr><th className="p-4">Nome</th><th className="p-4">CPF</th><th className="p-4">Bairro</th><th className="p-4">Telefone</th><th className="p-4">Ação</th></tr></thead>
+                      <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+                        <tr>
+                          <th className="p-4 w-12 text-center">#</th>
+                          <th className="p-4">Nome</th>
+                          <th className="p-4">CPF</th>
+                          <th className="p-4">Bairro</th>
+                          <th className="p-4">Telefone</th>
+                          <th className="p-4">Ação</th>
+                        </tr>
+                      </thead>
                       <tbody>
                         {rawData.pacientes
                           .filter(p => (p.NOME && p.NOME.toLowerCase().includes(searchTerm.toLowerCase())) || (p.CPF && String(p.CPF).includes(searchTerm)))
-                          .map(p => (
+                          .map((p, index) => (
                           <tr key={p.ID_PACIENTE || Math.random()} className="border-b hover:bg-slate-50">
+                            <td className="p-4 text-center text-slate-400 font-mono">{index + 1}</td>
                             <td className="p-4 font-medium">{p.NOME}</td>
                             <td className="p-4">{p.CPF}</td>
                             <td className="p-4">{p.BAIRRO}</td>
@@ -530,10 +551,19 @@ export default function App() {
                   <div className="px-6 py-4 border-b border-slate-100 bg-slate-50"><h3 className="font-semibold text-slate-800">Fila de Espera Detalhada</h3></div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left">
-                      <thead className="text-xs text-slate-500 uppercase bg-slate-50"><tr><th className="p-3">Paciente</th><th className="p-3">Especialidade</th><th className="p-3">Data Abertura</th><th className="p-3">Status</th></tr></thead>
+                      <thead className="text-xs text-slate-500 uppercase bg-slate-50">
+                        <tr>
+                          <th className="p-3 w-12 text-center">#</th>
+                          <th className="p-3">Paciente</th>
+                          <th className="p-3">Especialidade</th>
+                          <th className="p-3">Data Abertura</th>
+                          <th className="p-3">Status</th>
+                        </tr>
+                      </thead>
                       <tbody>
-                        {reportStats.pendingItems.map(item => (
+                        {reportStats.pendingItems.map((item, index) => (
                           <tr key={item.id} className="border-b hover:bg-slate-50">
+                            <td className="p-3 text-center text-slate-400 font-mono">{index + 1}</td>
                             <td className="p-3 font-medium">{item.NOME}</td>
                             <td className="p-3">{item.especialidade}</td>
                             <td className="p-3 font-bold text-red-600">{formatDate(item.dataAbertura)}</td>
@@ -648,7 +678,7 @@ function PatientDetail({ patient, attendances, onBack, onAddAttendance, userMode
            <div><label className="text-xs text-slate-400 font-bold block">Nascimento</label>{formatDate(patient.DATA_NASCIMENTO)}</div>
            <div><label className="text-xs text-slate-400 font-bold block">Telefone</label>{patient.TELEFONE_1}</div>
            <div className="col-span-2"><label className="text-xs text-slate-400 font-bold block">Endereço</label>{patient.LOGRADOURO}, {patient.BAIRRO}</div>
-           <div><label className="text-xs text-slate-400 font-bold block">Indicação</label>{patient.INDICAÇÃO}</div>
+           <div><label className="text-xs text-slate-400 font-bold block">Indicação</label>{patient.FAMILIA || patient.INDICAÇÃO || patient.INDICACAO}</div>
            <div className="col-span-4 mt-2 pt-2 border-t border-slate-200"><label className="text-xs text-slate-400 font-bold block mb-1">Observações do Cadastro</label><p className="text-sm text-slate-700 italic">{patient.OBSERVACOES_FIXAS || "Nenhuma observação registrada."}</p></div>
         </div>
         <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2"><History size={20}/> Histórico de Atendimentos</h3>
