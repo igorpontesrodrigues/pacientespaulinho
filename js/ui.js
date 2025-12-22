@@ -243,7 +243,163 @@ function abrirListaRelatorio(tipo, index) {
 }
 
 // ============================================================================
-// 4. FORMULÁRIOS E PREENCHIMENTO
+// 4. IMPRESSÃO DE FICHA EM BRANCO (NOVO)
+// ============================================================================
+
+function imprimirFichaEmBranco() {
+    const printArea = document.getElementById('printable-area');
+    if(!printArea) return;
+
+    // Estilos inline para garantir a formatação na impressão
+    const styleLabel = "display: block; font-size: 10px; color: #64748b; font-weight: bold; text-transform: uppercase; margin-bottom: 2px;";
+    const styleInput = "border-bottom: 1px solid #333; height: 20px; width: 100%; margin-bottom: 10px;";
+    const styleSection = "margin-bottom: 15px; border: 1px solid #cbd5e1; border-radius: 4px; padding: 15px;";
+    const styleTitle = "margin-top: 0; font-size: 14px; font-weight: bold; color: #334155; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px; margin-bottom: 10px;";
+
+    const html = `
+        <div style="font-family: 'Segoe UI', sans-serif; padding: 20px; color: #333; max-width: 100%;">
+            
+            <!-- CABEÇALHO -->
+            <div style="text-align: center; border-bottom: 2px solid #333; padding-bottom: 15px; margin-bottom: 20px;">
+                <h1 style="margin: 0; font-size: 20px; font-weight: 800; text-transform: uppercase;">Ficha de Atendimento</h1>
+                <p style="margin: 2px 0 0; color: #555; font-size: 12px;">Gabinete Paulinho Tudo a Ver</p>
+            </div>
+
+            <!-- DADOS PESSOAIS -->
+            <div style="${styleSection}">
+                <h2 style="${styleTitle}">1. DADOS DO PACIENTE</h2>
+                
+                <div style="display: flex; gap: 15px;">
+                    <div style="flex: 3;">
+                        <span style="${styleLabel}">Nome Completo</span>
+                        <div style="${styleInput}"></div>
+                    </div>
+                    <div style="flex: 1;">
+                        <span style="${styleLabel}">CPF</span>
+                        <div style="${styleInput}"></div>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 15px;">
+                    <div style="flex: 1;">
+                        <span style="${styleLabel}">Data Nasc.</span>
+                        <div style="${styleInput}"></div>
+                    </div>
+                    <div style="flex: 1;">
+                        <span style="${styleLabel}">RG</span>
+                        <div style="${styleInput}"></div>
+                    </div>
+                    <div style="flex: 1;">
+                        <span style="${styleLabel}">Telefone 1</span>
+                        <div style="${styleInput}"></div>
+                    </div>
+                    <div style="flex: 1;">
+                        <span style="${styleLabel}">Telefone 2</span>
+                        <div style="${styleInput}"></div>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 15px;">
+                    <div style="flex: 1;">
+                        <span style="${styleLabel}">CEP</span>
+                        <div style="${styleInput}"></div>
+                    </div>
+                    <div style="flex: 3;">
+                        <span style="${styleLabel}">Endereço (Rua, Nº, Compl)</span>
+                        <div style="${styleInput}"></div>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 15px;">
+                    <div style="flex: 1;">
+                        <span style="${styleLabel}">Bairro</span>
+                        <div style="${styleInput}"></div>
+                    </div>
+                    <div style="flex: 1;">
+                        <span style="${styleLabel}">Município</span>
+                        <div style="${styleInput}"></div>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 15px;">
+                    <div style="flex: 1;">
+                        <span style="${styleLabel}">Título Eleitor</span>
+                        <div style="${styleInput}"></div>
+                    </div>
+                    <div style="flex: 1;">
+                        <span style="${styleLabel}">Zona / Seção</span>
+                        <div style="${styleInput}"></div>
+                    </div>
+                    <div style="flex: 2;">
+                        <span style="${styleLabel}">Local de Votação</span>
+                        <div style="${styleInput}"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DADOS DO SERVIÇO -->
+            <div style="${styleSection}">
+                <h2 style="${styleTitle}">2. DADOS DO SERVIÇO / ATENDIMENTO</h2>
+                
+                <div style="display: flex; gap: 15px;">
+                    <div style="flex: 1;">
+                        <span style="${styleLabel}">Data Abertura</span>
+                        <div style="${styleInput}"></div>
+                    </div>
+                    <div style="flex: 2;">
+                        <span style="${styleLabel}">Liderança / Indicação</span>
+                        <div style="${styleInput}"></div>
+                    </div>
+                    <div style="flex: 1;">
+                        <span style="${styleLabel}">Tipo Serviço</span>
+                        <div style="${styleInput}"></div>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 15px;">
+                    <div style="flex: 2;">
+                        <span style="${styleLabel}">Especialidade / Procedimento</span>
+                        <div style="${styleInput}"></div>
+                    </div>
+                    <div style="flex: 2;">
+                        <span style="${styleLabel}">Local de Atendimento</span>
+                        <div style="${styleInput}"></div>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 15px;">
+                    <div style="flex: 2;">
+                        <span style="${styleLabel}">Parceiro / Médico</span>
+                        <div style="${styleInput}"></div>
+                    </div>
+                    <div style="flex: 1;">
+                        <span style="${styleLabel}">Data Marcação</span>
+                        <div style="${styleInput}"></div>
+                    </div>
+                    <div style="flex: 1;">
+                        <span style="${styleLabel}">Valor (R$)</span>
+                        <div style="${styleInput}"></div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 10px;">
+                    <span style="${styleLabel}">Observações do Pedido</span>
+                    <div style="${styleInput} height: 60px; border: 1px solid #333;"></div>
+                </div>
+            </div>
+
+            <div style="text-align: center; font-size: 10px; color: #888; margin-top: 20px;">
+                Impresso em ${new Date().toLocaleString('pt-BR')} - Sistema de Gestão Interna
+            </div>
+        </div>
+    `;
+
+    printArea.innerHTML = html;
+    window.print();
+}
+
+// ============================================================================
+// 5. FORMULÁRIOS E PREENCHIMENTO
 // ============================================================================
 
 function renderizarSelectsVazios() {
@@ -516,7 +672,7 @@ function calcularDataRisco() {
 }
 
 // ============================================================================
-// 5. FUNÇÕES DE EXCLUSÃO (UI HANDLERS)
+// 6. FUNÇÕES DE EXCLUSÃO (UI HANDLERS)
 // ============================================================================
 
 function confirmarExclusaoPaciente() {
