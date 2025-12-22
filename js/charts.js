@@ -64,13 +64,16 @@ function renderizarGraficos(atendimentos, pacientes) {
         maintainAspectRatio: false,
         plugins: { legend: { display: false } }, 
         scales: { y: { beginAtZero: true } },
-        // NOVO: Adiciona o evento de clique
+        // EVENTO DE CLIQUE ATUALIZADO
         onClick: (evt, elements) => {
             if (elements.length > 0) {
                 const index = elements[0].index;
-                const label = tituloData.map(i => i[0])[index]; // Pega o rótulo clicado
-                if (typeof abrirDetalheSituacaoEleitoral === 'function') {
-                    abrirDetalheSituacaoEleitoral(label);
+                const label = tituloData.map(i => i[0])[index]; // Pega o rótulo clicado (ex: REGULAR)
+                
+                // Agora chama a função correta do novo relatório
+                if (typeof abrirRelatorioEleitoral === 'function') {
+                    // Passamos o label caso queira implementar filtro automático no futuro
+                    abrirRelatorioEleitoral(label);
                 }
             }
         },
