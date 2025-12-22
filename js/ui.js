@@ -61,13 +61,19 @@ function aplicarPermissoes() {
         }
     });
 
-    // 3. Travar inputs para visitantes
+    // 3. Travar inputs para visitantes, exceto filtros e buscas
     const inputs = document.querySelectorAll('input, select, textarea');
     inputs.forEach(inp => {
-        // Não trava campos de filtro/busca, apenas formulários
-        if(!inp.id.includes('filtro') && !inp.id.includes('busca')) {
+        const id = inp.id || '';
+        // CORREÇÃO: Garante que filtros de Dashboard, Relatórios e Parceiros não sejam travados
+        const isFilter = id.includes('filtro') || id.includes('busca') || id.includes('dash-filter') || id.includes('rel-filter') || id.includes('parc-filter');
+        
+        if(!isFilter) {
             if(isVisitor) inp.setAttribute('disabled', 'true');
             else inp.removeAttribute('disabled');
+        } else {
+            // Garante que filtros estejam sempre habilitados, mesmo se tiverem sido desabilitados antes
+            inp.removeAttribute('disabled');
         }
     });
 }
@@ -109,7 +115,7 @@ function switchTab(tabId) {
     if (tabId === 'parceiros' && typeof initParceiros === 'function') initParceiros();
     if (tabId === 'relatorios' && typeof initRelatorios === 'function') initRelatorios();
 
-    // Reaplicar permissões ao trocar de tela
+    // Reaplicar permissões ao trocar de tela para garantir integridade
     if(currentUserRole) aplicarPermissoes();
 }
 
