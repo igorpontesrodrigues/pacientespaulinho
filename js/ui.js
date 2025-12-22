@@ -438,9 +438,16 @@ function mostrarFormularioPaciente(isEdit, dados = null) {
 function abrirEdicaoDireta(cpf, id) {
     switchTab('form-paciente');
     const inputCpf = document.getElementById('paciente_cpf_check');
-    inputCpf.value = cpf || '';
-    if(cpf && cpf.length > 4 && typeof verificarCpfInicial === 'function') verificarCpfInicial();
-    else if(id && typeof verificarPorId === 'function') verificarPorId(id);
+    // FIX: Garante que o CPF seja string para a verificação de length
+    const cpfStr = cpf ? String(cpf) : '';
+    inputCpf.value = cpfStr;
+    
+    if(cpfStr && cpfStr.length > 4 && typeof verificarCpfInicial === 'function') {
+        verificarCpfInicial();
+    }
+    else if(id && typeof verificarPorId === 'function') {
+        verificarPorId(id);
+    }
 }
 
 function abrirEdicaoAtendimento(at) {
