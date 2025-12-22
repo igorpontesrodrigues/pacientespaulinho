@@ -98,21 +98,44 @@ input::-webkit-calendar-picker-indicator {
     filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3)); 
 }
 
-/* Configurações de Impressão */
+/* Configurações de Impressão (CORRIGIDO) */
 @media print {
-    body * { visibility: hidden; }
-    #printable-area, #printable-area * { visibility: visible; }
-    #printable-area { 
-        position: absolute; 
-        left: 0; 
-        top: 0; 
-        width: 100%; 
-        padding: 20px; 
-        background: white; 
+    /* Regra geral: Esconde tudo primeiro */
+    body * {
+        visibility: hidden;
     }
-    
-    /* Esconde elementos de navegação na impressão */
-    nav, button, aside, .no-print { display: none !important; }
-    .bg-slate-100 { background: white !important; }
-    main { margin-left: 0 !important; width: 100% !important; padding: 0 !important; }
+
+    /* Força display: none em containers grandes para remover páginas em branco */
+    aside, nav, .fixed, #view-login, .loading-overlay {
+        display: none !important;
+    }
+
+    /* Esconde todas as divs filhas do main, exceto a printable-area */
+    main > div:not(#printable-area) {
+        display: none !important;
+    }
+
+    /* Configura a área de impressão para aparecer */
+    #printable-area {
+        display: block !important;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: auto;
+        background: white;
+        visibility: visible !important;
+        z-index: 9999;
+    }
+
+    /* Garante que o conteúdo do printable-area seja visível */
+    #printable-area * {
+        visibility: visible !important;
+    }
+
+    /* Reseta configurações de scroll do body para imprimir tudo */
+    body, main {
+        overflow: visible !important;
+        height: auto !important;
+    }
 }
