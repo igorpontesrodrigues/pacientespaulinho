@@ -5,8 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestão Gabinete - Paulinho Tudo a Ver</title>
     
-    <!-- FAVICON (Ícone da aba) -->
-    <!-- Você pode substituir o href por qualquer URL de imagem .png ou .ico -->
+    <!-- FAVICON -->
     <link rel="icon" type="image/png" href="https://img.icons8.com/fluency/48/pulse.png">
     
     <!-- BIBLIOTECAS EXTERNAS -->
@@ -52,8 +51,9 @@
     <!-- BARRA LATERAL (SIDEBAR) -->
     <aside class="w-64 bg-slate-900 text-white fixed h-full left-0 top-0 overflow-y-auto hidden md:flex flex-col z-50 shadow-2xl">
         <div class="p-6 border-b border-slate-800">
+            <!-- MUDANÇA DE TÍTULO AQUI -->
             <div class="flex items-center gap-2 font-bold text-xl text-blue-400">
-                <i data-lucide="activity"></i> Gestão Saúde
+                <i data-lucide="briefcase"></i> Gestão de Gabinete
             </div>
             <div class="flex justify-between items-end">
                 <div>
@@ -83,7 +83,7 @@
         </nav>
 
         <div id="sidebar-actions" class="p-4 border-t border-slate-800">
-            <!-- NOVO BOTÃO: GERAR FICHA EM BRANCO -->
+            <!-- BOTÃO GERAR FICHA -->
             <button onclick="imprimirFichaEmBranco()" class="w-full bg-slate-700 hover:bg-slate-600 text-white py-2 rounded-lg font-bold shadow-md mb-3 flex items-center justify-center gap-2 transition border border-slate-600">
                 <i data-lucide="file-text"></i> Gerar Ficha
             </button>
@@ -100,7 +100,7 @@
     <!-- CABEÇALHO MOBILE -->
     <div class="md:hidden fixed w-full bg-slate-900 text-white z-50 p-4 flex justify-between items-center shadow-lg">
         <div>
-            <div class="font-bold flex items-center gap-2 text-blue-400"><i data-lucide="activity"></i> Gestão</div>
+            <div class="font-bold flex items-center gap-2 text-blue-400"><i data-lucide="briefcase"></i> Gestão Gabinete</div>
         </div>
         <div class="flex gap-4">
             <button onclick="logout()" class="text-xs text-red-400 border border-red-900 px-2 py-1 rounded">Sair</button>
@@ -191,6 +191,7 @@
                     <div class="h-64 relative">
                         <canvas id="chartTitulo"></canvas>
                     </div>
+                    <p class="text-[10px] text-center text-slate-400 mt-2">Clique nas barras para ver detalhes</p>
                 </div>
 
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-center gap-4">
@@ -507,6 +508,7 @@
                 <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2"><i data-lucide="user-plus" class="text-blue-600 w-5 h-5"></i> Ficha de Paciente</h2>
                 <div class="flex gap-2">
                     <button id="btn-imprimir" onclick="imprimirFicha()" class="hidden text-slate-500 hover:text-blue-600 text-sm border border-slate-300 px-3 py-1 rounded bg-white hover:bg-blue-50 transition items-center gap-1"><i data-lucide="printer" class="w-4 h-4"></i> Imprimir</button>
+                    <!-- BOTÃO DE EXCLUIR PACIENTE (NOVO) -->
                     <button id="btn-delete-paciente" onclick="confirmarExclusaoPaciente()" class="hidden text-red-500 hover:text-white hover:bg-red-600 text-sm border border-red-200 px-3 py-1 rounded bg-red-50 transition items-center gap-1 btn-delete"><i data-lucide="trash-2" class="w-4 h-4"></i> Excluir</button>
                     <button onclick="voltarInicio()" class="text-slate-400 hover:text-slate-600 transition"><i data-lucide="x" class="w-5 h-5"></i></button>
                 </div>
@@ -522,12 +524,14 @@
                         </div>
                         <p id="msg_cpf_paciente" class="text-sm mt-3 font-medium min-h-[20px] text-blue-800"></p>
                     </div>
+                    <!-- ADICIONADO BOTÃO DE EXCLUIR AQUI TAMBÉM (NO CARD DE ENCONTRADO) -->
                     <div id="opcoes-paciente-existente" class="hidden text-center p-8 border-2 border-dashed border-blue-200 rounded-xl bg-slate-50 mb-6 fade-in">
                         <div class="text-xl text-blue-900 font-bold mb-6">Paciente já cadastrado!</div>
                         <div class="flex flex-col sm:flex-row gap-4 justify-center max-w-md mx-auto mb-4">
                             <button type="button" onclick="editarPaciente()" class="btn-action flex-1 bg-white border border-slate-300 text-slate-700 py-3 px-4 rounded-lg hover:bg-slate-50 font-medium transition shadow-sm flex items-center justify-center gap-2"><i data-lucide="edit-3" class="w-4 h-4"></i> Editar Dados</button>
                             <button type="button" onclick="irParaAtendimento()" class="btn-action flex-1 bg-emerald-600 text-white py-3 px-4 rounded-lg hover:bg-emerald-700 font-bold shadow-md transition flex items-center justify-center gap-2"><i data-lucide="plus-circle" class="w-4 h-4"></i> Criar Atendimento</button>
                         </div>
+                        <!-- Botão de Excluir Extra -->
                         <button type="button" onclick="confirmarExclusaoPaciente()" class="btn-delete text-red-500 hover:underline text-sm flex items-center justify-center gap-1 mx-auto"><i data-lucide="trash-2" class="w-3 h-3"></i> Excluir este paciente</button>
                     </div>
                     <div id="resto-form-paciente" class="hidden fade-in space-y-8">
@@ -639,19 +643,24 @@
         </div>
         <div id="printable-area" class="hidden"></div>
         
+        <!-- MODAL GENÉRICO -->
         <div id="modal-lista-relatorio" class="fixed inset-0 bg-black/60 z-[80] hidden flex items-center justify-center p-4 backdrop-blur-sm">
             <div class="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden max-h-[90vh] flex flex-col animate-fade-in">
                 <div class="bg-slate-50 px-6 py-4 border-b border-slate-200 flex justify-between items-center shrink-0">
                     <div>
                         <h2 class="text-lg font-bold text-slate-800" id="titulo-modal-relatorio">Detalhes</h2>
-                        <p class="text-xs text-slate-500">Clique no paciente para ver a ficha completa</p>
+                        <p class="text-xs text-slate-500">Clique para ver mais detalhes</p>
                     </div>
                     <button onclick="document.getElementById('modal-lista-relatorio').classList.add('hidden')" class="text-slate-400 hover:text-slate-600 transition"><i data-lucide="x" class="w-6 h-6"></i></button>
                 </div>
                 <div class="overflow-y-auto flex-1 p-0">
                     <table class="w-full text-left text-sm text-slate-600">
                         <thead class="bg-slate-50 text-slate-700 uppercase font-bold text-xs sticky top-0 shadow-sm">
-                            <tr><th class="px-6 py-3">Data Abertura</th><th class="px-6 py-3">Paciente</th><th class="px-6 py-3 text-right">Espera</th></tr>
+                            <tr>
+                                <th id="th-col1" class="px-6 py-3">Data Abertura</th>
+                                <th id="th-col2" class="px-6 py-3">Paciente</th>
+                                <th id="th-col3" class="px-6 py-3 text-right">Espera</th>
+                            </tr>
                         </thead>
                         <tbody id="tbody-modal-relatorio" class="divide-y divide-slate-100"></tbody>
                     </table>
