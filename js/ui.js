@@ -442,11 +442,12 @@ function abrirEdicaoDireta(cpf, id) {
     const cpfStr = cpf ? String(cpf) : '';
     inputCpf.value = cpfStr;
     
-    if(cpfStr && cpfStr.length > 4 && typeof verificarCpfInicial === 'function') {
-        verificarCpfInicial();
-    }
-    else if(id && typeof verificarPorId === 'function') {
-        verificarPorId(id);
+    // Força o carregamento do formulário de edição usando o ID
+    // O ID é mais confiável que o CPF para buscar e preencher dados
+    if (id) {
+        if(typeof verificarPorId === 'function') verificarPorId(id);
+    } else if (cpfStr && cpfStr.length > 4) {
+        if(typeof verificarCpfInicial === 'function') verificarCpfInicial();
     }
 }
 
