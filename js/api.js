@@ -1,299 +1,136 @@
-function showMessage(msg, type) {
-    const el = document.getElementById('system-message');
-    el.innerHTML = msg;
-    el.className = `mb-4 p-4 rounded-lg border flex items-center gap-2 ${type === 'error' ? 'bg-red-50 text-red-800 border-red-200' : 'bg-green-50 text-green-800 border-green-200'}`;
-    el.classList.remove('hidden');
-    if(type !== 'error') setTimeout(() => el.classList.add('hidden'), 5000);
-}
+/**
+ * js/api.js
+ * Funções de comunicação com o backend (Apps Script) e lógica de negócios.
+ */
 
-function switchTab(tabId) {
-    window.scrollTo({ top: 0, behavior: 'instant' });
+// ============================================================================
+// 1. FUNÇÕES BASE (FETCH E DEBUG)
+// ============================================================================
 
-    const views = ['view-lista-pacientes', 'view-lista-atendimentos', 'view-form-paciente', 'view-form-atendimento', 'view-dashboard', 'view-aniversarios', 'view-relatorios', 'view-parceiros', 'view-historico-paciente', 'view-detalhe-atendimento'];
-    views.forEach(id => {
-        const el = document.getElementById(id);
-        if(el) el.classList.add('hidden');
-    });
+async function sendData(action, data, loadingId) {
+    const loading = document.getElementById(loadingId);
+    if(loading) { loading.classList.remove('hidden'); loading.classList.add('flex'); }
     
-    const target = document.getElementById('view-' + tabId);
-    if(target) target.classList.remove('hidden');
-    
-    if (tabId === 'form-paciente') resetFormPaciente();
-    if (tabId === 'form-atendimento') resetFormAtendimento();
-    
-    if (tabId === 'lista-pacientes') {
-        const listaVisible = !document.getElementById('subview-pacientes-lista').classList.contains('hidden');
-        if(listaVisible) carregarListaPacientes();
-        else carregarAniversarios();
-    }
-
-    if (tabId === 'lista-atendimentos') carregarListaAtendimentos();
-    if (tabId === 'dashboard') loadDashboard();
-    
-    if (tabId === 'parceiros') initParceiros();
-    if (tabId === 'relatorios') initRelatorios();
-}
-
-function alternarSubAbaPacientes(aba) {
-    const listaDiv = document.getElementById('subview-pacientes-lista');
-    const niverDiv = document.getElementById('subview-pacientes-niver');
-    const btnLista = document.getElementById('tab-btn-lista');
-    const btnNiver = document.getElementById('tab-btn-niver');
-    const buscaContainer = document.getElementById('container-busca-pacientes');
-    const filtroNiver = document.getElementById('container-filtro-niver');
-
-    if (aba === 'lista') {
-        listaDiv.classList.remove('hidden');
-        niverDiv.classList.add('hidden');
-        buscaContainer.classList.remove('hidden');
-        filtroNiver.classList.add('hidden');
-        btnLista.className = "text-blue-600 border-b-2 border-blue-600 pb-2 transition-all";
-        btnNiver.className = "text-slate-500 hover:text-blue-500 pb-2 transition-all flex items-center gap-1";
-        carregarListaPacientes();
-    } else {
-        listaDiv.classList.add('hidden');
-        niverDiv.classList.remove('hidden');
-        buscaContainer.classList.add('hidden');
-        filtroNiver.classList.remove('hidden');
-        filtroNiver.style.display = 'flex';
-        btnNiver.className = "text-pink-600 border-b-2 border-pink-600 pb-2 transition-all flex items-center gap-1";
-        btnLista.className = "text-slate-500 hover:text-blue-500 pb-2 transition-all";
-        carregarAniversarios();
-    }
-}
-
-function renderizarSelectsVazios() {
-    CONFIG_SELECTS.forEach(cfg => {
-        const el = document.getElementById(cfg.container);
-        if(el) {
-            const fieldName = cfg.nameOverride || cfg.id;
-            el.innerHTML = `
-                <label class="label-field">${cfg.label}</label>
-                <div class="relative">
-                    <select id="sel_${cfg.id}" onchange="checkSelectNew('${cfg.id}')" class="input-field bg-white uppercase">
-                        <option value="">Carregando...</option>
-                    </select>
-                    <div id="grp_new_${cfg.id}" class="hidden mt-1 flex gap-1 animate-fade-in">
-                        <input type="text" id="inp_${cfg.id}" placeholder="Digite novo..." class="switched-input flex-1 input-field uppercase">
-                        <button type="button" onclick="cancelSelectNew('${cfg.id}')" class="bg-red-100 text-red-600 px-3 rounded hover:bg-red-200">✕</button>
-                    </div>
-                    <input type="hidden" name="${fieldName}" id="field_${cfg.id}">
-                </div>`;
-        }
-    });
-}
-
-function checkSelectNew(id) {
-    const sel = document.getElementById(`sel_${id}`);
-    if (sel.value === '__NEW__') {
-        sel.classList.add('hidden');
-        document.getElementById(`grp_new_${id}`).classList.remove('hidden');
-        document.getElementById(`inp_${id}`).focus();
-        document.getElementById(`field_${id}`).value = '';
-    } else {
-        document.getElementById(`field_${id}`).value = sel.value;
-    }
-}
-
-function cancelSelectNew(id) {
-    const sel = document.getElementById(`sel_${id}`);
-    sel.value = ""; 
-    document.getElementById(`field_${id}`).value = "";
-    sel.classList.remove('hidden'); 
-    document.getElementById(`grp_new_${id}`).classList.add('hidden');
-}
-
-function preencherSelectInteligente(id, valor) {
-    if(!valor) return;
-    const sel = document.getElementById(`sel_${id}`);
-    const hidden = document.getElementById(`field_${id}`);
-    
-    hidden.value = valor;
-    
-    sel.classList.remove('hidden');
-    document.getElementById(`grp_new_${id}`).classList.add('hidden');
-    
-    let exists = false;
-    for(let i=0; i<sel.options.length; i++) {
-        if(sel.options[i].value.toUpperCase() === valor.toUpperCase()) {
-            sel.selectedIndex = i;
-            exists = true;
-            break;
+    // Converte strings para uppercase, exceto IDs e CPFs e datas
+    for(let k in data) {
+        if(typeof data[k] === 'string' && !['cpf','id'].includes(k) && !k.includes('data')) {
+            data[k] = data[k].toUpperCase();
         }
     }
-    
-    if(!exists) {
-        const novaOpcao = new Option(valor, valor, true, true);
-        const lastIndex = sel.options.length - 1;
-        if (lastIndex >= 0 && sel.options[lastIndex].value === '__NEW__') {
-            sel.add(novaOpcao, sel.options[lastIndex]); 
-        } else {
-            sel.add(novaOpcao);
-        }
-        sel.value = valor;
-    }
-}
 
-function abrirDetalheAtendimento(at) {
-    const backdrop = document.getElementById('modal-backdrop-detalhe');
-    if(!backdrop) return;
-    const innerModal = document.getElementById('view-detalhe-atendimento');
-    innerModal.classList.remove('hidden');
-    backdrop.classList.remove('hidden');
-
-    document.getElementById('det-paciente').innerText = at.nome || '-';
-    document.getElementById('det-cpf').innerText = `CPF: ${at.cpf || '-'}`;
-    document.getElementById('det-status').innerText = at.status || 'PENDENTE';
-    
-    const statusEl = document.getElementById('det-status');
-    statusEl.className = "px-3 py-1 rounded-full text-xs font-bold border shadow-sm " + 
-        (at.status === 'CONCLUIDO' ? 'bg-emerald-100 text-emerald-700' : 
-        (at.status === 'PENDENTE' ? 'bg-amber-100 text-amber-700' : 
-        (at.status === 'CANCELADO' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600')));
-
-    document.getElementById('det-data').innerText = at.data_abertura ? at.data_abertura.split('-').reverse().join('/') : '-';
-    document.getElementById('det-tipo').innerText = (at.tipo_servico || '') + (at.tipo ? ` - ${at.tipo}` : '');
-    document.getElementById('det-servico').innerText = at.especialidade || '-';
-    document.getElementById('det-local').innerText = at.local || '-';
-    document.getElementById('det-parceiro').innerText = at.parceiro || '-';
-    document.getElementById('det-indicacao').innerText = at.indicacao || '-';
-    
-    document.getElementById('det-marcacao').innerText = at.data_marcacao ? at.data_marcacao.split('-').reverse().join('/') : '-';
-    document.getElementById('det-risco').innerText = at.data_risco ? at.data_risco.split('-').reverse().join('/') : '-';
-    document.getElementById('det-obs').innerText = at.obs_atendimento || 'Sem observações.';
-
-    const btnEdit = document.getElementById('btn-editar-detalhe');
-    btnEdit.onclick = function() {
-        fecharDetalhe();
-        abrirEdicaoAtendimento(at);
-    };
-}
-
-function fecharDetalhe() {
-    document.getElementById('modal-backdrop-detalhe').classList.add('hidden');
-}
-
-function abrirEdicaoAtendimento(at) {
-    switchTab('form-atendimento');
-    document.getElementById('titulo_form_atend').innerText = "Editar Atendimento";
-    document.getElementById('txt_btn_atend').innerText = "Atualizar Dados";
-    document.getElementById('atend_id_hidden').value = at.id;
-    document.getElementById('busca_cpf').value = at.cpf;
-    document.getElementById('hidden_cpf').value = at.cpf;
-    document.getElementById('hidden_nome').value = at.nome;
-    document.getElementById('resultado_busca').innerHTML = `<span class="text-blue-700 font-bold flex items-center gap-1"><i data-lucide="user" class="w-4 h-4"></i> Editando: ${at.nome}</span>`;
-    document.getElementById('resto-form-atendimento').classList.remove('hidden');
-
-    document.getElementById('data_abertura').value = at.data_abertura || '';
-    document.getElementById('field_lideranca').value = at.lideranca || ''; 
-    document.getElementById('field_tipo').value = at.tipo || '';
-    document.getElementById('field_data_marcacao').value = at.data_marcacao || '';
-    document.getElementById('field_data_risco').value = at.data_risco || '';
-    document.getElementById('field_valor').value = at.valor || '';
-    document.getElementById('field_obs_atendimento').value = at.obs_atendimento || '';
-
-    ['indicacao','tipo_servico','parceiro','especialidade','procedimento','local','tipo','status_atendimento'].forEach(k => preencherSelectInteligente(k, at[k === 'status_atendimento' ? 'status' : k]));
-}
-
-function abrirEdicaoAtendimentoId(id) {
-    const at = todosAtendimentos.find(x => x.id === id);
-    if(at) abrirEdicaoAtendimento(at);
-}
-
-function abrirAtendimentoDireto(cpf, id) {
-    if(!cpf || cpf.length < 5) { alert("Paciente sem CPF. Edite o cadastro primeiro."); abrirEdicaoDireta(cpf, id); return; }
-    switchTab('form-atendimento');
-    document.getElementById('busca_cpf').value = cpf;
-    buscarPacienteParaAtendimento();
-}
-
-function abrirEdicaoDireta(cpf, id) {
-    switchTab('form-paciente');
-    document.getElementById('paciente_cpf_check').value = cpf;
-    if(cpf && cpf.length > 4) verificarCpfInicial();
-    else if(id) verificarPorId(id);
-}
-
-function editarPaciente() { if(pacienteAtual) mostrarFormularioPaciente(true, pacienteAtual); }
-
-function mostrarFormularioPaciente(isEdit, dados = null) {
-    document.getElementById('resto-form-paciente').classList.remove('hidden');
-    document.getElementById('opcoes-paciente-existente').classList.add('hidden');
-    
-    const btnPrint = document.getElementById('btn-imprimir');
-    if(isEdit) btnPrint.classList.remove('hidden');
-    else btnPrint.classList.add('hidden');
-
-    if(isEdit && dados) {
-        document.getElementById('paciente_id_hidden').value = dados.id;
-        ['nome','apelido','familia','rg','nascimento','sexo','tel1','tel2','cep','logradouro','bairro','municipio','sus','titulo','status_titulo','municipio_titulo','zona','secao','obs'].forEach(k => {
-            if(document.getElementById(`field_${k}`)) {
-                if(['municipio','bairro','status_titulo'].includes(k)) {
-                    preencherSelectInteligente(k, dados[k]);
-                } else if(k === 'municipio_titulo') {
-                    document.getElementById(`field_${k}`).value = dados[k] || '';
-                } else {
-                    document.getElementById(`field_${k}`).value = dados[k] || '';
-                }
-            }
+    try {
+        const res = await fetch(SCRIPT_URL, { 
+            method: 'POST', 
+            body: JSON.stringify({ action: action, data: data }) 
         });
+        const json = await res.json();
+        
+        if(loading) { loading.classList.add('hidden'); loading.classList.remove('flex'); }
+        
+        if(json.status === 'success') { 
+            showMessage(json.message, 'success'); 
+            return true; 
+        } else { 
+            alert(json.message); 
+            return false; 
+        }
+    } catch(e) { 
+        if(loading) { loading.classList.add('hidden'); loading.classList.remove('flex'); }
+        alert("Erro de conexão: " + e); 
+        return false; 
     }
 }
 
-function resetFormPaciente() {
-    document.getElementById('frmPaciente').reset();
-    document.getElementById('paciente_id_hidden').value = "";
-    document.getElementById('msg_cpf_paciente').innerText = '';
-    document.getElementById('opcoes-paciente-existente').classList.add('hidden');
-    document.getElementById('resto-form-paciente').classList.add('hidden');
-    document.getElementById('btn-imprimir').classList.add('hidden');
-    
-    CONFIG_SELECTS.forEach(cfg => {
-        const sel = document.getElementById(`sel_${cfg.id}`);
-        if(sel && cfg.id !== 'status_atendimento') sel.value = "";
-        cancelSelectNew(cfg.id);
-    });
+async function verificarDebug() {
+    showMessage("Testando conexão...", "info");
+    try {
+        const response = await fetch(`${SCRIPT_URL}?action=getFilters`);
+        const result = await response.json();
+        if (result.status === 'success') {
+            const keys = Object.keys(result.data);
+            showMessage(`<b>Sucesso!</b> Chaves: ${keys.join(', ')}`, 'success');
+        } else showMessage(`<b>Erro:</b> ${result.message}`, 'error');
+    } catch (err) { showMessage(`<b>Erro Crítico:</b> ${err}`, 'error'); }
 }
 
-function resetFormAtendimento() {
-    document.getElementById('frmAtendimento').reset();
-    document.getElementById('atend_id_hidden').value = "";
-    document.getElementById('titulo_form_atend').innerText = "Novo Atendimento";
-    document.getElementById('txt_btn_atend').innerText = "Confirmar Atendimento";
-    document.getElementById('resultado_busca').innerText = '';
-    document.getElementById('resto-form-atendimento').classList.add('hidden');
-    document.getElementById('data_abertura').valueAsDate = new Date();
-    
-    CONFIG_SELECTS.forEach(cfg => {
-        const sel = document.getElementById(`sel_${cfg.id}`);
-        if(sel) sel.value = "";
-        cancelSelectNew(cfg.id);
-    });
+async function carregarFiltros() {
+    // Timeout de segurança para exibir opção "Cadastrar Novo" se demorar
+    const safety = setTimeout(() => {
+        if(typeof CONFIG_SELECTS !== 'undefined') {
+            CONFIG_SELECTS.forEach(cfg => {
+                const sel = document.getElementById(`sel_${cfg.id}`);
+                if(sel && sel.value === "" && sel.options[0].text === "Carregando...") {
+                    sel.innerHTML = '<option value="">(Sem dados)</option><option value="__NEW__" class="text-blue-600 font-bold">+ Cadastrar Novo</option>';
+                }
+            });
+        }
+    }, 3000);
+
+    try {
+        const response = await fetch(`${SCRIPT_URL}?action=getFilters`);
+        const result = await response.json();
+        clearTimeout(safety);
+
+        if (result.status === 'success') {
+            opcoesFiltros = result.data; // Cache global
+            
+            if(typeof CONFIG_SELECTS !== 'undefined') {
+                CONFIG_SELECTS.forEach(cfg => {
+                    const lista = opcoesFiltros[cfg.key];
+                    const sel = document.getElementById(`sel_${cfg.id}`);
+                    if(!sel) return;
+
+                    sel.innerHTML = '<option value="">Selecione...</option>';
+                    if(lista && Array.isArray(lista) && lista.length > 0) {
+                        [...new Set(lista)].sort().forEach(op => sel.innerHTML += `<option value="${op}">${op}</option>`);
+                    }
+                    sel.innerHTML += '<option value="__NEW__" class="font-bold text-blue-600 border-t">+ Cadastrar Novo</option>';
+                    
+                    // Restaura valor se estiver editando (input hidden tem valor)
+                    const hiddenVal = document.getElementById(`field_${cfg.id}`).value;
+                    if(hiddenVal) {
+                        let exists = false;
+                        for(let i=0; i<sel.options.length; i++) {
+                            if(sel.options[i].value.toUpperCase() === hiddenVal.toUpperCase()) {
+                                sel.selectedIndex = i;
+                                exists = true;
+                                break;
+                            }
+                        }
+                        if(!exists) {
+                            const novaOpcao = new Option(hiddenVal, hiddenVal, true, true);
+                            const lastIndex = sel.options.length - 1;
+                            if (lastIndex >= 0 && sel.options[lastIndex].value === '__NEW__') {
+                                sel.add(novaOpcao, sel.options[lastIndex]); 
+                            } else {
+                                sel.add(novaOpcao);
+                            }
+                            sel.value = hiddenVal; 
+                        }
+                    }
+                });
+            }
+        }
+    } catch (err) { console.error(err); }
 }
 
-function voltarInicio() { switchTab('lista-pacientes'); }
+// ============================================================================
+// 2. PACIENTES E HISTÓRICO
+// ============================================================================
 
-function renderizarTabelaPacientes(lista) {
+async function carregarListaPacientes() {
+    // 'renderizarTabelaPacientes' está em ui.js
     const tbody = document.getElementById('tabela-pacientes-body');
-    tbody.innerHTML = '';
-    if(lista.length === 0) { tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-slate-500">Nenhum registro encontrado.</td></tr>'; return; }
-    lista.forEach(p => {
-        const tr = document.createElement('tr');
-        tr.className = "border-b border-slate-100 hover:bg-blue-50 cursor-pointer transition-colors";
-        const pStr = JSON.stringify(p).replace(/"/g, '&quot;');
-        
-        tr.innerHTML = `
-            <td class="px-6 py-4 font-medium text-slate-800 uppercase" onclick="verHistoricoCompleto(${pStr})">${p.nome}</td>
-            <td class="px-6 py-4 text-slate-600" onclick="verHistoricoCompleto(${pStr})">${p.cpf || '<span class="text-orange-500 text-xs font-bold px-2 py-1 bg-orange-100 rounded">SEM CPF</span>'}</td>
-            <td class="px-6 py-4 hidden sm:table-cell text-slate-500" onclick="verHistoricoCompleto(${pStr})">${p.tel||'-'}</td>
-            <td class="px-6 py-4 hidden md:table-cell uppercase text-slate-500" onclick="verHistoricoCompleto(${pStr})">${p.municipio||'-'}</td>
-            <td class="px-6 py-4 text-right">
-                <button onclick="event.stopPropagation(); abrirAtendimentoDireto('${p.cpf}','${p.id}')" class="bg-emerald-100 text-emerald-700 p-2 rounded-lg mr-2 hover:bg-emerald-200 transition" title="Novo Atendimento"><i data-lucide="plus" class="w-4 h-4"></i></button>
-                <button onclick="event.stopPropagation(); abrirEdicaoDireta('${p.cpf}','${p.id}')" class="bg-blue-100 text-blue-700 p-2 rounded-lg hover:bg-blue-200 transition" title="Editar"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
-            </td>`;
-        tbody.appendChild(tr);
-    });
-    lucide.createIcons();
+    if(tbody) tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-slate-400">Carregando...</td></tr>';
+    
+    try {
+        const res = await fetch(`${SCRIPT_URL}?action=getPatientsList`);
+        const json = await res.json();
+        todosPacientes = json.data; // Cache global
+        if(typeof renderizarTabelaPacientes === 'function') renderizarTabelaPacientes(todosPacientes);
+    } catch(e) { 
+        if(tbody) tbody.innerHTML = '<tr><td colspan="5" class="text-center text-red-500 py-4">Erro de conexão.</td></tr>'; 
+    }
 }
 
 function filtrarPacientesNaTela() {
@@ -302,10 +139,289 @@ function filtrarPacientesNaTela() {
         const nome = p.nome ? String(p.nome).toLowerCase() : '';
         const cpf = p.cpf ? String(p.cpf) : '';
         const municipio = p.municipio ? String(p.municipio).toLowerCase() : '';
-        
         return nome.includes(termo) || cpf.includes(termo) || municipio.includes(termo);
     });
-    renderizarTabelaPacientes(filtrados);
+    if(typeof renderizarTabelaPacientes === 'function') renderizarTabelaPacientes(filtrados);
+}
+
+async function carregarAniversarios() {
+    const tbody = document.getElementById('tabela-niver-body');
+    if(tbody) tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-slate-400">Buscando...</td></tr>';
+    const mes = parseInt(document.getElementById('filtro-niver-mes').value);
+    
+    try {
+        const res = await fetch(`${SCRIPT_URL}?action=getBirthdays&mes=${mes}`);
+        const json = await res.json();
+        tbody.innerHTML = '';
+        if(json.data.length === 0) { tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-slate-500">Nenhum aniversariante neste mês.</td></tr>'; return; }
+        
+        const hoje = new Date();
+        const diaHoje = hoje.getDate();
+        const mesHoje = hoje.getMonth() + 1;
+
+        json.data.forEach(p => {
+            if(p.data_completa && p.data_completa.startsWith('1900')) return;
+
+            let statusClass = "text-slate-600";
+            let rowClass = "hover:bg-blue-50 cursor-pointer transition-all border-b border-slate-100";
+            let statusText = "Futuro";
+            let icone = "";
+
+            if (mes < mesHoje) {
+                statusClass = "text-slate-500";
+                rowClass = "bg-slate-50 hover:bg-slate-100 cursor-pointer border-b border-slate-200 transition-colors";
+                statusText = "Já foi";
+                icone = "check";
+            } else if (mes > mesHoje) {
+                statusClass = "text-blue-600 font-medium";
+                rowClass = "bg-white hover:bg-blue-50 cursor-pointer border-b border-slate-100 border-l-4 border-l-blue-300 transition-colors";
+                statusText = "Futuro";
+                icone = "calendar-clock";
+            } else {
+                if (p.dia < diaHoje) {
+                    statusClass = "text-slate-500 font-medium";
+                    rowClass = "bg-slate-100 hover:bg-slate-200 cursor-pointer border-b border-slate-200 transition-colors";
+                    statusText = "Já foi";
+                    icone = "check-circle";
+                } else if (p.dia === diaHoje) {
+                    statusClass = "text-emerald-700 font-bold animate-pulse";
+                    rowClass = "bg-emerald-50 border-2 border-emerald-400 cursor-pointer shadow-md relative z-10";
+                    statusText = "HOJE!";
+                    icone = "party-popper";
+                } else {
+                    statusClass = "text-slate-600 font-bold";
+                    rowClass = "bg-white hover:bg-slate-50 cursor-pointer border-b border-slate-100 border-l-4 border-l-slate-300 transition-colors";
+                    statusText = "Em breve";
+                    icone = "clock";
+                }
+            }
+
+            let dataFmt = `${p.dia}/${mes}`;
+            if(p.data_completa) {
+                const parts = p.data_completa.split('-');
+                if(parts.length === 3) {
+                    const ano = parseInt(parts[0]);
+                    if(ano > 1901) dataFmt = `${parts[2]}/${parts[1]}/${parts[0]}`;
+                    else dataFmt = `${parts[2]}/${parts[1]}`; 
+                }
+            }
+
+            const tr = document.createElement('tr');
+            tr.className = rowClass;
+            tr.onclick = function() { 
+                if(p.cpf || p.nome) verHistoricoCompleto(p);
+                else alert("Cadastro incompleto (sem CPF/Nome).");
+            };
+            
+            tr.innerHTML = `
+                <td class="px-6 py-4 font-bold ${statusClass} flex items-center gap-2">
+                    ${icone ? `<i data-lucide="${icone}" class="w-4 h-4"></i>` : ''} ${dataFmt}
+                </td>
+                <td class="px-6 py-4 uppercase font-medium text-slate-700">${p.nome}</td>
+                <td class="px-6 py-4 text-slate-500">${p.tel||'-'}</td>
+                <td class="px-6 py-4 text-slate-500 uppercase">${p.bairro||'-'}</td>
+                <td class="px-6 py-4 text-xs uppercase font-bold ${statusClass}">${statusText}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+        if(typeof lucide !== 'undefined') lucide.createIcons();
+    } catch(e) { tbody.innerHTML = '<tr><td colspan="5" class="text-center text-red-500 py-4">Erro ao carregar.</td></tr>'; }
+}
+
+async function verHistoricoCompleto(p) {
+    histPacienteAtual = p;
+    
+    // SwitchTab está em ui.js
+    if(typeof switchTab === 'function') switchTab('historico-paciente');
+    
+    document.getElementById('hist-nome').innerText = p.nome;
+    document.getElementById('hist-cpf').innerText = p.cpf ? `CPF: ${p.cpf}` : 'SEM CPF REGISTRADO';
+    document.getElementById('hist-tel').innerText = `Tel: ${p.tel || '-'}`;
+    
+    const timeline = document.getElementById('hist-timeline');
+    timeline.innerHTML = '<p class="text-slate-400 text-sm italic pl-4">Buscando histórico completo...</p>';
+
+    try {
+        const res = await fetch(`${SCRIPT_URL}?action=getPatientHistory&cpf=${p.cpf || ''}&nome=${encodeURIComponent(p.nome)}`);
+        const json = await res.json();
+        const history = json.data || [];
+
+        if(history.length === 0) {
+            timeline.innerHTML = '<p class="text-slate-400 pl-4">Nenhum atendimento registrado.</p>';
+            return;
+        }
+
+        const itemsHtml = history.map(at => {
+            const dataFmt = at.data_abertura.split('-').reverse().join('/');
+            let statusColor = "bg-slate-100 text-slate-600";
+            if(at.status === 'CONCLUIDO') statusColor = "bg-emerald-100 text-emerald-700";
+            if(at.status === 'PENDENTE') statusColor = "bg-amber-100 text-amber-700";
+            if(at.status === 'CANCELADO') statusColor = "bg-red-100 text-red-700";
+
+            // Cria ID temporário para o onclick
+            const tempId = 'hist_' + Math.random().toString(36).substr(2, 9);
+            window[tempId] = at;
+
+            return `
+                <div class="relative pl-4 pb-6 cursor-pointer hover:opacity-80 transition" onclick="abrirDetalheAtendimento(window['${tempId}'])">
+                    <div class="absolute -left-[9px] top-0 w-4 h-4 bg-blue-500 rounded-full border-4 border-slate-100"></div>
+                    <div class="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="font-bold text-slate-800">${dataFmt}</span>
+                            <span class="${statusColor} text-[10px] px-2 py-0.5 rounded font-bold uppercase">${at.status}</span>
+                        </div>
+                        <div class="text-sm text-slate-700">
+                            <span class="font-bold">${at.tipo_servico || 'SERVIÇO'}</span> 
+                            <span class="text-slate-400 mx-1">•</span> 
+                            ${at.especialidade || at.local || 'Geral'}
+                        </div>
+                        <div class="text-xs text-slate-500 mt-2 flex justify-between items-center">
+                            <span>Clique para ver detalhes</span>
+                            <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+        timeline.innerHTML = itemsHtml;
+        if(typeof lucide !== 'undefined') lucide.createIcons();
+
+    } catch(e) {
+        timeline.innerHTML = '<p class="text-red-500 pl-4">Erro ao carregar histórico.</p>';
+    }
+}
+
+async function imprimirFicha() {
+    if(!pacienteAtual) { alert("Busque um paciente para imprimir."); return; }
+    const loading = document.getElementById('loading-paciente');
+    loading.classList.remove('hidden'); loading.classList.add('flex');
+
+    try {
+        const res = await fetch(`${SCRIPT_URL}?action=getPatientHistory&cpf=${pacienteAtual.cpf}`);
+        const json = await res.json();
+        const history = json.data || [];
+
+        let html = `
+            <div style="font-family: sans-serif; padding: 20px;">
+                <h1 style="text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px;">Ficha de Acompanhamento</h1>
+                <div style="display: flex; gap: 20px; margin-bottom: 20px;">
+                    <div style="flex: 1;">
+                        <p><strong>Nome:</strong> ${pacienteAtual.nome}</p>
+                        <p><strong>CPF:</strong> ${pacienteAtual.cpf}</p>
+                        <p><strong>RG:</strong> ${pacienteAtual.rg || '-'}</p>
+                        <p><strong>Nascimento:</strong> ${pacienteAtual.nascimento ? pacienteAtual.nascimento.split('-').reverse().join('/') : '-'}</p>
+                    </div>
+                    <div style="flex: 1;">
+                        <p><strong>Telefone:</strong> ${pacienteAtual.tel1}</p>
+                        <p><strong>Endereço:</strong> ${pacienteAtual.logradouro || ''}, ${pacienteAtual.bairro || ''} - ${pacienteAtual.municipio || ''}</p>
+                        <p><strong>Título:</strong> ${pacienteAtual.titulo || '-'} (${pacienteAtual.zona || '-'}/${pacienteAtual.secao || '-'})</p>
+                    </div>
+                </div>
+                <div style="margin-bottom: 30px; border: 1px solid #ccc; padding: 10px; border-radius: 5px; background: #f9f9f9;">
+                    <strong>Observações Fixas:</strong><br> ${pacienteAtual.obs || 'Nenhuma.'}
+                </div>
+                <h2 style="border-bottom: 1px solid #ccc; padding-bottom: 5px;">Histórico de Atendimentos (${history.length})</h2>
+                <table style="width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px;">
+                    <thead>
+                        <tr style="background: #eee;">
+                            <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Data</th>
+                            <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Serviço</th>
+                            <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Local/Detalhes</th>
+                            <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+        if(history.length === 0) html += `<tr><td colspan="4" style="border: 1px solid #ddd; padding: 8px; text-align: center;">Nenhum atendimento registrado.</td></tr>`;
+        else history.forEach(at => {
+                html += `<tr><td style="border: 1px solid #ddd; padding: 8px;">${at.data_abertura.split('-').reverse().join('/')}</td><td style="border: 1px solid #ddd; padding: 8px;">${at.tipo_servico || '-'} <br><small>${at.especialidade || ''}</small></td><td style="border: 1px solid #ddd; padding: 8px;">${at.local || '-'} <br><small>${at.obs_atendimento || ''}</small></td><td style="border: 1px solid #ddd; padding: 8px;"><b>${at.status}</b></td></tr>`;
+            });
+        html += `</tbody></table></div>`;
+        document.getElementById('printable-area').innerHTML = html;
+        loading.classList.add('hidden'); loading.classList.remove('flex');
+        window.print();
+    } catch(e) { 
+        loading.classList.add('hidden'); loading.classList.remove('flex'); 
+        alert("Erro ao gerar impressão."); 
+    }
+}
+
+async function verificarCpfInicial() {
+    const cpf = document.getElementById('paciente_cpf_check').value;
+    const msg = document.getElementById('msg_cpf_paciente');
+    const loading = document.getElementById('loading-paciente');
+    
+    if(cpf.length < 5) { msg.innerHTML = "<span class='text-red-600 font-bold'>CPF Inválido.</span>"; return; }
+    loading.classList.remove('hidden'); loading.classList.add('flex');
+    document.getElementById('opcoes-paciente-existente').classList.add('hidden');
+    document.getElementById('resto-form-paciente').classList.add('hidden');
+    pacienteAtual = null;
+
+    try {
+        const res = await fetch(`${SCRIPT_URL}?action=findPatient&busca=${cpf}&tipo=cpf`);
+        const json = await res.json();
+        loading.classList.add('hidden'); loading.classList.remove('flex');
+        if(json.found) {
+            pacienteAtual = json;
+            msg.innerHTML = `<span class="text-blue-700 font-bold flex items-center gap-1"><i data-lucide="check" class="w-4 h-4"></i> Encontrado: ${json.nome}</span>`;
+            document.getElementById('opcoes-paciente-existente').classList.remove('hidden');
+        } else {
+            msg.innerHTML = `<span class="text-emerald-600 font-bold flex items-center gap-1"><i data-lucide="plus" class="w-4 h-4"></i> CPF não encontrado. Iniciando novo cadastro.</span>`;
+            if(typeof mostrarFormularioPaciente === 'function') mostrarFormularioPaciente(false);
+        }
+        if(typeof lucide !== 'undefined') lucide.createIcons();
+    } catch(e) { loading.classList.add('hidden'); loading.classList.remove('flex'); msg.innerHTML = "Erro de conexão."; }
+}
+
+async function verificarPorId(id) {
+    const loading = document.getElementById('loading-paciente');
+    loading.classList.remove('hidden'); loading.classList.add('flex');
+    try {
+        const res = await fetch(`${SCRIPT_URL}?action=findPatient&busca=${id}&tipo=id`);
+        const json = await res.json();
+        loading.classList.add('hidden'); loading.classList.remove('flex');
+        if(json.found) {
+            pacienteAtual = json;
+            document.getElementById('msg_cpf_paciente').innerHTML = `<span class="text-orange-600 font-bold flex items-center gap-1"><i data-lucide="alert-circle" class="w-4 h-4"></i> Editando cadastro sem CPF (ID: ${id})</span>`;
+            document.getElementById('opcoes-paciente-existente').classList.remove('hidden');
+            editarPaciente();
+        }
+        if(typeof lucide !== 'undefined') lucide.createIcons();
+    } catch(e) { console.error(e); }
+}
+
+function editarPaciente() { 
+    if(pacienteAtual && typeof mostrarFormularioPaciente === 'function') mostrarFormularioPaciente(true, pacienteAtual); 
+}
+
+async function submitPaciente(e) {
+    e.preventDefault();
+    const data = Object.fromEntries(new FormData(e.target).entries());
+    data.cpf = document.getElementById('paciente_cpf_check').value;
+    if(!data.cpf || data.cpf.length < 5) { alert("CPF obrigatório."); return; }
+    
+    // resetFormPaciente e voltarInicio estão em ui.js
+    if(await sendData('registerPatient', data, 'loading-paciente')) { 
+        if(typeof resetFormPaciente === 'function') resetFormPaciente(); 
+        if(typeof voltarInicio === 'function') voltarInicio(); 
+    }
+}
+
+// ============================================================================
+// 3. ATENDIMENTOS E DASHBOARD
+// ============================================================================
+
+async function carregarListaAtendimentos() {
+    const tbody = document.getElementById('tabela-atendimentos-body');
+    if(tbody) tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-slate-400">Buscando...</td></tr>';
+    try {
+        const res = await fetch(`${SCRIPT_URL}?action=getServicesList`);
+        const json = await res.json();
+        todosAtendimentos = json.data; // Cache global
+        atualizarFiltrosData();
+        filtrarAtendimentos();
+    } catch(e) { if(tbody) tbody.innerHTML = '<tr><td colspan="5" class="text-center text-red-500 py-4">Erro.</td></tr>'; }
 }
 
 function atualizarFiltrosData() {
@@ -363,24 +479,19 @@ function filtrarAtendimentos() {
         tbody.appendChild(tr);
     });
     document.getElementById('contador-atendimentos').innerText = `Exibindo ${filtrados.length} registros`;
-    lucide.createIcons();
+    if(typeof lucide !== 'undefined') lucide.createIcons();
 }
 
-function calcularDataRisco() {
-    const dataMarcacao = document.getElementById('field_data_marcacao').value;
-    const especialidade = document.getElementById('field_especialidade').value.toUpperCase();
-    
-    if(!dataMarcacao) return;
-
-    const d = new Date(dataMarcacao);
-    let meses = 3; 
-    if(especialidade.includes("OFTALMOLOGIA")) meses = 6;
-
-    d.setMonth(d.getMonth() + meses);
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    document.getElementById('field_data_risco').value = `${yyyy}-${mm}-${dd}`;
+async function loadDashboard() {
+    try {
+        const res = await fetch(`${SCRIPT_URL}?action=getAnalyticsData`);
+        const json = await res.json();
+        if(json.status === 'success') {
+            dashboardRawData = json.data; // Cache global
+            popularFiltroAno();
+            aplicarFiltrosDashboard();
+        }
+    } catch(e) { console.error(e); }
 }
 
 function popularFiltroAno() {
@@ -402,6 +513,7 @@ function aplicarFiltrosDashboard() {
     const fStatus = document.getElementById('dash-filter-status').value;
     const fMes = document.getElementById('dash-filter-mes').value;
     const fAno = document.getElementById('dash-filter-ano').value;
+    
     const temFiltroAtivo = fStatus !== "" || fMes !== "" || fAno !== "";
 
     const atendimentosFiltrados = dashboardRawData.atendimentos.filter(at => {
@@ -413,7 +525,6 @@ function aplicarFiltrosDashboard() {
     });
 
     let pacientesFiltrados;
-
     if (temFiltroAtivo) {
         const cpfsNosAtendimentos = new Set(atendimentosFiltrados.map(at => at.cpf_paciente));
         pacientesFiltrados = dashboardRawData.pacientes.filter(p => cpfsNosAtendimentos.has(p.cpf));
@@ -429,64 +540,79 @@ function aplicarFiltrosDashboard() {
     document.getElementById('dash-mes').innerText = totalAtendimentos;
     document.getElementById('dash-pendentes').innerText = totalPendentes;
 
-    renderizarGraficos(atendimentosFiltrados, pacientesFiltrados);
+    // Funções de Gráfico (charts.js) e UI (ui.js)
+    if(typeof renderizarGraficos === 'function') renderizarGraficos(atendimentosFiltrados, pacientesFiltrados);
     calcularMetricasTempo(atendimentosFiltrados);
-    renderizarTorreGenero(pacientesFiltrados);
+    if(typeof renderizarTorreGenero === 'function') renderizarTorreGenero(pacientesFiltrados);
 }
 
-function abrirListaRelatorio(tipo, index) {
-    const dados = window.dadosRelatorioCache[tipo][index];
-    if(!dados) return;
-
-    document.getElementById('modal-lista-relatorio').classList.remove('hidden');
-    document.getElementById('titulo-modal-relatorio').innerText = `${dados.nome} (${dados.qtd})`;
+function calcularMetricasTempo(atendimentos) {
+    const hoje = new Date();
+    let totalDiasEspera = 0;
+    let countEspera = 0;
     
-    const tbody = document.getElementById('tbody-modal-relatorio');
-    tbody.innerHTML = '';
+    let totalDiasMarcacao = 0;
+    let countMarcacao = 0;
 
-    dados.lista.forEach(at => {
-        const tempId = 'rel_item_' + Math.random().toString(36).substr(2, 9);
-        window[tempId] = at;
-
-        const tr = document.createElement('tr');
-        tr.className = "hover:bg-blue-50 cursor-pointer transition border-b border-slate-50";
+    atendimentos.forEach(at => {
+        if(!at.data_abertura) return;
+        const dAbertura = new Date(at.data_abertura);
         
-        let badgeEspera = "bg-slate-100 text-slate-600";
-        if(at.diasEspera > 90) badgeEspera = "bg-red-100 text-red-700";
-        else if(at.diasEspera > 30) badgeEspera = "bg-orange-100 text-orange-700";
-        else badgeEspera = "bg-green-100 text-green-700";
+        if(at.status === 'PENDENTE') {
+            const diffTime = Math.abs(hoje - dAbertura);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+            totalDiasEspera += diffDays;
+            countEspera++;
+        } else if (at.data_marcacao) {
+            const dMarcacao = new Date(at.data_marcacao);
+            const diffTime = Math.abs(dMarcacao - dAbertura);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            totalDiasEspera += diffDays;
+            countEspera++;
 
-        tr.innerHTML = `
-            <td class="px-6 py-3 font-mono text-xs text-slate-500">${at.data_abertura ? at.data_abertura.split('-').reverse().join('/') : '-'}</td>
-            <td class="px-6 py-3">
-                <div class="font-bold text-slate-700 text-sm uppercase">${at.nome}</div>
-                <div class="text-xs text-slate-400 flex gap-2">
-                    <span>${at.local || 'Local N/I'}</span>
-                    <span class="text-slate-300">|</span>
-                    <span>CPF: ${at.cpf || '...'}</span>
-                </div>
-            </td>
-            <td class="px-6 py-3 text-right">
-                <span class="${badgeEspera} px-2 py-1 rounded text-xs font-bold">${at.diasEspera} dias</span>
-            </td>
-        `;
-        tr.onclick = () => {
-            document.getElementById('modal-lista-relatorio').classList.add('hidden');
-            abrirDetalheAtendimento(window[tempId]);
-        };
-        tbody.appendChild(tr);
+            totalDiasMarcacao += diffDays;
+            countMarcacao++;
+        }
     });
+
+    const mediaEspera = countEspera > 0 ? Math.round(totalDiasEspera / countEspera) : 0;
+    const mediaMarcacao = countMarcacao > 0 ? Math.round(totalDiasMarcacao / countMarcacao) : 0;
+
+    document.getElementById('dash-tempo-espera').innerText = mediaEspera;
+    document.getElementById('dash-tempo-marcacao').innerText = mediaMarcacao;
+    document.getElementById('dash-tempo-total').innerText = mediaEspera;
 }
 
-function atualizarGraficosRelatorios() {
+// ============================================================================
+// 4. PARCEIROS E RELATÓRIOS
+// ============================================================================
+
+async function initParceiros() {
+    if(!dashboardRawData) {
+        try {
+            const res = await fetch(`${SCRIPT_URL}?action=getAnalyticsData`);
+            const json = await res.json();
+            if(json.status === 'success') dashboardRawData = json.data;
+        } catch(e) { console.error(e); return; }
+    }
+
     if(!dashboardRawData) return;
 
-    const fStatus = document.getElementById('rel-filter-status').value;
-    const fMes = document.getElementById('rel-filter-mes').value;
-    const fAno = document.getElementById('rel-filter-ano').value;
+    // Popula filtro Ano
+    const selAno = document.getElementById('parc-filter-ano');
+    if(selAno.options.length <= 1) {
+        const anos = new Set();
+        dashboardRawData.atendimentos.forEach(at => { if(at.data_abertura) anos.add(at.data_abertura.split('-')[0]); });
+        Array.from(anos).sort().reverse().forEach(a => selAno.innerHTML += `<option value="${a}">${a}</option>`);
+    }
+
+    const fStatus = document.getElementById('parc-filter-status').value;
+    const fMes = document.getElementById('parc-filter-mes').value;
+    const fAno = document.getElementById('parc-filter-ano').value;
     const hoje = new Date();
 
-    const dadosFiltrados = dashboardRawData.atendimentos.filter(at => {
+    const filtrados = dashboardRawData.atendimentos.filter(at => {
         const [y, m, d] = at.data_abertura ? at.data_abertura.split('-') : ['','',''];
         if(fStatus && at.status !== fStatus) return false;
         if(fMes && m !== fMes) return false;
@@ -494,103 +620,133 @@ function atualizarGraficosRelatorios() {
         return true;
     });
 
-    const calcularDias = (at) => {
+    // Gráfico Parceiros (charts.js)
+    if(typeof createChart === 'function' && typeof countByField === 'function') {
+        const dadosParceiros = countByField(filtrados, 'parceiro');
+        createChart('chartParceirosRanking', 'bar', 
+            dadosParceiros.map(d => d[0]), 
+            dadosParceiros.map(d => d[1]), 
+            { 
+                indexAxis: 'y', 
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { x: { beginAtZero: true } },
+                backgroundColor: '#10b981'
+            }
+        );
+        
+        const dadosProc = countByField(filtrados, 'procedimento');
+        const topProc = dadosProc.slice(0, 15);
+        createChart('chartProcedimentosGeral', 'bar', 
+            topProc.map(d => d[0]), 
+            topProc.map(d => d[1]), 
+            { 
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true } },
+                backgroundColor: '#8b5cf6'
+            }
+        );
+    }
+
+    // Tabela Liderança
+    const liderancaStats = {};
+    const calcularDiasLocal = (at) => {
         if(!at.data_abertura) return 0;
         const inicio = new Date(at.data_abertura);
-        let fim = hoje; 
-        
-        if(at.data_marcacao) {
-            fim = new Date(at.data_marcacao);
-        } else if (at.status === 'CONCLUIDO') {
-            return null; 
-        }
-        
+        let fim = hoje;
+        if(at.data_marcacao) fim = new Date(at.data_marcacao);
         const diffTime = Math.abs(fim - inicio);
         return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     };
 
-    const processarMedia = (campo) => {
-        const grupos = {};
-        dadosFiltrados.forEach(at => {
-            const chave = at[campo] ? at[campo].trim().toUpperCase() : 'N/I';
-            const dias = calcularDias(at);
-            
-            if(dias !== null) {
-                if(!grupos[chave]) grupos[chave] = { total: 0, qtd: 0, lista: [] };
-                grupos[chave].total += dias;
-                grupos[chave].qtd++;
-                
-                const atNormalizado = {
-                    ...at,
-                    id: at.id,
-                    cpf: at.cpf_paciente, 
-                    nome: at.nome_paciente || 'Nome não carregado (Atualize o Script)', 
-                    diasEspera: dias
-                };
-                
-                grupos[chave].lista.push(atNormalizado);
-            }
-        });
-
-        return Object.entries(grupos)
-            .map(([nome, dados]) => ({ 
-                nome, 
-                mediaDias: Math.round(dados.total / dados.qtd),
-                qtd: dados.qtd,
-                lista: dados.lista.sort((a,b) => b.diasEspera - a.diasEspera) 
-            }))
-            .sort((a,b) => b.mediaDias - a.mediaDias) 
-            .slice(0, 10); 
-    };
-
-    const dadosEspecialidade = processarMedia('especialidade');
-    const dadosProcedimento = processarMedia('procedimento');
-
-    window.dadosRelatorioCache['especialidade'] = dadosEspecialidade;
-    window.dadosRelatorioCache['procedimento'] = dadosProcedimento;
-
-    const renderizarTabelaGrafica = (containerId, dados, corBarra, tipo) => {
-        const container = document.getElementById(containerId);
-        container.innerHTML = '';
-
-        if(dados.length === 0) {
-            container.innerHTML = '<p class="text-slate-400 text-sm italic text-center py-4">Sem dados para o período.</p>';
-            return;
+    filtrados.forEach(at => {
+        const lider = at.indicacao ? at.indicacao.trim().toUpperCase() : 'SEM INDICAÇÃO';
+        if(!liderancaStats[lider]) {
+            liderancaStats[lider] = { nome: lider, total: 0, concluido: 0, pendente: 0, qtd: 0, lista: [] };
         }
+        const stat = liderancaStats[lider];
+        stat.total++;
+        stat.qtd++;
+        if(at.status === 'CONCLUIDO') stat.concluido++; else stat.pendente++;
+        const dias = calcularDiasLocal(at);
+        stat.lista.push({ ...at, id: at.id, cpf: at.cpf_paciente || at.cpf, nome: at.nome_paciente || at.nome || 'Nome não carregado', diasEspera: dias });
+    });
 
-        const maxDias = Math.max(...dados.map(d => d.mediaDias)) || 1;
+    const listaLideranca = Object.values(liderancaStats).sort((a,b) => b.total - a.total);
+    window.dadosRelatorioCache['lideranca'] = listaLideranca; // Salva para o modal
 
-        dados.forEach((d, index) => {
-            const porcentagem = (d.mediaDias / maxDias) * 100;
-            const meses = (d.mediaDias / 30).toFixed(1); 
+    const tbody = document.getElementById('tabela-lideranca-body');
+    tbody.innerHTML = '';
+    
+    if(listaLideranca.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-slate-400 text-xs">Sem dados com estes filtros.</td></tr>';
+    } else {
+        listaLideranca.forEach((stat, index) => {
+            const perc = Math.round((stat.concluido / stat.total) * 100) || 0;
+            const corBarra = perc > 70 ? 'bg-emerald-500' : (perc > 40 ? 'bg-blue-500' : 'bg-orange-400');
             
-            const html = `
-                <div class="group cursor-pointer hover:bg-slate-50 p-2 -mx-2 rounded-lg transition" onclick="abrirListaRelatorio('${tipo}', ${index})">
-                    <div class="flex justify-between text-xs mb-1 text-slate-700">
-                        <span class="font-bold truncate pr-2 w-1/2 flex items-center gap-1 group-hover:text-blue-600 transition">
-                            ${d.nome} <i data-lucide="chevron-right" class="w-3 h-3 opacity-0 group-hover:opacity-100 transition"></i>
-                        </span>
-                        <span class="text-slate-500 font-mono bg-white px-1 rounded border border-slate-100">${d.qtd} atd.</span>
-                    </div>
-                    <div class="flex items-center gap-2 h-6" title="Média exata: ${d.mediaDias} dias">
-                        <div class="flex-1 bg-slate-100 rounded-full h-2.5 overflow-hidden shadow-inner">
-                            <div class="h-full rounded-full ${corBarra} opacity-80 group-hover:opacity-100 transition-all" style="width: ${porcentagem}%"></div>
+            tbody.innerHTML += `
+                <tr class="hover:bg-blue-50 border-b border-slate-50 transition cursor-pointer group" onclick="abrirListaRelatorio('lideranca', ${index})">
+                    <td class="px-2 py-2 font-bold text-slate-700 text-xs truncate max-w-[120px] group-hover:text-blue-700" title="${stat.nome}">
+                        ${stat.nome} <i data-lucide="search" class="w-3 h-3 inline opacity-0 group-hover:opacity-100 ml-1"></i>
+                    </td>
+                    <td class="px-2 py-2 text-center font-mono font-bold text-slate-800">${stat.total}</td>
+                    <td class="px-2 py-2 text-center font-mono text-emerald-600">${stat.concluido}</td>
+                    <td class="px-2 py-2 text-center font-mono text-orange-600">${stat.pendente}</td>
+                    <td class="px-2 py-2 text-right">
+                        <div class="flex items-center justify-end gap-2">
+                            <span class="text-[10px] font-bold text-slate-500">${perc}%</span>
+                            <div class="w-8 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                                <div class="h-full ${corBarra}" style="width: ${perc}%"></div>
+                            </div>
                         </div>
-                        <span class="text-xs font-bold text-slate-600 w-16 text-right">${meses} meses</span>
-                    </div>
-                </div>
+                    </td>
+                </tr>
             `;
-            container.innerHTML += html;
         });
-        lucide.createIcons();
-    };
+        if(typeof lucide !== 'undefined') lucide.createIcons();
+    }
+}
 
-    renderizarTabelaGrafica('listaRelEspecialidade', dadosEspecialidade, 'bg-rose-500', 'especialidade');
-    renderizarTabelaGrafica('listaRelProcedimento', dadosProcedimento, 'bg-violet-500', 'procedimento');
+async function initRelatorios() {
+    if(!dashboardRawData) {
+        try {
+            const res = await fetch(`${SCRIPT_URL}?action=getAnalyticsData`);
+            const json = await res.json();
+            if(json.status === 'success') dashboardRawData = json.data;
+        } catch(e) { console.error(e); return; }
+    }
+    
+    const selAno = document.getElementById('rel-filter-ano');
+    if(selAno && selAno.options.length <= 1 && dashboardRawData) {
+        const anos = new Set();
+        dashboardRawData.atendimentos.forEach(at => {
+            if(at.data_abertura) anos.add(at.data_abertura.split('-')[0]);
+        });
+        Array.from(anos).sort().reverse().forEach(a => selAno.innerHTML += `<option value="${a}">${a}</option>`);
+    }
+
+    carregarRelatorioRisco();
+    atualizarGraficosRelatorios();
+}
+
+function carregarRelatorioRisco() {
+    const tbody = document.getElementById('tabela-risco-body');
+    if(tbody) tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-slate-400">Calculando...</td></tr>';
+    
+    if(todosAtendimentos.length === 0) {
+        carregarListaAtendimentos().then(() => renderizarRelatorioRisco());
+    } else {
+        renderizarRelatorioRisco();
+    }
 }
 
 function renderizarRelatorioRisco() {
     const tbody = document.getElementById('tabela-risco-body');
+    if(!tbody) return;
     tbody.innerHTML = '';
     
     const hoje = new Date();
@@ -642,5 +798,134 @@ function renderizarRelatorioRisco() {
         tr.onclick = () => abrirDetalheAtendimento(window[tempId]);
         tbody.appendChild(tr);
     });
-    lucide.createIcons();
+    if(typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+function atualizarGraficosRelatorios() {
+    if(!dashboardRawData) return;
+
+    const fStatus = document.getElementById('rel-filter-status').value;
+    const fMes = document.getElementById('rel-filter-mes').value;
+    const fAno = document.getElementById('rel-filter-ano').value;
+    const hoje = new Date();
+
+    const dadosFiltrados = dashboardRawData.atendimentos.filter(at => {
+        const [y, m, d] = at.data_abertura ? at.data_abertura.split('-') : ['','',''];
+        if(fStatus && at.status !== fStatus) return false;
+        if(fMes && m !== fMes) return false;
+        if(fAno && y !== fAno) return false;
+        return true;
+    });
+
+    const calcularDias = (at) => {
+        if(!at.data_abertura) return 0;
+        const inicio = new Date(at.data_abertura);
+        let fim = hoje; 
+        if(at.data_marcacao) {
+            fim = new Date(at.data_marcacao);
+        } else if (at.status === 'CONCLUIDO') {
+            return null; 
+        }
+        const diffTime = Math.abs(fim - inicio);
+        return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    };
+
+    const processarMedia = (campo) => {
+        const grupos = {};
+        dadosFiltrados.forEach(at => {
+            const chave = at[campo] ? at[campo].trim().toUpperCase() : 'N/I';
+            const dias = calcularDias(at);
+            if(dias !== null) {
+                if(!grupos[chave]) grupos[chave] = { total: 0, qtd: 0, lista: [] };
+                grupos[chave].total += dias;
+                grupos[chave].qtd++;
+                const atNormalizado = { ...at, id: at.id, cpf: at.cpf_paciente, nome: at.nome_paciente || 'Nome não carregado', diasEspera: dias };
+                grupos[chave].lista.push(atNormalizado);
+            }
+        });
+        return Object.entries(grupos)
+            .map(([nome, dados]) => ({ 
+                nome, mediaDias: Math.round(dados.total / dados.qtd), qtd: dados.qtd, lista: dados.lista.sort((a,b) => b.diasEspera - a.diasEspera) 
+            }))
+            .sort((a,b) => b.mediaDias - a.mediaDias) 
+            .slice(0, 10); 
+    };
+
+    const dadosEspecialidade = processarMedia('especialidade');
+    const dadosProcedimento = processarMedia('procedimento');
+
+    window.dadosRelatorioCache['especialidade'] = dadosEspecialidade;
+    window.dadosRelatorioCache['procedimento'] = dadosProcedimento;
+
+    renderizarTabelaGrafica('listaRelEspecialidade', dadosEspecialidade, 'bg-rose-500', 'especialidade');
+    renderizarTabelaGrafica('listaRelProcedimento', dadosProcedimento, 'bg-violet-500', 'procedimento');
+}
+
+function renderizarTabelaGrafica(containerId, dados, corBarra, tipo) {
+    const container = document.getElementById(containerId);
+    container.innerHTML = '';
+
+    if(dados.length === 0) {
+        container.innerHTML = '<p class="text-slate-400 text-sm italic text-center py-4">Sem dados para o período.</p>';
+        return;
+    }
+
+    const maxDias = Math.max(...dados.map(d => d.mediaDias)) || 1;
+
+    dados.forEach((d, index) => {
+        const porcentagem = (d.mediaDias / maxDias) * 100;
+        const meses = (d.mediaDias / 30).toFixed(1); 
+        
+        const html = `
+            <div class="group cursor-pointer hover:bg-slate-50 p-2 -mx-2 rounded-lg transition" onclick="abrirListaRelatorio('${tipo}', ${index})">
+                <div class="flex justify-between text-xs mb-1 text-slate-700">
+                    <span class="font-bold truncate pr-2 w-1/2 flex items-center gap-1 group-hover:text-blue-600 transition">
+                        ${d.nome} <i data-lucide="chevron-right" class="w-3 h-3 opacity-0 group-hover:opacity-100 transition"></i>
+                    </span>
+                    <span class="text-slate-500 font-mono bg-white px-1 rounded border border-slate-100">${d.qtd} atd.</span>
+                </div>
+                <div class="flex items-center gap-2 h-6" title="Média exata: ${d.mediaDias} dias">
+                    <div class="flex-1 bg-slate-100 rounded-full h-2.5 overflow-hidden shadow-inner">
+                        <div class="h-full rounded-full ${corBarra} opacity-80 group-hover:opacity-100 transition-all" style="width: ${porcentagem}%"></div>
+                    </div>
+                    <span class="text-xs font-bold text-slate-600 w-16 text-right">${meses} meses</span>
+                </div>
+            </div>
+        `;
+        container.innerHTML += html;
+    });
+    if(typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+async function buscarPacienteParaAtendimento() {
+    const termo = document.getElementById('busca_cpf').value;
+    const resDiv = document.getElementById('resultado_busca');
+    if(termo.length < 3) return; 
+    
+    resDiv.innerText = "Buscando..."; 
+    document.getElementById('resto-form-atendimento').classList.add('hidden');
+    
+    try {
+        const res = await fetch(`${SCRIPT_URL}?action=findPatient&busca=${encodeURIComponent(termo)}&tipo=cpf`);
+        const json = await res.json();
+        if(json.found) {
+            resDiv.innerHTML = `<span class="text-emerald-600 font-bold flex items-center gap-1"><i data-lucide="check" class="w-4 h-4"></i> ${json.nome}</span>`;
+            document.getElementById('hidden_cpf').value = json.cpf || '';
+            document.getElementById('hidden_nome').value = json.nome;
+            document.getElementById('resto-form-atendimento').classList.remove('hidden');
+        } else resDiv.innerHTML = `<span class="text-red-500 font-medium">Paciente não encontrado.</span>`;
+        if(typeof lucide !== 'undefined') lucide.createIcons();
+    } catch(e) { resDiv.innerText = "Erro na busca."; }
+}
+
+async function submitAtendimento(e) {
+    e.preventDefault();
+    const data = Object.fromEntries(new FormData(e.target).entries());
+    
+    if(!data.cpf_paciente && !data.nome_paciente) { alert("Busque o paciente."); return; }
+    
+    if(await sendData('registerService', data, 'loading-atendimento')) { 
+        if(typeof resetFormAtendimento === 'function') resetFormAtendimento(); 
+        if(typeof voltarInicio === 'function') voltarInicio(); 
+    }
 }
