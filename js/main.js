@@ -1,14 +1,14 @@
 /**
  * js/main.js
  * Ponto de entrada da aplicação.
- * Inicializa bibliotecas, define eventos globais e carrega a primeira tela.
+ * Inicializa bibliotecas e configura eventos globais.
  */
 
 window.onload = function() {
     // 1. Inicializa ícones (Lucide)
     if(typeof lucide !== 'undefined') lucide.createIcons();
 
-    // 2. Define valores padrão nos formulários
+    // 2. Define valores padrão nos formulários (Data de hoje, Mês atual)
     const dataAbertura = document.getElementById('data_abertura');
     if(dataAbertura) dataAbertura.valueAsDate = new Date();
 
@@ -16,16 +16,14 @@ window.onload = function() {
     if(filtroNiver) filtroNiver.value = new Date().getMonth() + 1; 
 
     // 3. Renderiza a estrutura vazia dos selects (loading state)
-    // Função definida em ui.js
     if(typeof renderizarSelectsVazios === 'function') renderizarSelectsVazios();
 
     // 4. Busca as opções do Google Sheets para preencher os selects
-    // Função definida em api.js
     if(typeof carregarFiltros === 'function') carregarFiltros();
 
-    // 5. Carrega a aba inicial (Dashboard)
-    // Função definida em ui.js
-    if(typeof switchTab === 'function') switchTab('dashboard'); 
+    // NOTA: Não chamamos switchTab('dashboard') aqui.
+    // O sistema inicia com a tela de login (index.html) sobreposta a tudo.
+    // A função iniciarSistema() no js/ui.js será chamada após o login bem-sucedido.
 };
 
 
@@ -34,12 +32,12 @@ window.onload = function() {
 // ============================================================================
 
 // 1. Monitora digitação nos inputs de "Cadastrar Novo" (switched-input)
-// Ao digitar no input visível, preenche o input hidden com o valor em MAIÚSCULO
 document.addEventListener('input', function(e) {
     if(e.target.classList.contains('switched-input')) {
         const id = e.target.id.replace('inp_', '');
         const hiddenField = document.getElementById(`field_${id}`);
         if(hiddenField) {
+            // Garante que o valor salvo seja sempre maiúsculo
             hiddenField.value = e.target.value.toUpperCase();
         }
     }
