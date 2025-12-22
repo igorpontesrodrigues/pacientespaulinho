@@ -226,7 +226,10 @@ async function carregarAniversarios() {
 }
 
 async function verHistoricoCompleto(p) {
+    // Define tanto a variável do histórico quanto a do paciente atual
+    // Isso é CRUCIAL para que os botões de Excluir e Imprimir no histórico saibam quem é o paciente
     histPacienteAtual = p;
+    pacienteAtual = p;
     
     // SwitchTab está em ui.js
     if(typeof switchTab === 'function') switchTab('historico-paciente');
@@ -234,6 +237,9 @@ async function verHistoricoCompleto(p) {
     document.getElementById('hist-nome').innerText = p.nome;
     document.getElementById('hist-cpf').innerText = p.cpf ? `CPF: ${p.cpf}` : 'SEM CPF REGISTRADO';
     document.getElementById('hist-tel').innerText = `Tel: ${p.tel || '-'}`;
+    
+    // Re-checa permissões para garantir que botão excluir apareça apenas para admin
+    if(typeof aplicarPermissoes === 'function') aplicarPermissoes();
     
     const timeline = document.getElementById('hist-timeline');
     timeline.innerHTML = '<p class="text-slate-400 text-sm italic pl-4">Buscando histórico completo...</p>';
@@ -290,56 +296,129 @@ async function verHistoricoCompleto(p) {
 
 async function imprimirFicha() {
     if(!pacienteAtual) { alert("Busque um paciente para imprimir."); return; }
+    
+    // Mostra loading se houver
     const loading = document.getElementById('loading-paciente');
-    loading.classList.remove('hidden'); loading.classList.add('flex');
+    if (loading) {
+        loading.classList.remove('hidden'); loading.classList.add('flex');
+    } else {
+        document.body.style.cursor = 'wait';
+    }
 
     try {
-        const res = await fetch(`${SCRIPT_URL}?action=getPatientHistory&cpf=${pacienteAtual.cpf}`);
+        // Busca histórico completo atualizado para garantir dados frescos na impressão
+        const res = await fetch(`${SCRIPT_URL}?action=getPatientHistory&cpf=${pacienteAtual.cpf || ''}&nome=${encodeURIComponent(pacienteAtual.nome)}`);
         const json = await res.json();
         const history = json.data || [];
 
+        // Monta HTML de impressão CONDENSADO e ORGANIZADO
         let html = `
-            <div style="font-family: sans-serif; padding: 20px;">
-                <h1 style="text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px;">Ficha de Acompanhamento</h1>
-                <div style="display: flex; gap: 20px; margin-bottom: 20px;">
-                    <div style="flex: 1;">
-                        <p><strong>Nome:</strong> ${pacienteAtual.nome}</p>
-                        <p><strong>CPF:</strong> ${pacienteAtual.cpf}</p>
-                        <p><strong>RG:</strong> ${pacienteAtual.rg || '-'}</p>
-                        <p><strong>Nascimento:</strong> ${pacienteAtual.nascimento ? pacienteAtual.nascimento.split('-').reverse().join('/') : '-'}</p>
+            <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; color: #333; max-width: 100%;">
+                
+                <!-- CABEÇALHO -->
+                <div style="text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end;">
+                    <div style="text-align: left;">
+                        <h1 style="margin: 0; font-size: 22px; font-weight: 700; text-transform: uppercase;">Ficha de Acompanhamento</h1>
+                        <p style="margin: 2px 0 0; color: #555; font-size: 12px;">Gabinete Paulinho Tudo a Ver</p>
                     </div>
-                    <div style="flex: 1;">
-                        <p><strong>Telefone:</strong> ${pacienteAtual.tel1}</p>
-                        <p><strong>Endereço:</strong> ${pacienteAtual.logradouro || ''}, ${pacienteAtual.bairro || ''} - ${pacienteAtual.municipio || ''}</p>
-                        <p><strong>Título:</strong> ${pacienteAtual.titulo || '-'} (${pacienteAtual.zona || '-'}/${pacienteAtual.secao || '-'})</p>
+                    <div style="text-align: right; font-size: 10px; color: #777;">
+                        Emissão: ${new Date().toLocaleString('pt-BR')}
                     </div>
                 </div>
-                <div style="margin-bottom: 30px; border: 1px solid #ccc; padding: 10px; border-radius: 5px; background: #f9f9f9;">
-                    <strong>Observações Fixas:</strong><br> ${pacienteAtual.obs || 'Nenhuma.'}
+
+                <!-- DADOS CADASTRAIS (Compacto) -->
+                <div style="background-color: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px; margin-bottom: 20px; font-size: 12px;">
+                    <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px; margin-bottom: 5px;">
+                        <div><strong>NOME:</strong> ${pacienteAtual.nome}</div>
+                        <div><strong>CPF:</strong> ${pacienteAtual.cpf || '-'}</div>
+                        <div><strong>RG:</strong> ${pacienteAtual.rg || '-'}</div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px;">
+                        <div><strong>DATA NASC.:</strong> ${pacienteAtual.nascimento ? pacienteAtual.nascimento.split('-').reverse().join('/') : '-'}</div>
+                        <div><strong>TEL:</strong> ${pacienteAtual.tel1 || '-'}</div>
+                        <div><strong>BAIRRO:</strong> ${pacienteAtual.bairro || '-'}</div>
+                        <div><strong>TÍTULO:</strong> ${pacienteAtual.titulo || '-'}</div>
+                    </div>
+                    ${pacienteAtual.obs ? `
+                    <div style="margin-top: 8px; pt: 5px; border-top: 1px dashed #cbd5e1;">
+                        <strong>OBSERVAÇÕES:</strong> <span style="font-style: italic;">${pacienteAtual.obs}</span>
+                    </div>` : ''}
                 </div>
-                <h2 style="border-bottom: 1px solid #ccc; padding-bottom: 5px;">Histórico de Atendimentos (${history.length})</h2>
-                <table style="width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px;">
+
+                <!-- HISTÓRICO COMPLETO (Tabela Condensada) -->
+                <h3 style="font-size: 14px; margin-bottom: 8px; border-bottom: 1px solid #333; padding-bottom: 4px; text-transform: uppercase;">
+                    Histórico de Atendimentos (${history.length})
+                </h3>
+
+                <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
                     <thead>
-                        <tr style="background: #eee;">
-                            <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Data</th>
-                            <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Serviço</th>
-                            <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Local/Detalhes</th>
-                            <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Status</th>
+                        <tr style="background-color: #e2e8f0; text-align: left;">
+                            <th style="padding: 6px; border: 1px solid #cbd5e1; width: 80px;">DATA</th>
+                            <th style="padding: 6px; border: 1px solid #cbd5e1;">TIPO / ESPECIALIDADE</th>
+                            <th style="padding: 6px; border: 1px solid #cbd5e1;">LOCAL / PROCEDIMENTO</th>
+                            <th style="padding: 6px; border: 1px solid #cbd5e1;">DETALHES / PARCEIRO</th>
+                            <th style="padding: 6px; border: 1px solid #cbd5e1; width: 80px; text-align: center;">STATUS</th>
                         </tr>
                     </thead>
                     <tbody>
         `;
-        if(history.length === 0) html += `<tr><td colspan="4" style="border: 1px solid #ddd; padding: 8px; text-align: center;">Nenhum atendimento registrado.</td></tr>`;
-        else history.forEach(at => {
-                html += `<tr><td style="border: 1px solid #ddd; padding: 8px;">${at.data_abertura.split('-').reverse().join('/')}</td><td style="border: 1px solid #ddd; padding: 8px;">${at.tipo_servico || '-'} <br><small>${at.especialidade || ''}</small></td><td style="border: 1px solid #ddd; padding: 8px;">${at.local || '-'} <br><small>${at.obs_atendimento || ''}</small></td><td style="border: 1px solid #ddd; padding: 8px;"><b>${at.status}</b></td></tr>`;
+
+        if(history.length === 0) {
+            html += `<tr><td colspan="5" style="padding: 15px; text-align: center; border: 1px solid #cbd5e1; font-style: italic; color: #666;">Nenhum atendimento registrado.</td></tr>`;
+        } else {
+            history.forEach((at, index) => {
+                const bg = index % 2 === 0 ? '#fff' : '#f8fafc';
+                
+                // Formatação simples para status na impressão
+                let statusStyle = "font-weight: bold;";
+                if(at.status === 'PENDENTE') statusStyle += "color: #d97706;"; // Laranja
+                else if(at.status === 'CANCELADO') statusStyle += "color: #dc2626;"; // Vermelho
+                else statusStyle += "color: #059669;"; // Verde
+
+                html += `
+                    <tr style="background-color: ${bg};">
+                        <td style="padding: 6px; border: 1px solid #cbd5e1; vertical-align: top;">
+                            ${at.data_abertura ? at.data_abertura.split('-').reverse().join('/') : '-'}
+                        </td>
+                        <td style="padding: 6px; border: 1px solid #cbd5e1; vertical-align: top;">
+                            <strong>${at.tipo_servico || '-'}</strong><br>
+                            ${at.especialidade || ''}
+                        </td>
+                        <td style="padding: 6px; border: 1px solid #cbd5e1; vertical-align: top;">
+                            ${at.local || '-'}<br>
+                            ${at.procedimento || ''}
+                        </td>
+                        <td style="padding: 6px; border: 1px solid #cbd5e1; vertical-align: top;">
+                            ${at.parceiro ? `Parc: ${at.parceiro}<br>` : ''}
+                            ${at.obs_atendimento || ''}
+                        </td>
+                        <td style="padding: 6px; border: 1px solid #cbd5e1; text-align: center; vertical-align: top;">
+                            <span style="${statusStyle}">${at.status}</span>
+                        </td>
+                    </tr>
+                `;
             });
-        html += `</tbody></table></div>`;
-        document.getElementById('printable-area').innerHTML = html;
-        loading.classList.add('hidden'); loading.classList.remove('flex');
-        window.print();
+        }
+
+        html += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+
+        const printArea = document.getElementById('printable-area');
+        if (printArea) {
+            printArea.innerHTML = html;
+            window.print();
+        }
+
+        if(loading) { loading.classList.add('hidden'); loading.classList.remove('flex'); }
+        document.body.style.cursor = 'default';
+
     } catch(e) { 
-        loading.classList.add('hidden'); loading.classList.remove('flex'); 
-        alert("Erro ao gerar impressão."); 
+        if(loading) { loading.classList.add('hidden'); loading.classList.remove('flex'); }
+        document.body.style.cursor = 'default';
+        alert("Erro ao gerar impressão: " + e); 
     }
 }
 
