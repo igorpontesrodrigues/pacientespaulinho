@@ -54,7 +54,6 @@ async function verificarDebug() {
 }
 
 async function carregarFiltros() {
-    // Timeout de segurança para exibir opção "Cadastrar Novo" se demorar
     const safety = setTimeout(() => {
         if(typeof CONFIG_SELECTS !== 'undefined') {
             CONFIG_SELECTS.forEach(cfg => {
@@ -86,7 +85,6 @@ async function carregarFiltros() {
                     }
                     sel.innerHTML += '<option value="__NEW__" class="font-bold text-blue-600 border-t">+ Cadastrar Novo</option>';
                     
-                    // Restaura valor se estiver editando (input hidden tem valor)
                     const hiddenVal = document.getElementById(`field_${cfg.id}`).value;
                     if(hiddenVal) {
                         let exists = false;
@@ -119,7 +117,6 @@ async function carregarFiltros() {
 // ============================================================================
 
 async function carregarListaPacientes() {
-    // 'renderizarTabelaPacientes' está em ui.js
     const tbody = document.getElementById('tabela-pacientes-body');
     if(tbody) tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-slate-400">Carregando...</td></tr>';
     
@@ -258,7 +255,6 @@ async function verHistoricoCompleto(p) {
             if(at.status === 'PENDENTE') statusColor = "bg-amber-100 text-amber-700";
             if(at.status === 'CANCELADO') statusColor = "bg-red-100 text-red-700";
 
-            // Cria ID temporário para o onclick
             const tempId = 'hist_' + Math.random().toString(36).substr(2, 9);
             window[tempId] = at;
 
@@ -385,9 +381,8 @@ async function verificarPorId(id) {
             pacienteAtual = json;
             document.getElementById('msg_cpf_paciente').innerHTML = `<span class="text-orange-600 font-bold flex items-center gap-1"><i data-lucide="alert-circle" class="w-4 h-4"></i> Editando cadastro sem CPF (ID: ${id})</span>`;
             document.getElementById('opcoes-paciente-existente').classList.remove('hidden');
-            editarPaciente();
+            if(typeof editarPaciente === 'function') editarPaciente();
         }
-        if(typeof lucide !== 'undefined') lucide.createIcons();
     } catch(e) { console.error(e); }
 }
 
@@ -401,7 +396,6 @@ async function submitPaciente(e) {
     data.cpf = document.getElementById('paciente_cpf_check').value;
     if(!data.cpf || data.cpf.length < 5) { alert("CPF obrigatório."); return; }
     
-    // resetFormPaciente e voltarInicio estão em ui.js
     if(await sendData('registerPatient', data, 'loading-paciente')) { 
         if(typeof resetFormPaciente === 'function') resetFormPaciente(); 
         if(typeof voltarInicio === 'function') voltarInicio(); 
@@ -419,8 +413,8 @@ async function carregarListaAtendimentos() {
         const res = await fetch(`${SCRIPT_URL}?action=getServicesList`);
         const json = await res.json();
         todosAtendimentos = json.data; // Cache global
-        atualizarFiltrosData();
-        filtrarAtendimentos();
+        if(typeof atualizarFiltrosData === 'function') atualizarFiltrosData();
+        if(typeof filtrarAtendimentos === 'function') filtrarAtendimentos();
     } catch(e) { if(tbody) tbody.innerHTML = '<tr><td colspan="5" class="text-center text-red-500 py-4">Erro.</td></tr>'; }
 }
 
@@ -473,13 +467,16 @@ function filtrarAtendimentos() {
             <td class="px-6 py-4 font-medium text-slate-800 uppercase text-sm">${at.nome}<br><span class="text-slate-400 font-normal text-xs">${at.cpf}</span></td>
             <td class="px-6 py-4 text-slate-600 uppercase text-xs"><span class="font-bold text-slate-700">${at.tipo_servico || '-'}</span><br>${at.local||at.especialidade}</td>
             <td class="px-6 py-4"><span class="${color} px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-black/5">${at.status}</span></td>
-            <td class="px-6 py-4 text-right"><button onclick="event.stopPropagation(); abrirEdicaoAtendimentoId('${at.id}')" class="bg-blue-100 text-blue-700 p-2 rounded-lg hover:bg-blue-200 transition" title="Editar"><i data-lucide="edit-2" class="w-4 h-4"></i></button></td>
+            <td class="px-6 py-4 text-right"><button onclick="event.stopPropagation(); abrirEdicaoAtendimentoId('${at.id}')" class="btn-action bg-blue-100 text-blue-700 p-2 rounded-lg hover:bg-blue-200 transition" title="Editar"><i data-lucide="edit-2" class="w-4 h-4"></i></button></td>
         `;
         tr.onclick = () => abrirDetalheAtendimento(window[tempId]);
         tbody.appendChild(tr);
     });
     document.getElementById('contador-atendimentos').innerText = `Exibindo ${filtrados.length} registros`;
     if(typeof lucide !== 'undefined') lucide.createIcons();
+    
+    // Reaplica permissões (esconde botões para visitante)
+    if(typeof aplicarPermissoes === 'function' && typeof currentUserRole !== 'undefined') aplicarPermissoes();
 }
 
 async function loadDashboard() {
@@ -487,9 +484,9 @@ async function loadDashboard() {
         const res = await fetch(`${SCRIPT_URL}?action=getAnalyticsData`);
         const json = await res.json();
         if(json.status === 'success') {
-            dashboardRawData = json.data; // Cache global
-            popularFiltroAno();
-            aplicarFiltrosDashboard();
+            dashboardRawData = json.data; 
+            if(typeof popularFiltroAno === 'function') popularFiltroAno();
+            if(typeof aplicarFiltrosDashboard === 'function') aplicarFiltrosDashboard();
         }
     } catch(e) { console.error(e); }
 }
@@ -540,7 +537,6 @@ function aplicarFiltrosDashboard() {
     document.getElementById('dash-mes').innerText = totalAtendimentos;
     document.getElementById('dash-pendentes').innerText = totalPendentes;
 
-    // Funções de Gráfico (charts.js) e UI (ui.js)
     if(typeof renderizarGraficos === 'function') renderizarGraficos(atendimentosFiltrados, pacientesFiltrados);
     calcularMetricasTempo(atendimentosFiltrados);
     if(typeof renderizarTorreGenero === 'function') renderizarTorreGenero(pacientesFiltrados);
@@ -550,7 +546,6 @@ function calcularMetricasTempo(atendimentos) {
     const hoje = new Date();
     let totalDiasEspera = 0;
     let countEspera = 0;
-    
     let totalDiasMarcacao = 0;
     let countMarcacao = 0;
 
@@ -570,7 +565,6 @@ function calcularMetricasTempo(atendimentos) {
             
             totalDiasEspera += diffDays;
             countEspera++;
-
             totalDiasMarcacao += diffDays;
             countMarcacao++;
         }
@@ -584,10 +578,6 @@ function calcularMetricasTempo(atendimentos) {
     document.getElementById('dash-tempo-total').innerText = mediaEspera;
 }
 
-// ============================================================================
-// 4. PARCEIROS E RELATÓRIOS
-// ============================================================================
-
 async function initParceiros() {
     if(!dashboardRawData) {
         try {
@@ -599,7 +589,6 @@ async function initParceiros() {
 
     if(!dashboardRawData) return;
 
-    // Popula filtro Ano
     const selAno = document.getElementById('parc-filter-ano');
     if(selAno.options.length <= 1) {
         const anos = new Set();
@@ -620,38 +609,28 @@ async function initParceiros() {
         return true;
     });
 
-    // Gráfico Parceiros (charts.js)
     if(typeof createChart === 'function' && typeof countByField === 'function') {
         const dadosParceiros = countByField(filtrados, 'parceiro');
         createChart('chartParceirosRanking', 'bar', 
             dadosParceiros.map(d => d[0]), 
             dadosParceiros.map(d => d[1]), 
             { 
-                indexAxis: 'y', 
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: { x: { beginAtZero: true } },
-                backgroundColor: '#10b981'
+                indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+                scales: { x: { beginAtZero: true } }, backgroundColor: '#10b981'
             }
         );
         
         const dadosProc = countByField(filtrados, 'procedimento');
         const topProc = dadosProc.slice(0, 15);
         createChart('chartProcedimentosGeral', 'bar', 
-            topProc.map(d => d[0]), 
-            topProc.map(d => d[1]), 
+            topProc.map(d => d[0]), topProc.map(d => d[1]), 
             { 
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: { y: { beginAtZero: true } },
-                backgroundColor: '#8b5cf6'
+                responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true } }, backgroundColor: '#8b5cf6'
             }
         );
     }
 
-    // Tabela Liderança
     const liderancaStats = {};
     const calcularDiasLocal = (at) => {
         if(!at.data_abertura) return 0;
@@ -676,7 +655,7 @@ async function initParceiros() {
     });
 
     const listaLideranca = Object.values(liderancaStats).sort((a,b) => b.total - a.total);
-    window.dadosRelatorioCache['lideranca'] = listaLideranca; // Salva para o modal
+    window.dadosRelatorioCache['lideranca'] = listaLideranca;
 
     const tbody = document.getElementById('tabela-lideranca-body');
     tbody.innerHTML = '';
@@ -792,13 +771,14 @@ function renderizarRelatorioRisco() {
             <td class="px-6 py-4 text-slate-600 text-xs uppercase">${at.procedimento || at.tipo_servico}<br>${at.local || ''}</td>
             <td class="px-6 py-4 text-xs font-bold text-slate-500">${at.status}</td>
             <td class="px-6 py-4 text-right">
-                <button onclick="event.stopPropagation(); abrirEdicaoAtendimentoId('${at.id}')" class="bg-blue-100 text-blue-700 p-2 rounded-lg hover:bg-blue-200 transition"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
+                <button onclick="event.stopPropagation(); abrirEdicaoAtendimentoId('${at.id}')" class="btn-action bg-blue-100 text-blue-700 p-2 rounded-lg hover:bg-blue-200 transition" title="Editar"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
             </td>
         `;
         tr.onclick = () => abrirDetalheAtendimento(window[tempId]);
         tbody.appendChild(tr);
     });
     if(typeof lucide !== 'undefined') lucide.createIcons();
+    if(typeof aplicarPermissoes === 'function' && typeof currentUserRole !== 'undefined') aplicarPermissoes();
 }
 
 function atualizarGraficosRelatorios() {
@@ -927,5 +907,62 @@ async function submitAtendimento(e) {
     if(await sendData('registerService', data, 'loading-atendimento')) { 
         if(typeof resetFormAtendimento === 'function') resetFormAtendimento(); 
         if(typeof voltarInicio === 'function') voltarInicio(); 
+    }
+}
+
+// ============================================================================
+// 6. FUNÇÕES DE EXCLUSÃO (API)
+// ============================================================================
+
+async function excluirPacienteAPI(id, cpf) {
+    // Reutiliza o loading do form paciente
+    const loading = document.getElementById('loading-paciente');
+    if(loading) { loading.classList.remove('hidden'); loading.classList.add('flex'); }
+
+    try {
+        const res = await fetch(SCRIPT_URL, { 
+            method: 'POST', 
+            body: JSON.stringify({ action: 'deletePatient', data: { id: id, cpf: cpf } }) 
+        });
+        const json = await res.json();
+        
+        if(loading) { loading.classList.add('hidden'); loading.classList.remove('flex'); }
+        
+        if(json.status === 'success') {
+            showMessage(json.message, 'success');
+            if(typeof resetFormPaciente === 'function') resetFormPaciente();
+            if(typeof voltarInicio === 'function') voltarInicio();
+        } else {
+            alert(json.message);
+        }
+    } catch(e) {
+        if(loading) { loading.classList.add('hidden'); loading.classList.remove('flex'); }
+        alert("Erro ao excluir: " + e);
+    }
+}
+
+async function excluirAtendimentoAPI(id) {
+    const loading = document.getElementById('loading-atendimento');
+    if(loading) { loading.classList.remove('hidden'); loading.classList.add('flex'); }
+
+    try {
+        const res = await fetch(SCRIPT_URL, { 
+            method: 'POST', 
+            body: JSON.stringify({ action: 'deleteService', data: { id: id } }) 
+        });
+        const json = await res.json();
+        
+        if(loading) { loading.classList.add('hidden'); loading.classList.remove('flex'); }
+        
+        if(json.status === 'success') {
+            showMessage(json.message, 'success');
+            if(typeof resetFormAtendimento === 'function') resetFormAtendimento();
+            if(typeof voltarInicio === 'function') voltarInicio();
+        } else {
+            alert(json.message);
+        }
+    } catch(e) {
+        if(loading) { loading.classList.add('hidden'); loading.classList.remove('flex'); }
+        alert("Erro ao excluir: " + e);
     }
 }
