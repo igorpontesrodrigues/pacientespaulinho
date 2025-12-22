@@ -14,9 +14,10 @@
     <!-- ESTILOS (CSS) -->
     <link rel="stylesheet" href="css/style.css">
 </head>
-<body class="bg-slate-100 min-h-screen font-sans flex overflow-hidden">
+<!-- REMOVIDO 'overflow-hidden' PARA CORRIGIR A ROLAGEM -->
+<body class="bg-slate-100 min-h-screen font-sans flex">
 
-    <!-- TELA DE LOGIN (NOVO) -->
+    <!-- TELA DE LOGIN -->
     <div id="view-login" class="fixed inset-0 z-[100] bg-slate-900 flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden fade-in">
             <div class="bg-blue-600 p-8 text-center">
@@ -78,7 +79,6 @@
             </button>
         </nav>
 
-        <!-- Botões de Ação (Serão ocultados para visitante via JS) -->
         <div id="sidebar-actions" class="p-4 border-t border-slate-800">
             <button onclick="switchTab('form-paciente')" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-bold shadow-lg mb-2 flex items-center justify-center gap-2">
                 <i data-lucide="plus"></i> Paciente
@@ -101,12 +101,12 @@
     </div>
 
     <!-- CONTEÚDO PRINCIPAL -->
-    <main class="flex-1 md:ml-64 p-6 pt-20 md:pt-6 bg-slate-100 min-h-screen overflow-y-auto">
+    <!-- REMOVIDO 'overflow-y-auto' AQUI TAMBÉM POIS AGORA O SCROLL É NA PAGINA TODA -->
+    <main class="flex-1 md:ml-64 p-6 pt-20 md:pt-6 bg-slate-100 min-h-screen">
         <div id="system-message" class="hidden mb-6 p-4 rounded-lg border text-sm break-words shadow-sm"></div>
 
         <!-- DASHBOARD -->
         <div id="view-dashboard" class="hidden fade-in">
-            <!-- (Conteúdo Dashboard igual, apenas escondido inicialmente) -->
             <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
                 <h2 class="text-2xl font-bold text-slate-800">Dashboard Analítico</h2>
                 
@@ -503,12 +503,15 @@
                         </div>
                         <p id="msg_cpf_paciente" class="text-sm mt-3 font-medium min-h-[20px] text-blue-800"></p>
                     </div>
+                    <!-- ADICIONADO BOTÃO DE EXCLUIR AQUI TAMBÉM (NO CARD DE ENCONTRADO) -->
                     <div id="opcoes-paciente-existente" class="hidden text-center p-8 border-2 border-dashed border-blue-200 rounded-xl bg-slate-50 mb-6 fade-in">
                         <div class="text-xl text-blue-900 font-bold mb-6">Paciente já cadastrado!</div>
-                        <div class="flex flex-col sm:flex-row gap-4 justify-center max-w-md mx-auto">
+                        <div class="flex flex-col sm:flex-row gap-4 justify-center max-w-md mx-auto mb-4">
                             <button type="button" onclick="editarPaciente()" class="btn-action flex-1 bg-white border border-slate-300 text-slate-700 py-3 px-4 rounded-lg hover:bg-slate-50 font-medium transition shadow-sm flex items-center justify-center gap-2"><i data-lucide="edit-3" class="w-4 h-4"></i> Editar Dados</button>
                             <button type="button" onclick="irParaAtendimento()" class="btn-action flex-1 bg-emerald-600 text-white py-3 px-4 rounded-lg hover:bg-emerald-700 font-bold shadow-md transition flex items-center justify-center gap-2"><i data-lucide="plus-circle" class="w-4 h-4"></i> Criar Atendimento</button>
                         </div>
+                        <!-- Botão de Excluir Extra -->
+                        <button type="button" onclick="confirmarExclusaoPaciente()" class="btn-delete text-red-500 hover:underline text-sm flex items-center justify-center gap-1 mx-auto"><i data-lucide="trash-2" class="w-3 h-3"></i> Excluir este paciente</button>
                     </div>
                     <div id="resto-form-paciente" class="hidden fade-in space-y-8">
                         <div>
