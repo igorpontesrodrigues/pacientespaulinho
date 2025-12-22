@@ -3,844 +3,607 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gabinete Paulinho Tudo a Ver</title>
+    <title>Gestão Gabinete - Paulinho Tudo a Ver</title>
     
-    <!-- Estilos (Tailwind CSS) -->
+    <!-- Bibliotecas Externas -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
     
-    <!-- Configuração para carregar React e bibliotecas -->
-    <script type="importmap">
-    {
-      "imports": {
-        "react": "https://esm.sh/react@18.2.0",
-        "react-dom": "https://esm.sh/react-dom@18.2.0",
-        "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
-        "recharts": "https://esm.sh/recharts@2.12.2?external=react,react-dom",
-        "lucide-react": "https://esm.sh/lucide-react@0.344.0?external=react,react-dom"
-      }
-    }
-    </script>
-    
-    <!-- Babel para traduzir o código React no navegador -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    
-    <style>
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-        @media print {
-            .no-print { display: none !important; }
-            body { background: white; }
-            .print-break-inside-avoid { page-break-inside: avoid; }
-        }
-    </style>
+    <!-- Seu CSS Personalizado -->
+    <link rel="stylesheet" href="css/style.css">
 </head>
-<body class="bg-slate-50 text-slate-800">
-    <div id="root"></div>
+<body class="bg-slate-100 min-h-screen font-sans flex">
 
-    <script type="text/babel" data-type="module">
-        import React, { useState, useMemo, useEffect } from 'react';
-        import { createRoot } from 'react-dom/client';
-        import { 
-            BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, 
-            PieChart, Pie, Cell 
-        } from 'recharts';
-        import { 
-            Users, Activity, Clock, CheckCircle, AlertCircle, MapPin, FileText, Menu, X, 
-            PieChart as PieChartIcon, BarChart2, Calendar, Filter, AlertTriangle, Handshake, Trophy, TrendingUp, 
-            Cake, Phone, Printer, Search, ArrowLeft, History, MessageCircle, CreditCard, Home, 
-            UserCheck, XCircle, DollarSign, HeartPulse, Loader2, LogIn, Lock, Plus, Save, Edit, UserPlus
-        } from 'lucide-react';
+    <!-- SIDEBAR -->
+    <aside class="w-64 bg-slate-900 text-white fixed h-full left-0 top-0 overflow-y-auto hidden md:flex flex-col z-50 shadow-2xl">
+        <div class="p-6 border-b border-slate-800">
+            <div class="flex items-center gap-2 font-bold text-xl text-blue-400">
+                <i data-lucide="activity"></i> Gestão Saúde
+            </div>
+            <p class="text-xs text-slate-400 mt-1 uppercase tracking-wider font-semibold">Paulinho Tudo a Ver</p>
+            <p class="text-[10px] text-slate-500">Vereador de Queimados</p>
+        </div>
 
-        // --- CONFIGURAÇÃO DA API ---
-        const API_URL = "https://script.google.com/macros/s/AKfycbxNtohug1LnuzYn56ySQ97SvcmNbpxLeZgYYAeKwy_9tyWrH_l3SZKdcJElYQ2eVbEn3w/exec";
+        <nav class="flex-1 p-4 space-y-1">
+            <button onclick="switchTab('dashboard')" class="w-full text-left px-4 py-3 rounded-lg hover:bg-slate-800 transition flex items-center gap-3 text-slate-300 hover:text-white group">
+                <i data-lucide="layout-dashboard" class="w-5 h-5 group-hover:text-blue-400"></i> Dashboard
+            </button>
+            <button onclick="switchTab('lista-pacientes')" class="w-full text-left px-4 py-3 rounded-lg hover:bg-slate-800 transition flex items-center gap-3 text-slate-300 hover:text-white group">
+                <i data-lucide="users" class="w-5 h-5 group-hover:text-blue-400"></i> Pacientes
+            </button>
+            <button onclick="switchTab('lista-atendimentos')" class="w-full text-left px-4 py-3 rounded-lg hover:bg-slate-800 transition flex items-center gap-3 text-slate-300 hover:text-white group">
+                <i data-lucide="list" class="w-5 h-5 group-hover:text-blue-400"></i> Atendimentos
+            </button>
+            <button onclick="switchTab('relatorios')" class="w-full text-left px-4 py-3 rounded-lg hover:bg-slate-800 transition flex items-center gap-3 text-slate-300 hover:text-white group">
+                <i data-lucide="alert-triangle" class="w-5 h-5 group-hover:text-red-400"></i> Relatórios
+            </button>
+            <button onclick="switchTab('parceiros')" class="w-full text-left px-4 py-3 rounded-lg hover:bg-slate-800 transition flex items-center gap-3 text-slate-300 hover:text-white group">
+                <i data-lucide="handshake" class="w-5 h-5 group-hover:text-emerald-400"></i> Parceiros
+            </button>
+        </nav>
 
-        // --- PALETA DE CORES ---
-        const COLORS = {
-            primary: '#0ea5e9', secondary: '#6366f1', success: '#22c55e', warning: '#eab308',
-            danger: '#ef4444', gray: '#64748b', purple: '#a855f7',
-            pie: ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d']
-        };
+        <div class="p-4 border-t border-slate-800">
+            <button onclick="switchTab('form-paciente')" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-bold shadow-lg mb-2 flex items-center justify-center gap-2">
+                <i data-lucide="plus"></i> Paciente
+            </button>
+            <button onclick="switchTab('form-atendimento')" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded-lg font-bold shadow-lg flex items-center justify-center gap-2">
+                <i data-lucide="plus"></i> Atendimento
+            </button>
+        </div>
+    </aside>
 
-        // --- TABELA DE PREÇOS ESTIMADOS ---
-        const PROCEDURE_VALUES = {
-            'CATARATA': 4000, 'HÉRNIA': 3000, 'HERNIA': 3000, 'VESICULA': 3500, 'VESÍCULA': 3500,
-            'HISTECTOMIA': 4500, 'PTERIGIO': 1500, 'PTERÍGIO': 1500, 'CONSULTA': 250, 'EXAME': 150,
-            'RESSONANCIA': 800, 'TOMOGRAFIA': 600, 'ULTRASSOM': 200, 'BIOMETRIA': 300, 'DEFAULT': 100 
-        };
+    <!-- MOBILE HEADER -->
+    <div class="md:hidden fixed w-full bg-slate-900 text-white z-50 p-4 flex justify-between items-center shadow-lg">
+        <div>
+            <div class="font-bold flex items-center gap-2 text-blue-400"><i data-lucide="activity"></i> Paulinho Tudo a Ver</div>
+        </div>
+        <button onclick="document.querySelector('aside').classList.toggle('hidden'); document.querySelector('aside').classList.toggle('flex');" class="text-white"><i data-lucide="menu"></i></button>
+    </div>
 
-        const getProcedureValue = (procName) => {
-            if (!procName) return 0;
-            const name = String(procName).toUpperCase();
-            for (const key in PROCEDURE_VALUES) {
-                if (name.includes(key)) return PROCEDURE_VALUES[key];
-            }
-            return PROCEDURE_VALUES['DEFAULT'];
-        };
+    <!-- MAIN CONTENT -->
+    <main class="flex-1 md:ml-64 p-6 pt-20 md:pt-6 bg-slate-100 min-h-screen">
+        <div id="system-message" class="hidden mb-6 p-4 rounded-lg border text-sm break-words shadow-sm"></div>
 
-        // --- FUNÇÕES DE NORMALIZAÇÃO E DATA ---
-        const normalizeData = (list) => {
-            if (!Array.isArray(list)) return [];
-            return list.map(item => {
-                const newItem = {};
-                Object.keys(item).forEach(key => {
-                    const newKey = key.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "_");
-                    newItem[newKey] = item[key];
-                });
-                return newItem;
-            });
-        };
+        <!-- DASHBOARD -->
+        <div id="view-dashboard" class="fade-in">
+            <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+                <h2 class="text-2xl font-bold text-slate-800">Dashboard Analítico</h2>
+                
+                <div class="flex flex-wrap gap-2 bg-white p-2 rounded-lg shadow-sm border border-slate-200">
+                    <select id="dash-filter-status" onchange="aplicarFiltrosDashboard()" class="text-sm bg-slate-50 border border-slate-300 rounded px-2 py-1">
+                        <option value="">Status: Todos</option>
+                        <option value="PENDENTE">Pendentes</option>
+                        <option value="CONCLUIDO">Concluídos</option>
+                        <option value="CANCELADO">Cancelados</option>
+                    </select>
+                    <select id="dash-filter-mes" onchange="aplicarFiltrosDashboard()" class="text-sm bg-slate-50 border border-slate-300 rounded px-2 py-1">
+                        <option value="">Mês: Todos</option>
+                        <option value="01">Janeiro</option><option value="02">Fevereiro</option><option value="03">Março</option>
+                        <option value="04">Abril</option><option value="05">Maio</option><option value="06">Junho</option>
+                        <option value="07">Julho</option><option value="08">Agosto</option><option value="09">Setembro</option>
+                        <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
+                    </select>
+                    <select id="dash-filter-ano" onchange="aplicarFiltrosDashboard()" class="text-sm bg-slate-50 border border-slate-300 rounded px-2 py-1">
+                        <option value="">Ano: Todos</option>
+                    </select>
+                    <button onclick="loadDashboard()" class="bg-blue-600 text-white p-1 rounded hover:bg-blue-700"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>
+                </div>
+            </div>
 
-        const parseDate = (value) => {
-            if (!value) return null;
-            const date = new Date(value);
-            if (!isNaN(date.getTime())) return date;
-            if (typeof value === 'string' && value.includes('/')) {
-                const parts = value.split('/');
-                if (parts.length === 3) return new Date(parts[2], parts[1] - 1, parts[0]);
-            }
-            if (typeof value === 'number') {
-                return new Date(Math.round((value - 25569) * 86400 * 1000));
-            }
-            return null;
-        };
-
-        const formatDate = (dateValue) => {
-            const date = parseDate(dateValue);
-            return date ? date.toLocaleDateString('pt-BR') : '-';
-        };
-
-        const getMonthName = (dateValue) => {
-            const date = parseDate(dateValue);
-            if (!date) return 'Desconhecido';
-            const month = date.toLocaleString('pt-BR', { month: 'long' });
-            return month.charAt(0).toUpperCase() + month.slice(1);
-        };
-
-        const getYear = (dateValue) => {
-            const date = parseDate(dateValue);
-            return date ? date.getFullYear().toString() : 'Desconhecido';
-        };
-
-        const monthOrder = {
-            'Janeiro': 1, 'Fevereiro': 2, 'Março': 3, 'Abril': 4, 'Maio': 5, 'Junho': 6,
-            'Julho': 7, 'Agosto': 8, 'Setembro': 9, 'Outubro': 10, 'Novembro': 11, 'Dezembro': 12
-        };
-
-        const checkSurgicalRisk = (dataRisco, localAtendimento) => {
-            if (!dataRisco) return { status: 'none', msg: 'Sem data' };
-            const dtRisco = parseDate(dataRisco);
-            if (!dtRisco) return { status: 'none', msg: 'Data inválida' };
-
-            const local = localAtendimento ? String(localAtendimento).toUpperCase() : '';
-            const isHO = local.includes('HO') || local.includes('OLHO');
-            const validadeMeses = isHO ? 6 : 3;
-            
-            const dtVencimento = new Date(dtRisco);
-            dtVencimento.setMonth(dtVencimento.getMonth() + validadeMeses);
-            
-            const hoje = new Date();
-            const diffTime = dtVencimento - hoje;
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-            if (diffDays < 0) return { status: 'expired', msg: `Venceu: ${dtVencimento.toLocaleDateString('pt-BR')}`, color: 'text-red-600 bg-red-50 border-red-200' };
-            if (diffDays <= 30) return { status: 'warning', msg: `Vence em ${diffDays} dias`, color: 'text-orange-600 bg-orange-50 border-orange-200' };
-            return { status: 'ok', msg: `Válido até ${dtVencimento.toLocaleDateString('pt-BR')}`, color: 'text-green-600 bg-green-50 border-green-200' };
-        };
-
-        // --- SUB COMPONENTS ---
-        
-        function Input({ label, type = "text", placeholder, className, onChange, value, readOnly }) {
-            return (
-                <label className={`block ${className}`}>
-                    <span className="text-xs font-bold text-slate-500 uppercase">{label}</span>
-                    <input 
-                        type={type} 
-                        placeholder={placeholder} 
-                        value={value || ''}
-                        readOnly={readOnly}
-                        onChange={e => onChange(e.target.value)} 
-                        className={`w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-sky-500 outline-none ${readOnly ? 'bg-slate-100 text-slate-500' : ''}`}
-                    />
-                </label>
-            );
-        }
-
-        function StatusBadge({ status }) {
-            let styles = "bg-gray-100 text-gray-800";
-            const st = String(status || '').toUpperCase();
-            if (st.includes("CONCLUI") || st.includes("CONCLUÍ")) styles = "bg-green-100 text-green-800";
-            else if (st.includes("PENDENTE")) styles = "bg-red-100 text-red-800";
-            else if (st.includes("CANCELADO")) styles = "bg-red-100 text-red-800 line-through";
-            else if (st.includes("ANÁLISE") || st.includes("ANALISE")) styles = "bg-yellow-100 text-yellow-800";
-            return <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${styles}`}>{status || '-'}</span>;
-        }
-
-        function NavItem({ icon, label, active, onClick, badge }) {
-            return <button onClick={onClick} className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition-colors ${active ? 'bg-sky-600 text-white shadow-lg shadow-sky-900/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}><div className="flex items-center gap-3">{icon}<span className="font-medium text-sm">{label}</span></div>{badge && <span className="bg-pink-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">{badge}</span>}</button>;
-        }
-
-        function KpiCard({ title, value, icon, subtext, borderColor = "border-l-4 border-blue-500" }) {
-            return <div className={`bg-white rounded-xl shadow-sm p-6 ${borderColor} relative overflow-hidden`}><div className="flex justify-between items-start mb-2"><div><p className="text-sm font-medium text-slate-500 mb-1">{title}</p><h3 className="text-2xl font-bold text-slate-800">{value}</h3></div><div className="p-2 bg-slate-50 rounded-lg">{icon}</div></div><div className="flex items-center text-xs"><span className="text-slate-400">{subtext}</span></div></div>;
-        }
-
-        function ChartContainer({ title, children }) { return <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200"><h3 className="text-base font-semibold text-slate-700 mb-6">{title}</h3>{children}</div>; }
-
-        function ScrollableChartContainer({ children, height }) {
-            return (
-                <div className="w-full h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                    <div style={{ height: `${height}px`, width: '100%' }}>
-                        <ResponsiveContainer width="100%" height="100%">
-                            {children}
-                        </ResponsiveContainer>
+            <!-- KPIs -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                    <div class="flex justify-between items-start">
+                        <div><p class="text-xs font-bold text-slate-500 uppercase tracking-wide">Total Pacientes</p><h3 class="text-3xl font-bold text-slate-800 mt-1" id="dash-pacientes">-</h3></div>
+                        <div class="p-2 bg-blue-50 rounded-lg text-blue-600"><i data-lucide="users" class="w-6 h-6"></i></div>
                     </div>
                 </div>
-            );
-        }
-
-        function GenderBody({ type, percentage }) {
-            const fillColor = type === 'male' ? "#3b82f6" : "#ec4899"; 
-            const path = type === 'male' ? "M12 2C10.3 2 9 3.3 9 5C9 6.7 10.3 8 12 8C13.7 8 15 6.7 15 5C15 3.3 13.7 2 12 2ZM6 9C4.9 9 4 9.9 4 11V16C4 16.6 4.4 17 5 17H6V22C6 23.1 6.9 24 8 24H9C10.1 24 11 23.1 11 22V19H13V22C13 23.1 13.9 24 15 24H16C17.1 24 18 23.1 18 22V17H19C19.6 17 20 16.6 20 16V11C20 9.9 19.1 9 18 9H6Z" : "M12 2C10.3 2 9 3.3 9 5C9 6.7 10.3 8 12 8C13.7 8 15 6.7 15 5C15 3.3 13.7 2 12 2ZM6 9C4.9 9 4 9.9 4 11V14L6 22C6 23.1 6.9 24 8 24H9C10.1 24 11 23.1 11 22V19H13V22C13 23.1 13.9 24 15 24H16C17.1 24 18 23.1 18 22L20 14V11C20 9.9 19.1 9 18 9H6Z";
-            return (
-                <div className="flex flex-col items-center">
-                    <svg width="60" height="120" viewBox="0 0 24 26" className="drop-shadow-sm"><defs><linearGradient id={`fill-${type}`} x1="0" x2="0" y1="1" y2="0"><stop offset={`${percentage}%`} stopColor={fillColor} /><stop offset={`${percentage}%`} stopColor="#e2e8f0" /></linearGradient></defs><path d={path} fill={`url(#fill-${type})`} /></svg>
-                    <div className="mt-2 text-center"><span className={`text-lg font-bold ${type === 'male' ? 'text-blue-500' : 'text-pink-500'}`}>{percentage}%</span></div>
-                </div>
-            );
-        }
-
-        function PatientDetail({ patient, attendances, onBack, onAddAttendance, userMode, onEditPatient, onEditAttendance }) {
-            const handlePrint = () => window.print();
-            
-            if (!patient) return <div>Carregando...</div>;
-
-            return (
-                <div className="max-w-5xl mx-auto">
-                    <div className="flex justify-between items-center mb-6 no-print">
-                        <button onClick={onBack} className="flex items-center gap-2 text-slate-500 hover:text-slate-800"><ArrowLeft size={20}/> Voltar</button>
-                        <div className="flex gap-2">
-                             {userMode === 'admin' && (
-                                <>
-                                    <button onClick={onEditPatient} className="bg-amber-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-amber-600"><Edit size={18}/> Editar Cadastro</button>
-                                    <button onClick={onAddAttendance} className="bg-emerald-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-emerald-700"><Plus size={18}/> Novo Atendimento</button>
-                                </>
-                            )}
-                            <button onClick={handlePrint} className="bg-slate-800 text-white px-4 py-2 rounded-lg flex gap-2 hover:bg-slate-700"><Printer size={18}/> Imprimir</button>
-                        </div>
-                    </div>
-                    <div className="bg-white p-8 rounded-xl shadow-lg border border-slate-200 print:shadow-none print:border-none">
-                        <div className="border-b-2 border-slate-100 pb-4 mb-6 flex justify-between">
-                            <div><h2 className="text-3xl font-bold text-slate-800">{patient.nome}</h2>{patient.apelido && <p className="text-lg text-slate-500 italic">"{patient.apelido}"</p>}</div>
-                            <div className="text-right"><p className="text-xs text-slate-400 uppercase font-bold">Prontuário</p><p className="text-xl font-mono text-slate-700">{patient.prontuario || '---'}</p></div>
-                        </div>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8 bg-slate-50 p-4 rounded-xl print:bg-transparent print:p-0">
-                            <div><label className="text-xs text-slate-400 font-bold block">CPF</label>{patient.cpf || '-'}</div>
-                            <div><label className="text-xs text-slate-400 font-bold block">SUS</label>{patient.sus || '-'}</div>
-                            <div><label className="text-xs text-slate-400 font-bold block">Nascimento</label>{formatDate(patient.data_nascimento)}</div>
-                            <div><label className="text-xs text-slate-400 font-bold block">Telefone</label>{patient.telefone_1 || '-'}</div>
-                            <div className="col-span-2"><label className="text-xs text-slate-400 font-bold block">Endereço</label>{patient.logradouro}, {patient.bairro}</div>
-                            <div><label className="text-xs text-slate-400 font-bold block">Indicação</label>{patient.familia || patient.indicacao || '-'}</div>
-                            <div className="col-span-4 mt-2 pt-2 border-t border-slate-200"><label className="text-xs text-slate-400 font-bold block mb-1">Observações do Cadastro</label><p className="text-sm text-slate-700 italic">{patient.observacoes_fixas || "Nenhuma observação registrada."}</p></div>
-                        </div>
-                        <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2"><History size={20}/> Histórico de Atendimentos</h3>
-                        {attendances.map((att, index) => {
-                            const risk = checkSurgicalRisk(att.data_risco, att.local);
-                            return (
-                                <div key={att.id || index} className="border border-slate-200 rounded-lg p-4 mb-3 hover:bg-slate-50 transition-colors print-break-inside-avoid relative">
-                                    {userMode === 'admin' && (
-                                        <button onClick={() => onEditAttendance(att)} className="absolute top-4 right-4 text-slate-400 hover:text-sky-600 no-print"><Edit size={16}/></button>
-                                    )}
-                                    <div className="flex justify-between items-start mb-2 pr-8">
-                                        <div>
-                                            <div className="flex items-center gap-2"><span className="font-bold text-sky-700">{att.procedimento}</span><span className="text-xs bg-slate-200 px-2 py-0.5 rounded text-slate-600">{att.especialidade}</span></div>
-                                            <p className="text-xs text-slate-500 mt-1">Abertura: {formatDate(att.data_abertura)} | Local: {att.local} ({att.parceiro})</p>
-                                        </div>
-                                        <div className="text-right"><StatusBadge status={att.status} /></div>
-                                    </div>
-                                    {att.obs_atendimento && <div className="bg-yellow-50 text-yellow-800 text-sm p-2 rounded border border-yellow-100 mb-2">Obs: {att.obs_atendimento}</div>}
-                                    {risk.status !== 'none' && <div className={`text-xs p-2 rounded border flex justify-between items-center ${risk.color}`}><span className="flex items-center gap-1 font-bold"><HeartPulse size={12}/> Risco Cirúrgico</span><span>{risk.msg}</span></div>}
-                                </div>
-                            );
-                        })}
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                    <div class="flex justify-between items-start">
+                        <div><p class="text-xs font-bold text-slate-500 uppercase tracking-wide">Atendimentos (Filtro)</p><h3 class="text-3xl font-bold text-emerald-600 mt-1" id="dash-mes">-</h3></div>
+                        <div class="p-2 bg-emerald-50 rounded-lg text-emerald-600"><i data-lucide="calendar" class="w-6 h-6"></i></div>
                     </div>
                 </div>
-            );
-        }
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                    <div class="flex justify-between items-start">
+                        <div><p class="text-xs font-bold text-slate-500 uppercase tracking-wide">Pendentes (Atual)</p><h3 class="text-3xl font-bold text-orange-600 mt-1" id="dash-pendentes">-</h3></div>
+                        <div class="p-2 bg-orange-50 rounded-lg text-orange-600"><i data-lucide="clock" class="w-6 h-6"></i></div>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                    <div class="flex justify-between items-start">
+                        <div><p class="text-xs font-bold text-slate-500 uppercase tracking-wide">Média Espera (Dias)</p><h3 class="text-3xl font-bold text-slate-800 mt-1" id="dash-tempo-espera">-</h3></div>
+                        <div class="p-2 bg-slate-100 rounded-lg text-slate-600"><i data-lucide="timer" class="w-6 h-6"></i></div>
+                    </div>
+                </div>
+            </div>
 
-        // --- COMPONENTE PRINCIPAL (APP) ---
-        function App() {
-            const [userMode, setUserMode] = useState(null); 
-            const [loginPass, setLoginPass] = useState('');
-            const [loginError, setLoginError] = useState('');
+            <!-- Gráficos Demográficos e Tempos -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                <!-- Torre de Gênero -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex flex-col items-center">
+                    <h3 class="text-sm font-bold text-slate-600 uppercase mb-6 w-full text-center border-b pb-2">Distribuição por Sexo</h3>
+                    <div class="flex gap-8 items-end">
+                        <div class="flex flex-col items-center gap-2">
+                            <span class="font-bold text-blue-600 text-lg" id="val-masc">0</span>
+                            <div class="gender-tower bg-slate-100">
+                                <div id="tower-masc" class="gender-fill bg-blue-500"></div>
+                            </div>
+                            <span class="text-xs font-bold text-slate-500">MASC</span>
+                        </div>
+                        <div class="flex flex-col items-center gap-2">
+                            <span class="font-bold text-pink-500 text-lg" id="val-fem">0</span>
+                            <div class="gender-tower bg-slate-100">
+                                <div id="tower-fem" class="gender-fill bg-pink-500"></div>
+                            </div>
+                            <span class="text-xs font-bold text-slate-500">FEM</span>
+                        </div>
+                    </div>
+                </div>
 
-            const [joinedData, setJoinedData] = useState([]); 
-            const [rawData, setRawData] = useState({ pacientes: [], atendimentos: [] });
-            const [loading, setLoading] = useState(false);
-            const [error, setError] = useState(null);
+                <!-- Título de Eleitor -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                    <h3 class="text-sm font-bold text-slate-600 uppercase mb-4 w-full text-center border-b pb-2">Situação Eleitoral</h3>
+                    <div class="h-64 relative">
+                        <canvas id="chartTitulo"></canvas>
+                    </div>
+                </div>
 
-            const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-            const [activeTab, setActiveTab] = useState('Dashboard');
-            const [selectedMonth, setSelectedMonth] = useState('Geral');
-            const [selectedYear, setSelectedYear] = useState('Geral');
-            
-            const [searchTerm, setSearchTerm] = useState('');
-            const [selectedPatient, setSelectedPatient] = useState(null);
+                <!-- Tempos Médios -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-center gap-4">
+                    <h3 class="text-sm font-bold text-slate-600 uppercase mb-2 w-full text-center border-b pb-2">Eficiência</h3>
+                    <div class="text-center">
+                        <p class="text-xs text-slate-400 uppercase">Abertura até Marcação</p>
+                        <p class="text-3xl font-bold text-emerald-600" id="dash-tempo-marcacao">-</p>
+                        <p class="text-[10px] text-slate-400">Dias médios</p>
+                    </div>
+                    <hr class="border-slate-100">
+                    <div class="text-center">
+                        <p class="text-xs text-slate-400 uppercase">Tempo Total de Espera</p>
+                        <p class="text-3xl font-bold text-blue-600" id="dash-tempo-total">-</p>
+                        <p class="text-[10px] text-slate-400">Inclui pendentes (até hoje)</p>
+                    </div>
+                </div>
+            </div>
 
-            // Modal States
-            const [isModalOpen, setIsModalOpen] = useState(false);
-            const [modalType, setModalType] = useState(null); 
-            const [formData, setFormData] = useState({});
-            const [checkCpf, setCheckCpf] = useState('');
-            const [saving, setSaving] = useState(false);
+            <!-- Rankings e Top 5 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                    <h3 class="text-sm font-bold text-slate-600 uppercase mb-4">Especialidades (Top 10)</h3>
+                    <canvas id="chartEspecialidade"></canvas>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                    <h3 class="text-sm font-bold text-slate-600 uppercase mb-4">Procedimentos (Top 10)</h3>
+                    <canvas id="chartProcedimento"></canvas>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                    <h3 class="text-sm font-bold text-slate-600 uppercase mb-4">Locais de Atendimento</h3>
+                    <canvas id="chartLocal"></canvas>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                    <h3 class="text-sm font-bold text-slate-600 uppercase mb-4">Tipos de Serviço</h3>
+                    <canvas id="chartTipo"></canvas>
+                </div>
+            </div>
+        </div>
 
-            // --- BUSCA DADOS ---
-            const fetchData = async () => {
-                setLoading(true);
-                setError(null);
-                try {
-                    const response = await fetch(API_URL, { redirect: "follow" });
-                    if (!response.ok) throw new Error('Falha na resposta da rede');
-                    
-                    const json = await response.json();
-                    
-                    if (json.status === 'success') {
-                        const normPacientes = normalizeData(json.data.pacientes);
-                        const normAtendimentos = normalizeData(json.data.atendimentos);
+        <!-- LISTA PACIENTES -->
+        <div id="view-lista-pacientes" class="hidden fade-in">
+            <div class="flex flex-col md:flex-row justify-between items-end mb-6 gap-4 border-b border-slate-200 pb-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-800">Pacientes</h2>
+                    <div class="flex gap-6 mt-2 text-sm font-medium">
+                        <button id="tab-btn-lista" onclick="alternarSubAbaPacientes('lista')" class="text-blue-600 border-b-2 border-blue-600 pb-2 transition-all">Lista Geral</button>
+                        <button id="tab-btn-niver" onclick="alternarSubAbaPacientes('niver')" class="text-slate-500 hover:text-blue-500 pb-2 transition-all flex items-center gap-1"><i data-lucide="cake" class="w-3 h-3"></i> Aniversariantes</button>
+                    </div>
+                </div>
+                
+                <div id="container-busca-pacientes" class="flex gap-2 w-full md:w-auto">
+                    <div class="relative flex-1 md:w-64">
+                        <input type="text" id="filtro-paciente-input" onkeyup="filtrarPacientesNaTela()" placeholder="Buscar nome, CPF, cidade..." class="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-300 focus:border-blue-500 focus:outline-none bg-white">
+                        <i data-lucide="search" class="w-4 h-4 absolute left-3 top-3 text-slate-400"></i>
+                    </div>
+                    <button onclick="carregarListaPacientes()" class="text-blue-600 hover:text-blue-800 bg-white px-3 py-2 rounded border shadow-sm hover:shadow transition"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>
+                </div>
+
+                <div id="container-filtro-niver" class="hidden gap-2 w-full md:w-auto">
+                    <select id="filtro-niver-mes" onchange="carregarAniversarios()" class="input-field bg-white w-48 border-pink-200 focus:border-pink-500">
+                        <option value="1">Janeiro</option><option value="2">Fevereiro</option><option value="3">Março</option><option value="4">Abril</option><option value="5">Maio</option><option value="6">Junho</option><option value="7">Julho</option><option value="8">Agosto</option><option value="9">Setembro</option><option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="subview-pacientes-lista">
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm text-slate-600">
+                            <thead class="bg-slate-50 text-slate-700 uppercase font-bold text-xs border-b border-slate-200">
+                                <tr><th class="px-6 py-4">Nome</th><th class="px-6 py-4">CPF</th><th class="px-6 py-4 hidden sm:table-cell">Telefone</th><th class="px-6 py-4 hidden md:table-cell">Município</th><th class="px-6 py-4 text-right">Ações</th></tr>
+                            </thead>
+                            <tbody id="tabela-pacientes-body" class="divide-y divide-slate-100"><tr><td colspan="5" class="px-6 py-8 text-center text-slate-400">Carregando...</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+                <p class="text-xs text-slate-400 mt-2 text-center">Mostrando os 50 mais recentes (Use a busca para filtrar)</p>
+            </div>
+
+            <div id="subview-pacientes-niver" class="hidden">
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <table class="w-full text-left text-sm text-slate-600">
+                        <thead class="bg-pink-50 text-pink-900 uppercase font-bold text-xs border-b border-pink-100">
+                            <tr><th class="px-6 py-4">Data Nasc.</th><th class="px-6 py-4">Nome</th><th class="px-6 py-4">Telefone</th><th class="px-6 py-4">Bairro</th><th class="px-6 py-4">Status</th></tr>
+                        </thead>
+                        <tbody id="tabela-niver-body"><tr><td colspan="5" class="px-6 py-8 text-center text-slate-400">Selecione um mês...</td></tr></tbody>
+                    </table>
+                </div>
+                <p class="text-xs text-slate-400 mt-3 text-center italic">Clique no aniversariante para ver o histórico completo de atendimentos.</p>
+            </div>
+        </div>
+
+        <!-- LISTA ATENDIMENTOS -->
+        <div id="view-lista-atendimentos" class="hidden fade-in">
+            <div class="flex flex-col md:flex-row justify-between items-end mb-6 gap-4">
+                <div><h2 class="text-2xl font-bold text-slate-800">Atendimentos</h2><p class="text-slate-500 text-sm">Histórico</p></div>
+                <div class="flex flex-wrap gap-2 items-center bg-white p-2 rounded-lg border shadow-sm w-full md:w-auto">
+                    <select id="filtro-mes" onchange="filtrarAtendimentos()" class="text-sm border-slate-300 rounded-md border p-1.5 bg-slate-50"><option value="">Mês</option></select>
+                    <select id="filtro-ano" onchange="filtrarAtendimentos()" class="text-sm border-slate-300 rounded-md border p-1.5 bg-slate-50"><option value="">Ano</option></select>
+                    <select id="filtro-status" onchange="filtrarAtendimentos()" class="text-sm border-slate-300 rounded-md border p-1.5 font-medium bg-slate-50"><option value="">Status</option><option value="PENDENTE">Pendente</option><option value="CONCLUIDO">Concluído</option></select>
+                    <button onclick="carregarListaAtendimentos()" class="text-blue-600 hover:bg-blue-50 p-2 rounded border border-transparent hover:border-blue-100"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-slate-600">
+                        <thead class="bg-slate-50 text-slate-700 uppercase font-bold text-xs border-b border-slate-200">
+                            <tr><th class="px-6 py-4">Data</th><th class="px-6 py-4">Paciente</th><th class="px-6 py-4">Serviço</th><th class="px-6 py-4">Status</th><th class="px-6 py-4 text-right">Ação</th></tr>
+                        </thead>
+                        <tbody id="tabela-atendimentos-body" class="divide-y divide-slate-100"><tr><td colspan="5" class="px-6 py-8 text-center text-slate-400">Carregando...</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+            <p class="text-xs text-slate-400 mt-2 text-center" id="contador-atendimentos">Carregando...</p>
+        </div>
+
+        <!-- MODAL DETALHE ATENDIMENTO -->
+        <div id="modal-backdrop-detalhe" class="fixed inset-0 bg-black/60 z-[70] hidden flex items-center justify-center p-4 backdrop-blur-sm">
+            <div id="view-detalhe-atendimento" class="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-3xl overflow-hidden max-h-[90vh] flex flex-col transform transition-all">
+                <div class="bg-slate-50 px-6 py-4 border-b border-slate-200 flex justify-between items-center shrink-0">
+                    <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2"><i data-lucide="file-text" class="text-blue-600 w-5 h-5"></i> Detalhes do Atendimento</h2>
+                    <button onclick="fecharDetalhe()" class="text-slate-400 hover:text-slate-600 transition"><i data-lucide="x" class="w-6 h-6"></i></button>
+                </div>
+                <div class="p-6 md:p-8 overflow-y-auto">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+                        <div class="md:col-span-2 bg-blue-50 p-4 rounded-lg border border-blue-100 flex justify-between items-center">
+                            <div>
+                                <span class="block text-xs font-bold text-blue-500 uppercase tracking-wide">Paciente</span>
+                                <span class="text-lg font-bold text-slate-800" id="det-paciente">Nome do Paciente</span>
+                                <span class="text-slate-500 text-xs ml-2" id="det-cpf">CPF: 000...</span>
+                            </div>
+                            <div class="text-right">
+                                <span class="block text-xs font-bold text-blue-500 uppercase tracking-wide">Status</span>
+                                <span class="px-3 py-1 rounded-full text-xs font-bold bg-white border shadow-sm" id="det-status">PENDENTE</span>
+                            </div>
+                        </div>
                         
-                        setRawData({ pacientes: normPacientes, atendimentos: normAtendimentos });
-                        processData(normPacientes, normAtendimentos);
-                    } else {
-                        throw new Error('Formato de dados inválido da API.');
-                    }
-                } catch (err) {
-                    console.error(err);
-                    setError("Não foi possível conectar à planilha. Se estiver testando no Canvas/CodePen, erros de CORS são esperados. No GitHub Pages funcionará.");
-                } finally {
-                    setLoading(false);
-                }
-            };
-
-            const processData = (pacientes, atendimentos) => {
-                const joined = atendimentos.map(att => {
-                    const pacCPF = String(att.cpf_paciente || '').trim();
-                    const pac = pacientes.find(p => String(p.cpf || '').trim() === pacCPF) || {};
-                    
-                    return { 
-                        ...att, 
-                        ...pac, 
-                        id: att.id_atendimento || Math.random(), 
-                    };
-                });
-                setJoinedData(joined);
-            };
-
-            useEffect(() => {
-                if (userMode) fetchData();
-            }, [userMode]);
-
-            // --- CÁLCULO DE PACIENTES ÚNICOS ---
-            const uniquePatients = useMemo(() => {
-                if (!rawData.pacientes) return [];
-                const patientsMap = {};
-                rawData.pacientes.forEach(p => {
-                    const key = String(p.cpf || p.id_paciente).trim(); 
-                    patientsMap[key] = { ...p, historico: [] };
-                });
-                if (rawData.atendimentos) {
-                    rawData.atendimentos.forEach(att => {
-                         const key = String(att.cpf_paciente).trim();
-                         if (patientsMap[key]) {
-                             patientsMap[key].historico.push(att);
-                         }
-                    });
-                }
-                const term = searchTerm.toLowerCase();
-                return Object.values(patientsMap).filter(p => 
-                    (p.nome && String(p.nome).toLowerCase().includes(term)) ||
-                    (p.cpf && String(p.cpf).includes(term)) ||
-                    (p.prontuario && String(p.prontuario).includes(term))
-                );
-            }, [rawData, searchTerm]);
-
-            // --- HANDLERS ---
-
-            const handleLogin = (e) => {
-                e.preventDefault();
-                if (loginPass === 'gabinete123') {
-                    setUserMode('admin');
-                } else {
-                    setLoginError('Senha incorreta');
-                }
-            };
-
-            const startNewEntry = () => {
-                setModalType('CHECK_CPF_FLOW');
-                setCheckCpf('');
-                setIsModalOpen(true);
-            };
-
-            const verifyCpf = () => {
-                if (!checkCpf) return;
-                const found = rawData.pacientes.find(p => String(p.cpf).trim() === checkCpf.trim());
-                
-                if (found) {
-                    // PACIENTE EXISTE
-                    setSelectedPatient(found); // Carrega ele no contexto
-                    setModalType('PATIENT_FOUND_OPTIONS');
-                } else {
-                    // NOVO PACIENTE
-                    setModalType('NEW_PATIENT');
-                    setFormData({ cpf: checkCpf }); // Já preenche o CPF
-                }
-            };
-
-            const handleEditPatient = () => {
-                setModalType('EDIT_PATIENT');
-                setFormData({ ...selectedPatient }); // Carrega dados
-                setIsModalOpen(true);
-            };
-
-            const handleEditAttendance = (attendance) => {
-                setModalType('EDIT_ATTENDANCE');
-                setFormData({ ...attendance }); // Carrega dados
-                setIsModalOpen(true);
-            }
-
-            const handleSave = async () => {
-                setSaving(true);
-                let action = '';
-                let payload = { ...formData };
-
-                if (modalType === 'NEW_PATIENT') action = 'CREATE_PACIENTE';
-                if (modalType === 'EDIT_PATIENT') action = 'UPDATE_PACIENTE';
-                
-                if (modalType === 'NEW_ATTENDANCE') {
-                    action = 'CREATE_ATENDIMENTO';
-                    payload.cpfPaciente = selectedPatient?.cpf;
-                    payload.nomePaciente = selectedPatient?.nome;
-                }
-                if (modalType === 'EDIT_ATTENDANCE') {
-                    action = 'UPDATE_ATENDIMENTO';
-                    // Garante que ID está presente para update
-                    payload.idAtendimento = formData.id_atendimento; 
-                }
-                
-                try {
-                    await fetch(API_URL, {
-                        method: 'POST',
-                        mode: 'no-cors', 
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ action, payload })
-                    });
-                    
-                    setTimeout(() => {
-                        setSaving(false);
-                        setIsModalOpen(false);
-                        alert("Operação realizada! Aguarde a atualização.");
-                        fetchData(); 
-                    }, 2000);
-                    
-                } catch (e) {
-                    alert("Erro ao salvar: " + e.message);
-                    setSaving(false);
-                }
-            };
-
-            const availableYears = useMemo(() => {
-                const years = new Set();
-                joinedData.forEach(item => {
-                    const y = getYear(item.data_abertura);
-                    if (y !== 'Desconhecido') years.add(y);
-                });
-                return Array.from(years).sort().reverse();
-            }, [joinedData]);
-
-            const availableMonths = useMemo(() => {
-                const months = new Set();
-                joinedData.forEach(item => {
-                    if (selectedYear === 'Geral' || getYear(item.data_abertura) === selectedYear) {
-                        const name = getMonthName(item.data_abertura);
-                        if (name !== 'Desconhecido') months.add(name);
-                    }
-                });
-                return Array.from(months).sort((a, b) => (monthOrder[a] || 99) - (monthOrder[b] || 99));
-            }, [joinedData, selectedYear]);
-
-            const filteredData = useMemo(() => {
-                let data = joinedData;
-                if (selectedYear !== 'Geral') {
-                    data = data.filter(item => getYear(item.data_abertura) === selectedYear);
-                }
-                if (selectedMonth !== 'Geral') {
-                    data = data.filter(item => getMonthName(item.data_abertura) === selectedMonth);
-                }
-                return data;
-            }, [selectedMonth, selectedYear, joinedData]);
-
-            const stats = useMemo(() => {
-                const total = filteredData.length;
-                const concluidos = filteredData.filter(d => String(d.status).toUpperCase().includes("CONCLUI")).length;
-                const pendentes = filteredData.filter(d => String(d.status).toUpperCase().includes("PENDENTE") || String(d.status).toUpperCase().includes("ANÁLISE")).length;
-                const cancelados = filteredData.filter(d => String(d.status).toUpperCase().includes("CANCELADO")).length;
-                
-                let totalValor = 0;
-                filteredData.forEach(d => {
-                    if (String(d.status).toUpperCase().includes("CONCLUI")) totalValor += getProcedureValue(d.procedimento);
-                });
-
-                let totalDias = 0;
-                let countComDatas = 0;
-                filteredData.forEach(d => {
-                    const dtSolicitacao = parseDate(d.data_abertura);
-                    const dtAtendimento = parseDate(d.data_marcacao);
-                    if (dtSolicitacao && dtAtendimento) {
-                        const diffTime = Math.abs(dtAtendimento - dtSolicitacao);
-                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-                        totalDias += diffDays;
-                        countComDatas++;
-                    }
-                });
-                const mediaDias = countComDatas > 0 ? (totalDias / countComDatas).toFixed(1) : 0;
-
-                const agg = (field) => filteredData.reduce((acc, curr) => {
-                    const k = curr[field] || 'N/I';
-                    acc[k] = (acc[k] || 0) + 1;
-                    return acc;
-                }, {});
-
-                const chartEsp = Object.keys(agg('especialidade')).map(k => ({ name: k, value: agg('especialidade')[k] })).sort((a,b) => b.value - a.value);
-                const chartBairro = Object.keys(agg('bairro')).map(k => ({ name: k, value: agg('bairro')[k] })).sort((a,b) => b.value - a.value);
-                
-                const m = filteredData.filter(d => String(d.sexo).toUpperCase().startsWith('M')).length;
-                const f = filteredData.filter(d => String(d.sexo).toUpperCase().startsWith('F')).length;
-                const totalS = m + f || 1;
-
-                return { total, concluidos, pendentes, cancelados, totalValor, pctM: Math.round(m/totalS*100), pctF: Math.round(f/totalS*100), chartEsp, chartBairro };
-            }, [filteredData]);
-
-            const reportStats = useMemo(() => {
-                const pendingItems = filteredData.filter(d => {
-                    const st = d.status ? String(d.status).toUpperCase().trim() : "";
-                    if (st.includes("CONCLUI") || st.includes("CONCLUÍ") || st.includes("REALIZADO") || st.includes("CANCELADO")) return false;
-                    const isPendente = st.includes("PENDENTE") || st.includes("ANÁLISE") || st.includes("ANALISE");
-                    return isPendente || !d.data_marcacao;
-                });
-
-                const hoje = new Date(); 
-                const faixas = { "0-15 dias": 0, "16-30 dias": 0, "+30 dias": 0 };
-                const tempoPorEsp = {};
-                
-                pendingItems.forEach(item => {
-                    const dtSolicitacao = parseDate(item.data_abertura);
-                    if (!dtSolicitacao) return;
-                    const diffTime = Math.abs(hoje - dtSolicitacao);
-                    const diasEspera = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                    
-                    if (diasEspera <= 15) faixas["0-15 dias"]++;
-                    else if (diasEspera <= 30) faixas["16-30 dias"]++;
-                    else faixas["+30 dias"]++;
-                    
-                    const esp = item.especialidade || "Geral";
-                    if (!tempoPorEsp[esp]) tempoPorEsp[esp] = { totalDias: 0, count: 0 };
-                    tempoPorEsp[esp].totalDias += diasEspera;
-                    tempoPorEsp[esp].count += 1;
-                });
-                const chartDataFaixas = Object.keys(faixas).map(k => ({ name: k, value: faixas[k] }));
-                const chartDataTempoEsp = Object.keys(tempoPorEsp).map(k => ({
-                    name: k,
-                    dias: Math.round(tempoPorEsp[k].totalDias / tempoPorEsp[k].count),
-                    qtd: tempoPorEsp[k].count
-                })).sort((a, b) => b.dias - a.dias);
-                
-                return { 
-                    totalPendentes: pendingItems.length, 
-                    chartDataFaixas, 
-                    chartDataTempoEsp, 
-                    pendingItems: pendingItems.sort((a, b) => (parseDate(a.data_abertura) || 0) - (parseDate(b.data_abertura) || 0)) 
-                };
-            }, [filteredData]);
-
-            const partnerStats = useMemo(() => {
-                const stats = {};
-                filteredData.forEach(item => {
-                    const p = item.indicacao || "Não informado";
-                    if (!stats[p]) stats[p] = { total: 0, concluidos: 0, pendentes: 0 };
-                    stats[p].total += 1;
-                    const isConcluido = String(item.status).toUpperCase().includes("CONCLUI");
-                    if (isConcluido) stats[p].concluidos += 1;
-                    else stats[p].pendentes += 1;
-                });
-                const chartDataRanking = Object.keys(stats).map(key => ({
-                    name: key,
-                    value: stats[key].total,
-                    concluidos: stats[key].concluidos,
-                    taxaSucesso: Math.round((stats[key].concluidos / stats[key].total) * 100)
-                })).sort((a, b) => b.value - a.value);
-                
-                const topParceiro = chartDataRanking.length > 0 ? chartDataRanking[0] : { name: "-", value: 0 };
-                return { chartDataRanking, topParceiro };
-            }, [filteredData]);
-
-            const birthdaysToday = useMemo(() => {
-                const today = new Date();
-                return rawData.pacientes.filter(item => {
-                    const birthDate = parseDate(item.data_nascimento);
-                    if (!birthDate) return false;
-                    return birthDate.getDate() === today.getDate() && birthDate.getMonth() === today.getMonth();
-                });
-            }, [rawData]);
-
-            const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
-
-            if (!userMode) {
-                return (
-                    <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
-                        <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
-                            <div className="text-center mb-8"><h1 className="text-3xl font-bold text-slate-800">Gabinete Digital</h1><p className="text-slate-500">Vereador Paulinho Tudo a Ver</p></div>
-                            <div className="space-y-4">
-                                <button onClick={() => setUserMode('visitor')} className="w-full flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 rounded-xl font-medium"><Users size={20}/> Entrar como Visitante</button>
-                                <div className="relative my-6"><div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-200"></div></div><div className="relative flex justify-center text-sm"><span className="px-2 bg-white text-slate-500">Área Administrativa</span></div></div>
-                                <form onSubmit={handleLogin} className="space-y-4">
-                                    <div><label className="block text-sm font-medium text-slate-700 mb-1">Senha de Acesso</label><div className="relative"><Lock className="absolute left-3 top-3 text-slate-400" size={18} /><input type="password" value={loginPass} onChange={e => setLoginPass(e.target.value)} className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none" placeholder="Digite a senha..." /></div>{loginError && <p className="text-red-500 text-sm mt-1">{loginError}</p>}</div>
-                                    <button type="submit" className="w-full flex items-center justify-center gap-2 bg-sky-600 hover:bg-sky-700 text-white py-3 rounded-xl font-bold"><LogIn size={20}/> Acessar Sistema</button>
-                                </form>
-                            </div>
+                        <div><span class="block text-xs font-bold text-slate-400 uppercase">Data Abertura</span><span class="text-slate-800 font-medium" id="det-data">10/10/2024</span></div>
+                        <div><span class="block text-xs font-bold text-slate-400 uppercase">Tipo / Sub-tipo</span><span class="text-slate-800 font-medium" id="det-tipo">CONSULTA - Retorno</span></div>
+                        
+                        <div><span class="block text-xs font-bold text-slate-400 uppercase">Serviço/Especialidade</span><span class="text-slate-800 font-medium" id="det-servico">OFTALMOLOGIA</span></div>
+                        <div><span class="block text-xs font-bold text-slate-400 uppercase">Local</span><span class="text-slate-800 font-medium" id="det-local">CLINICA X</span></div>
+                        
+                        <div><span class="block text-xs font-bold text-slate-400 uppercase">Parceiro</span><span class="text-slate-800 font-medium" id="det-parceiro">DR. JOAO</span></div>
+                        <div><span class="block text-xs font-bold text-slate-400 uppercase">Indicação</span><span class="text-slate-800 font-medium" id="det-indicacao">GABINETE</span></div>
+                        
+                        <div><span class="block text-xs font-bold text-slate-400 uppercase">Data Marcação</span><span class="text-slate-800 font-medium" id="det-marcacao">-</span></div>
+                        <div><span class="block text-xs font-bold text-slate-400 uppercase">Data Risco</span><span class="text-red-600 font-bold" id="det-risco">-</span></div>
+                        
+                        <div class="md:col-span-2 bg-slate-50 p-4 rounded-lg">
+                            <span class="block text-xs font-bold text-slate-400 uppercase mb-1">Observações</span>
+                            <p class="text-slate-600 italic" id="det-obs">Sem observações.</p>
                         </div>
                     </div>
-                );
-            }
 
-            if (loading) return <div className="h-screen flex items-center justify-center bg-slate-50 gap-3"><Loader2 className="animate-spin text-sky-600"/> <span className="text-slate-600">Sincronizando com Google Sheets...</span></div>;
-            
-            if (error) {
-                return (
-                    <div className="h-screen flex flex-col items-center justify-center text-center p-8 bg-slate-50">
-                        <div className="bg-white p-8 rounded-xl shadow-lg border border-red-100 max-w-lg">
-                            <div className="mx-auto w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4 text-red-500"><AlertTriangle size={24}/></div>
-                            <h2 className="text-xl font-bold text-slate-800 mb-2">Conexão Bloqueada (CORS)</h2>
-                            <p className="text-slate-600 mb-4 text-sm">{error}</p>
-                            <p className="text-xs text-slate-400 bg-slate-100 p-3 rounded text-left"><strong>Solução:</strong> Publique este arquivo index.html no GitHub Pages ou Vercel.</p>
-                            <button onClick={() => window.location.reload()} className="mt-6 bg-sky-600 text-white px-6 py-2 rounded-lg hover:bg-sky-700">Tentar Novamente</button>
-                        </div>
+                    <div class="mt-8 pt-6 border-t border-slate-100 flex justify-end gap-3">
+                        <button onclick="fecharDetalhe()" class="px-4 py-2 border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50 font-medium">Fechar</button>
+                        <button id="btn-editar-detalhe" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold shadow-md flex items-center gap-2">
+                            <i data-lucide="edit-3" class="w-4 h-4"></i> Editar Atendimento
+                        </button>
                     </div>
-                );
-            }
-
-            return (
-                <div className="flex h-screen bg-slate-50 font-sans text-slate-800 overflow-hidden">
-                    <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-white transform transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 flex flex-col`}>
-                        <div className="p-6 border-b border-slate-700"><h1 className="text-xl font-bold text-sky-400">Gabinete</h1><p className="text-xs text-slate-400">Paulinho Tudo a Ver</p></div>
-                        <nav className="mt-6 px-4 space-y-2 flex-1">
-                            <NavItem icon={<PieChartIcon/>} label="Dashboard" active={activeTab === 'Dashboard'} onClick={() => setActiveTab('Dashboard')} />
-                            <NavItem icon={<Users/>} label="Pacientes" active={activeTab === 'Pacientes'} onClick={() => {setActiveTab('Pacientes'); setSelectedPatient(null);}} />
-                            <NavItem icon={<Activity/>} label="Relatórios" active={activeTab === 'Relatorios'} onClick={() => setActiveTab('Relatorios')} />
-                            <NavItem icon={<Handshake/>} label="Parceiros" active={activeTab === 'Parceiros'} onClick={() => setActiveTab('Parceiros')} />
-                            <NavItem icon={<Cake/>} label="Aniversariantes" active={activeTab === 'Aniversariantes'} onClick={() => setActiveTab('Aniversariantes')} badge={birthdaysToday.length > 0 ? birthdaysToday.length : null} />
-                        </nav>
-                        <div className="p-6 bg-slate-800 text-xs text-slate-400"><p>Modo: <span className="font-bold text-white uppercase">{userMode}</span></p><button onClick={() => setUserMode(null)} className="mt-2 text-red-400 hover:text-red-300 flex items-center gap-1"><XCircle size={12}/> Sair</button></div>
-                    </aside>
-                    <main className="flex-1 flex flex-col overflow-hidden">
-                        <header className="bg-white shadow-sm p-4 flex justify-between items-center md:hidden z-10"><div className="font-bold text-slate-700">Painel de Atendimentos</div><button onClick={toggleSidebar} className="text-slate-600"><Menu size={24} /></button></header>
-                        <div className="bg-white border-b border-slate-200 px-8 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
-                            <div><h2 className="text-xl font-bold">{activeTab}</h2><p className="text-sm text-slate-500">Gestão Integrada</p></div>
-                            <div className="flex gap-3">
-                                {activeTab === 'Dashboard' && (
-                                    <>
-                                        <select value={selectedYear} onChange={e => setSelectedYear(e.target.value)} className="bg-slate-100 rounded-lg p-2 text-sm"><option value="Geral">Ano: Todos</option>{availableYears.map(y => <option key={y} value={y}>{y}</option>)}</select>
-                                        <select value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)} className="bg-slate-100 rounded-lg p-2 text-sm"><option value="Geral">Mês: Todos</option>{availableMonths.map(m => <option key={m} value={m}>{m}</option>)}</select>
-                                    </>
-                                )}
-                                {activeTab === 'Pacientes' && !selectedPatient && userMode === 'admin' && (
-                                    <button onClick={startNewEntry} className="bg-sky-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-sky-700"><UserPlus size={18}/> Novo Cadastro</button>
-                                )}
-                            </div>
-                        </div>
-                        <div className="flex-1 overflow-auto p-8">
-                            {activeTab === 'Dashboard' && (
-                                <div className="animate-in fade-in duration-500 space-y-6">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-                                        <div className="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-xl p-6 text-white shadow-lg relative overflow-hidden"><div className="relative z-10"><p className="flex items-center gap-2 mb-1 opacity-90"><DollarSign size={18}/> Economia Estimada</p><h3 className="text-4xl font-bold">R$ {stats.totalValor.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</h3></div><DollarSign className="absolute right-0 bottom-0 opacity-10" size={140} /></div>
-                                        <div className="grid grid-cols-2 gap-4"><KpiCard title="Total" value={stats.total} icon={<FileText className="text-blue-500"/>} /><KpiCard title="Concluídos" value={stats.concluidos} icon={<CheckCircle className="text-green-500"/>} borderColor="border-l-4 border-green-500" /><KpiCard title="Pendentes" value={stats.pendentes} icon={<AlertCircle className="text-yellow-500"/>} borderColor="border-l-4 border-yellow-500" /><KpiCard title="Cancelados" value={stats.cancelados} icon={<XCircle className="text-red-500"/>} borderColor="border-l-4 border-red-500" /></div>
-                                        <KpiCard title="Tempo Médio" value={`${stats.mediaDias} dias`} icon={<Clock className="text-indigo-500"/>} borderColor="border-l-4 border-indigo-500" />
-                                    </div>
-                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                        <ChartContainer title="Especialidades"><ScrollableChartContainer height={Math.max(300, stats.chartEsp.length * 40)}><BarChart data={stats.chartEsp} layout="vertical" margin={{left: 40}}><XAxis type="number" hide /><YAxis dataKey="name" type="category" width={100} tick={{fontSize: 11}} /><RechartsTooltip /><Bar dataKey="value" fill={COLORS.primary} radius={[0, 4, 4, 0]} barSize={20} /></BarChart></ScrollableChartContainer></ChartContainer>
-                                        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200"><h3 className="font-bold text-slate-700 mb-4">Demografia</h3><div className="flex justify-center gap-12 items-end h-[220px]"><GenderBody type="male" percentage={stats.pctM} /><GenderBody type="female" percentage={stats.pctF} /></div></div>
-                                    </div>
-                                    <div className="grid grid-cols-1 gap-6 mb-6">
-                                        <ChartContainer title="Distribuição Geográfica (Bairros)"><ScrollableChartContainer height={Math.max(300, stats.chartBairro.length * 40)}><BarChart data={stats.chartBairro} layout="vertical" margin={{top: 20, right: 30, left: 20, bottom: 5}}><CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} /><XAxis type="number" hide /><YAxis dataKey="name" type="category" width={150} tick={{fontSize: 11}} /><RechartsTooltip /><Bar dataKey="value" fill={COLORS.secondary} radius={[0, 4, 4, 0]} barSize={20} /></BarChart></ScrollableChartContainer></ChartContainer>
-                                    </div>
-                                </div>
-                            )}
-                            {activeTab === 'Pacientes' && (
-                                <div className="animate-in fade-in duration-500">
-                                    {!selectedPatient ? (
-                                        <>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6"><div className="bg-white p-4 rounded-xl border border-slate-200 flex items-center gap-4 shadow-sm"><div className="p-3 bg-sky-100 text-sky-600 rounded-full"><Users size={24}/></div><div><p className="text-sm text-slate-500">Pacientes Cadastrados</p><h3 className="text-2xl font-bold">{uniquePatients.length}</h3></div></div><div className="bg-white p-4 rounded-xl border border-slate-200 flex items-center gap-4 shadow-sm"><div className="p-3 bg-indigo-100 text-indigo-600 rounded-full"><FileText size={24}/></div><div><p className="text-sm text-slate-500">Total de Atendimentos</p><h3 className="text-2xl font-bold">{uniquePatients.reduce((acc, p) => acc + p.historico.length, 0)}</h3></div></div></div>
-                                            <div className="mb-6 relative"><Search className="absolute left-3 top-3.5 text-slate-400" size={20} /><input type="text" placeholder="Buscar por Nome, CPF ou Prontuário..." className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-sky-500" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} /></div>
-                                            <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
-                                                <table className="w-full text-sm text-left">
-                                                    <thead className="bg-slate-50 text-xs uppercase text-slate-500"><tr><th className="p-4 w-16 text-center">#</th><th className="p-4">Nome</th><th className="p-4">CPF</th><th className="p-4">Bairro</th><th className="p-4">Telefone</th><th className="p-4">Ação</th></tr></thead>
-                                                    <tbody>
-                                                        {uniquePatients.map((p, index) => (
-                                                            <tr key={p.id_paciente || Math.random()} className="border-b hover:bg-slate-50">
-                                                                <td className="p-4 text-center text-slate-400 font-mono">{index + 1}</td>
-                                                                <td className="p-4 font-medium">{p.nome}</td>
-                                                                <td className="p-4">{p.cpf}</td>
-                                                                <td className="p-4">{p.bairro}</td>
-                                                                <td className="p-4">{p.telefone_1}</td>
-                                                                <td className="p-4"><button onClick={() => setSelectedPatient(p)} className="text-sky-600 font-bold hover:underline">Ficha</button></td>
-                                                            </tr>
-                                                        ))}
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        </>
-                                    ) : (
-                                        <PatientDetail 
-                                            patient={selectedPatient} 
-                                            attendances={joinedData.filter(a => String(a.cpf_paciente).trim() === String(selectedPatient.cpf).trim())} 
-                                            onBack={() => setSelectedPatient(null)} 
-                                            onAddAttendance={() => { setModalType('NEW_ATTENDANCE'); setFormData({}); setIsModalOpen(true); }}
-                                            userMode={userMode}
-                                            onEditPatient={handleEditPatient}
-                                            onEditAttendance={handleEditAttendance}
-                                        />
-                                    )}
-                                </div>
-                            )}
-                            {activeTab === 'Relatorios' && (
-                                <div className="animate-in fade-in duration-500">
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8"><div className="bg-red-50 border border-red-200 p-6 rounded-xl flex items-center gap-4"><div className="p-3 bg-red-100 text-red-600 rounded-full"><AlertTriangle size={24} /></div><div><p className="text-sm text-red-600 font-medium">Total de Pendências</p><h3 className="text-2xl font-bold text-red-800">{reportStats.totalPendentes}</h3></div></div><div className="bg-orange-50 border border-orange-200 p-6 rounded-xl flex items-center gap-4"><div className="p-3 bg-orange-100 text-orange-600 rounded-full"><Clock size={24} /></div><div><p className="text-sm text-orange-600 font-medium">Críticos (+30 dias)</p><h3 className="text-2xl font-bold text-orange-800">{reportStats.chartDataFaixas.find(f => f.name === '+30 dias')?.value || 0}</h3></div></div></div>
-                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                                        <ChartContainer title="Pendências por Tempo"><ResponsiveContainer width="100%" height={300}><BarChart data={reportStats.chartDataFaixas}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="name" /><YAxis /><RechartsTooltip /><Bar dataKey="value" name="Qtd. Pacientes">{reportStats.chartDataFaixas.map((entry, index) => <Cell key={`cell-${index}`} fill={index === 2 ? COLORS.danger : index === 1 ? COLORS.warning : COLORS.success} />)}</Bar></BarChart></ResponsiveContainer></ChartContainer>
-                                        <ChartContainer title="Tempo Médio de Espera (Dias)"><ScrollableChartContainer height={Math.max(300, reportStats.chartDataTempoEsp.length * 40)}><BarChart data={reportStats.chartDataTempoEsp} layout="vertical" margin={{left: 20}}><CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} /><XAxis type="number" /><YAxis dataKey="name" type="category" width={100} tick={{fontSize: 12}} /><RechartsTooltip /><Bar dataKey="dias" fill={COLORS.warning} radius={[0, 4, 4, 0]} barSize={20} /></BarChart></ScrollableChartContainer></ChartContainer>
-                                    </div>
-                                    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden"><div className="px-6 py-4 border-b border-slate-100 bg-slate-50"><h3 className="font-semibold text-slate-800">Fila de Espera Detalhada</h3></div>
-                                        <div className="overflow-x-auto">
-                                            <table className="w-full text-sm text-left">
-                                                <thead className="text-xs text-slate-500 uppercase bg-slate-50"><tr><th className="p-3 w-16 text-center">#</th><th className="p-3">Paciente</th><th className="p-3">Especialidade</th><th className="p-3">Data Abertura</th><th className="p-3">Status</th></tr></thead>
-                                                <tbody>{reportStats.pendingItems.map((item, idx) => (<tr key={item.id} className="border-b hover:bg-slate-50"><td className="p-3 text-center text-slate-400 font-mono">{idx + 1}</td><td className="p-3 font-medium">{item.nome}</td><td className="p-3">{item.especialidade}</td><td className="p-3 font-bold text-red-600">{formatDate(item.data_abertura)}</td><td className="p-3"><StatusBadge status={item.status} /></td></tr>))}</tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                            {activeTab === 'Parceiros' && (
-                                <div className="animate-in fade-in duration-500">
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8"><div className="bg-gradient-to-r from-purple-500 to-indigo-600 rounded-xl p-6 text-white relative overflow-hidden shadow-lg"><div className="relative z-10"><p className="text-purple-100 text-sm font-medium mb-1 flex items-center gap-2"><Trophy size={16} /> Campeão de Indicações</p><h3 className="text-2xl font-bold truncate">{partnerStats.topParceiro.name}</h3><p className="text-3xl font-extrabold mt-2">{partnerStats.topParceiro.value} <span className="text-lg font-normal opacity-80">solicitações</span></p></div><Trophy className="absolute right-0 bottom-0 opacity-10 transform translate-x-4 translate-y-4" size={120} /></div><div className="bg-white border border-slate-200 p-6 rounded-xl flex flex-col justify-center shadow-sm"><p className="text-slate-500 text-sm mb-1">Total de Indicadores</p><div className="flex items-center gap-3"><div className="p-2 bg-slate-100 rounded-lg text-slate-600"><Handshake size={24} /></div><h3 className="text-3xl font-bold text-slate-800">{partnerStats.chartDataRanking.length}</h3></div></div><div className="bg-white border border-slate-200 p-6 rounded-xl flex flex-col justify-center shadow-sm"><p className="text-slate-500 text-sm mb-1">Taxa Média de Sucesso</p><div className="flex items-center gap-3"><div className="p-2 bg-green-100 rounded-lg text-green-600"><TrendingUp size={24} /></div><h3 className="text-3xl font-bold text-slate-800">{Math.round(partnerStats.chartDataRanking.reduce((acc, curr) => acc + curr.taxaSucesso, 0) / (partnerStats.chartDataRanking.length || 1))}%</h3></div></div></div>
-                                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6"><div className="lg:col-span-2"><ChartContainer title="Ranking por Indicação"><ScrollableChartContainer height={Math.max(350, partnerStats.chartDataRanking.length * 40)}><BarChart data={partnerStats.chartDataRanking} layout="vertical" margin={{top: 5, right: 30, left: 40, bottom: 5}}><CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} /><XAxis type="number" /><YAxis dataKey="name" type="category" width={140} tick={{fontSize: 12}} /><RechartsTooltip /><Bar dataKey="value" fill={COLORS.purple} radius={[0, 4, 4, 0]} barSize={25} /></BarChart></ScrollableChartContainer></ChartContainer></div><div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-[400px]"><div className="px-6 py-4 border-b border-slate-100 bg-slate-50 font-semibold text-slate-700">Detalhes de Performance</div><div className="flex-1 overflow-auto custom-scrollbar"><table className="w-full text-sm text-left"><thead className="bg-slate-50 text-xs text-slate-500 uppercase sticky top-0"><tr><th className="px-4 py-3">Indicado Por</th><th className="px-4 py-3 text-right">Total</th><th className="px-4 py-3 text-right">Sucesso</th></tr></thead><tbody className="divide-y divide-slate-100">{partnerStats.chartDataRanking.map((p, idx) => (<tr key={idx} className="hover:bg-slate-50"><td className="px-4 py-3 font-medium text-slate-700 truncate max-w-[120px]" title={p.name}>{p.name}</td><td className="px-4 py-3 text-right">{p.value}</td><td className="px-4 py-3 text-right"><span className={`px-2 py-0.5 rounded text-xs font-bold ${p.taxaSucesso > 70 ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>{p.taxaSucesso}%</span></td></tr>))}</tbody></table></div></div></div>
-                                </div>
-                            )}
-                            {activeTab === 'Aniversariantes' && (
-                                <div className="animate-in fade-in duration-500">
-                                    <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 mb-6 flex flex-col md:flex-row items-center justify-between gap-4"><div className="flex items-center gap-4"><div className="p-4 bg-pink-100 text-pink-600 rounded-full"><Cake size={32} /></div><div><h2 className="text-xl font-bold text-slate-800">Hoje é dia de festa!</h2><p className="text-slate-500">{birthdaysToday.length} paciente(s) fazem aniversário hoje.</p></div></div></div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">{birthdaysToday.map(person => (<div key={person.id_paciente} className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow"><h3 className="font-bold text-lg text-slate-800">{person.nome}</h3><p className="text-sm text-slate-500">{person.bairro}</p><p className="text-xs text-slate-400 mb-4">{person.telefone_1}</p><button className="w-full bg-green-500 text-white py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2"><MessageCircle size={16}/> Parabenizar no Zap</button></div>))}</div>
-                                </div>
-                            )}
-                        </div>
-                    </main>
-                    {isModalOpen && (
-                        <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
-                            <div className="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6">
-                                <div className="flex justify-between items-center mb-6">
-                                    <h3 className="text-xl font-bold">
-                                        {modalType === 'CHECK_CPF_FLOW' && 'Novo Cadastro'}
-                                        {modalType === 'PATIENT_FOUND_OPTIONS' && 'Paciente Encontrado'}
-                                        {(modalType === 'NEW_PATIENT' || modalType === 'EDIT_PATIENT') && 'Dados do Paciente'}
-                                        {(modalType === 'NEW_ATTENDANCE' || modalType === 'EDIT_ATTENDANCE') && 'Dados do Atendimento'}
-                                    </h3>
-                                    <button onClick={() => setIsModalOpen(false)}><X/></button>
-                                </div>
-                                
-                                {modalType === 'CHECK_CPF_FLOW' && (
-                                    <div className="space-y-4">
-                                        <p className="text-slate-600">Informe o CPF do paciente para iniciar:</p>
-                                        <Input label="CPF" value={checkCpf} onChange={v => setCheckCpf(v)} placeholder="000.000.000-00" />
-                                        <button onClick={verifyCpf} className="w-full bg-sky-600 text-white py-3 rounded-lg font-bold hover:bg-sky-700">Verificar CPF</button>
-                                    </div>
-                                )}
-
-                                {modalType === 'PATIENT_FOUND_OPTIONS' && (
-                                    <div className="space-y-4 text-center">
-                                        <div className="p-4 bg-green-50 text-green-800 rounded-lg border border-green-200 mb-4">
-                                            <p className="font-bold text-lg">{selectedPatient.nome}</p>
-                                            <p className="text-sm">CPF: {selectedPatient.cpf}</p>
-                                        </div>
-                                        <p className="text-slate-600 mb-4">O que deseja fazer?</p>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <button onClick={handleEditPatient} className="flex flex-col items-center justify-center gap-2 p-4 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors">
-                                                <Edit className="text-amber-500" size={32}/>
-                                                <span className="font-bold text-slate-700">Editar Cadastro</span>
-                                            </button>
-                                            <button onClick={() => { setModalType('NEW_ATTENDANCE'); setFormData({}); }} className="flex flex-col items-center justify-center gap-2 p-4 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors">
-                                                <Plus className="text-emerald-500" size={32}/>
-                                                <span className="font-bold text-slate-700">Novo Atendimento</span>
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {(modalType === 'NEW_PATIENT' || modalType === 'EDIT_PATIENT') && (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <Input label="Nome Completo" value={formData.nome} onChange={v => setFormData({...formData, nome: v})} />
-                                        <Input label="CPF" value={formData.cpf} onChange={v => setFormData({...formData, cpf: v})} readOnly={modalType === 'EDIT_PATIENT'} />
-                                        <Input label="Telefone 1" value={formData.telefone_1} onChange={v => setFormData({...formData, telefone_1: v})} />
-                                        <Input label="Telefone 2" value={formData.telefone_2} onChange={v => setFormData({...formData, telefone_2: v})} />
-                                        <Input label="Bairro" value={formData.bairro} onChange={v => setFormData({...formData, bairro: v})} />
-                                        <Input label="Logradouro" value={formData.logradouro} onChange={v => setFormData({...formData, logradouro: v})} />
-                                        <Input label="Data Nasc." type="date" value={formData.data_nascimento} onChange={v => setFormData({...formData, data_nascimento: v})} />
-                                        <Input label="SUS" value={formData.sus} onChange={v => setFormData({...formData, sus: v})} />
-                                        <Input label="Título Eleitor" value={formData.titulo} onChange={v => setFormData({...formData, titulo: v})} />
-                                        <div className="flex gap-2">
-                                            <Input label="Zona" className="w-1/2" value={formData.zona} onChange={v => setFormData({...formData, zona: v})} />
-                                            <Input label="Seção" className="w-1/2" value={formData.secao} onChange={v => setFormData({...formData, secao: v})} />
-                                        </div>
-                                        <Input label="Indicação" value={formData.indicacao} onChange={v => setFormData({...formData, indicacao: v})} />
-                                        <Input label="Família" value={formData.familia} onChange={v => setFormData({...formData, familia: v})} />
-                                        <div className="col-span-1 md:col-span-2">
-                                            <label className="block">
-                                                <span className="text-xs font-bold text-slate-500 uppercase">Observações Fixas</span>
-                                                <textarea className="w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-sky-500 outline-none" rows="3" value={formData.observacoes_fixas || ''} onChange={e => setFormData({...formData, observacoes_fixas: e.target.value})}></textarea>
-                                            </label>
-                                        </div>
-                                        <div className="col-span-1 md:col-span-2 flex justify-end gap-3 mt-4">
-                                            <button onClick={handleSave} disabled={saving} className="px-6 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 flex items-center gap-2 disabled:opacity-50">{saving ? <Loader2 className="animate-spin" size={18}/> : <Save size={18}/>} {modalType === 'NEW_PATIENT' ? 'Cadastrar' : 'Atualizar'}</button>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {(modalType === 'NEW_ATTENDANCE' || modalType === 'EDIT_ATTENDANCE') && (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="col-span-2 bg-slate-50 p-3 rounded mb-2 border border-slate-200"><p className="text-sm font-bold text-slate-700">Paciente: {selectedPatient?.nome || formData.nomePaciente}</p></div>
-                                        <Input label="Data Abertura" type="date" value={formData.data_abertura} onChange={v => setFormData({...formData, data_abertura: v})} />
-                                        <Input label="Especialidade" value={formData.especialidade} onChange={v => setFormData({...formData, especialidade: v})} />
-                                        <Input label="Procedimento" value={formData.procedimento} onChange={v => setFormData({...formData, procedimento: v})} />
-                                        <Input label="Local" value={formData.local} onChange={v => setFormData({...formData, local: v})} />
-                                        <Input label="Parceiro Médico" value={formData.parceiro} onChange={v => setFormData({...formData, parceiro: v})} />
-                                        <Input label="Status (Pendente/Concluido)" value={formData.status} onChange={v => setFormData({...formData, status: v})} />
-                                        <Input label="Data Risco Cirúrgico" type="date" value={formData.data_risco} onChange={v => setFormData({...formData, data_risco: v})} />
-                                        <div className="col-span-1 md:col-span-2">
-                                            <label className="block">
-                                                <span className="text-xs font-bold text-slate-500 uppercase">Observações do Atendimento</span>
-                                                <textarea className="w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-sky-500 outline-none" rows="3" value={formData.obs_atendimento || ''} onChange={e => setFormData({...formData, obs_atendimento: e.target.value})}></textarea>
-                                            </label>
-                                        </div>
-                                        <div className="col-span-1 md:col-span-2 flex justify-end gap-3 mt-4">
-                                            <button onClick={handleSave} disabled={saving} className="px-6 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 flex items-center gap-2 disabled:opacity-50">{saving ? <Loader2 className="animate-spin" size={18}/> : <Save size={18}/>} {modalType === 'NEW_ATTENDANCE' ? 'Criar Atendimento' : 'Atualizar Atendimento'}</button>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    )}
                 </div>
-            );
-        }
+            </div>
+        </div>
 
-        const root = createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
+        <div id="view-parceiros" class="hidden fade-in">
+            <div class="flex flex-col md:flex-row justify-between items-end mb-6 gap-4 border-b border-slate-200 pb-6">
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-800 flex items-center gap-2"><i data-lucide="handshake" class="text-emerald-600"></i> Central de Parceiros & Liderança</h2>
+                    <p class="text-slate-500 text-sm">Gestão de produtividade e apoio político</p>
+                </div>
+                <div class="flex flex-wrap gap-2 items-center bg-white p-2 rounded-lg border shadow-sm w-full md:w-auto">
+                    <select id="parc-filter-status" onchange="initParceiros()" class="text-sm border-slate-300 rounded-md border p-1.5 font-medium bg-slate-50">
+                        <option value="">Status: Todos</option>
+                        <option value="PENDENTE">Pendentes</option>
+                        <option value="CONCLUIDO">Concluídos</option>
+                        <option value="CANCELADO">Cancelados</option>
+                    </select>
+                    <select id="parc-filter-mes" onchange="initParceiros()" class="text-sm border-slate-300 rounded-md border p-1.5 bg-slate-50">
+                        <option value="">Mês: Todos</option>
+                        <option value="01">Janeiro</option><option value="02">Fevereiro</option><option value="03">Março</option>
+                        <option value="04">Abril</option><option value="05">Maio</option><option value="06">Junho</option>
+                        <option value="07">Julho</option><option value="08">Agosto</option><option value="09">Setembro</option>
+                        <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
+                    </select>
+                    <select id="parc-filter-ano" onchange="initParceiros()" class="text-sm border-slate-300 rounded-md border p-1.5 bg-slate-50">
+                        <option value="">Ano: Todos</option>
+                    </select>
+                    <button onclick="initParceiros()" class="text-emerald-600 hover:bg-emerald-50 p-2 rounded border border-transparent hover:border-emerald-100"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                    <h3 class="text-sm font-bold text-slate-600 uppercase mb-4">Volume por Parceiro (Execução)</h3>
+                    <div class="h-80">
+                        <canvas id="chartParceirosRanking"></canvas>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex flex-col">
+                    <h3 class="text-sm font-bold text-slate-600 uppercase mb-4 flex justify-between items-center">
+                        <span>Desempenho Lideranças</span>
+                        <span class="text-xs bg-slate-100 px-2 py-1 rounded text-slate-500 normal-case">Ordenado por Total Indicado</span>
+                    </h3>
+                    <div class="overflow-y-auto h-80 pr-2">
+                        <table class="w-full text-left text-sm text-slate-600">
+                            <thead class="bg-slate-50 text-slate-700 uppercase font-bold text-[10px] sticky top-0">
+                                <tr>
+                                    <th class="px-2 py-2">Liderança</th>
+                                    <th class="px-2 py-2 text-center">Total</th>
+                                    <th class="px-2 py-2 text-center text-emerald-600">Atend.</th>
+                                    <th class="px-2 py-2 text-center text-orange-600">Falta</th>
+                                    <th class="px-2 py-2 text-right">%</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabela-lideranca-body" class="divide-y divide-slate-100"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 mb-8">
+                <h3 class="text-sm font-bold text-slate-600 uppercase mb-4">Procedimentos (Filtro Atual)</h3>
+                <div class="h-64">
+                    <canvas id="chartProcedimentosGeral"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-relatorios" class="hidden fade-in">
+            <div class="flex flex-col md:flex-row justify-between items-end mb-6 gap-4 border-b border-slate-200 pb-6">
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-800 flex items-center gap-2"><i data-lucide="bar-chart-2" class="text-indigo-600"></i> Relatórios de Espera</h2>
+                    <p class="text-slate-500 text-sm">Análise de tempo médio de atendimento (em dias)</p>
+                </div>
+                <div class="flex flex-wrap gap-2 items-center bg-white p-2 rounded-lg border shadow-sm w-full md:w-auto">
+                    <select id="rel-filter-status" onchange="atualizarGraficosRelatorios()" class="text-sm border-slate-300 rounded-md border p-1.5 font-medium bg-slate-50">
+                        <option value="">Status: Todos</option>
+                        <option value="PENDENTE">Pendente (Espera Atual)</option>
+                        <option value="CONCLUIDO">Concluído (Tempo Real)</option>
+                    </select>
+                    <select id="rel-filter-mes" onchange="atualizarGraficosRelatorios()" class="text-sm border-slate-300 rounded-md border p-1.5 bg-slate-50">
+                        <option value="">Mês: Todos</option>
+                        <option value="01">Janeiro</option><option value="02">Fevereiro</option><option value="03">Março</option>
+                        <option value="04">Abril</option><option value="05">Maio</option><option value="06">Junho</option>
+                        <option value="07">Julho</option><option value="08">Agosto</option><option value="09">Setembro</option>
+                        <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
+                    </select>
+                    <select id="rel-filter-ano" onchange="atualizarGraficosRelatorios()" class="text-sm border-slate-300 rounded-md border p-1.5 bg-slate-50">
+                        <option value="">Ano: Todos</option>
+                    </select>
+                    <button onclick="initRelatorios()" class="text-indigo-600 hover:bg-indigo-50 p-2 rounded border border-transparent hover:border-indigo-100"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                    <h3 class="text-sm font-bold text-slate-600 uppercase mb-4 border-b pb-2 flex justify-between">
+                        <span>Especialidade</span>
+                        <span class="text-xs font-normal normal-case text-slate-400">Qtd. / Tempo Médio</span>
+                    </h3>
+                    <div id="listaRelEspecialidade" class="flex flex-col gap-3 min-h-[200px]"></div>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                    <h3 class="text-sm font-bold text-slate-600 uppercase mb-4 border-b pb-2 flex justify-between">
+                        <span>Procedimento</span>
+                        <span class="text-xs font-normal normal-case text-slate-400">Qtd. / Tempo Médio</span>
+                    </h3>
+                    <div id="listaRelProcedimento" class="flex flex-col gap-3 min-h-[200px]"></div>
+                </div>
+            </div>
+
+            <div class="flex justify-between items-center mb-4 mt-8">
+                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2"><i data-lucide="alert-triangle" class="text-red-500"></i> Alertas de Risco Próximo</h3>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="overflow-x-auto"><table class="w-full text-left text-sm text-slate-600"><thead class="bg-red-50 text-red-900 uppercase font-bold text-xs border-b border-red-100"><tr><th class="px-6 py-4">Data Risco</th><th class="px-6 py-4">Paciente</th><th class="px-6 py-4">Procedimento/Local</th><th class="px-6 py-4">Status</th><th class="px-6 py-4 text-right">Ação</th></tr></thead><tbody id="tabela-risco-body" class="divide-y divide-slate-100"><tr><td colspan="5" class="px-6 py-8 text-center text-slate-400">Carregando análise de risco...</td></tr></tbody></table></div>
+            </div>
+        </div>
+
+        <!-- VIEW HISTÓRICO PACIENTE -->
+        <div id="view-historico-paciente" class="hidden bg-white rounded-xl shadow-lg border border-slate-200 relative fade-in overflow-hidden">
+            <div class="bg-slate-900 text-white px-6 py-4 border-b border-slate-800 flex justify-between items-center">
+                <h2 class="text-lg font-bold flex items-center gap-2"><i data-lucide="history" class="text-blue-400 w-5 h-5"></i> Histórico do Paciente</h2>
+                <button onclick="voltarInicio()" class="text-slate-400 hover:text-white transition"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div class="p-6 md:p-8">
+                <div id="hist-header" class="mb-8 p-4 bg-slate-50 rounded-lg border border-slate-200 flex flex-col md:flex-row gap-4 justify-between items-center">
+                    <div>
+                        <h3 class="text-xl font-bold text-slate-800" id="hist-nome">Nome do Paciente</h3>
+                        <div class="flex gap-4 text-sm text-slate-500 mt-1"><span id="hist-cpf">CPF: ...</span><span id="hist-tel">Tel: ...</span></div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="abrirEdicaoDireta(histPacienteAtual.cpf, histPacienteAtual.id)" class="bg-white border border-slate-300 text-slate-700 px-4 py-2 rounded-lg hover:bg-slate-50 text-sm font-medium flex items-center gap-2"><i data-lucide="edit-2" class="w-4 h-4"></i> Editar Dados</button>
+                        <button onclick="abrirAtendimentoDireto(histPacienteAtual.cpf, histPacienteAtual.id)" class="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 text-sm font-medium flex items-center gap-2"><i data-lucide="plus" class="w-4 h-4"></i> Novo Atend.</button>
+                    </div>
+                </div>
+                <div class="relative pl-4 border-l-2 border-slate-200 space-y-8" id="hist-timeline"><p class="text-slate-400 text-sm italic pl-4">Carregando histórico...</p></div>
+            </div>
+        </div>
+
+        <!-- FORM PACIENTE -->
+        <div id="view-form-paciente" class="hidden bg-white rounded-xl shadow-lg border border-slate-200 relative fade-in overflow-hidden">
+            <div class="bg-slate-50 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
+                <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2"><i data-lucide="user-plus" class="text-blue-600 w-5 h-5"></i> Ficha de Paciente</h2>
+                <div class="flex gap-2">
+                    <button id="btn-imprimir" onclick="imprimirFicha()" class="hidden text-slate-500 hover:text-blue-600 text-sm border border-slate-300 px-3 py-1 rounded bg-white hover:bg-blue-50 transition items-center gap-1"><i data-lucide="printer" class="w-4 h-4"></i> Imprimir</button>
+                    <button onclick="voltarInicio()" class="text-slate-400 hover:text-slate-600 transition"><i data-lucide="x" class="w-5 h-5"></i></button>
+                </div>
+            </div>
+            <div class="p-6 md:p-8">
+                <form id="frmPaciente" onsubmit="submitPaciente(event)">
+                    <input type="hidden" name="id" id="paciente_id_hidden">
+                    <div class="mb-8 p-6 bg-blue-50 rounded-xl border border-blue-100 shadow-sm">
+                        <label class="block text-sm font-bold text-blue-900 mb-2">1. Informe o CPF para iniciar</label>
+                        <div class="flex gap-3">
+                            <input type="text" name="cpf" id="paciente_cpf_check" placeholder="000.000.000-00" class="flex-1 rounded-lg border-blue-200 border p-3 shadow-sm focus:border-blue-500 outline-none text-lg" onkeydown="if(event.key === 'Enter'){event.preventDefault(); verificarCpfInicial();}">
+                            <button type="button" onclick="verificarCpfInicial()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium shadow-sm transition flex items-center gap-2"><i data-lucide="search" class="w-4 h-4"></i> Verificar</button>
+                        </div>
+                        <p id="msg_cpf_paciente" class="text-sm mt-3 font-medium min-h-[20px] text-blue-800"></p>
+                    </div>
+                    <div id="opcoes-paciente-existente" class="hidden text-center p-8 border-2 border-dashed border-blue-200 rounded-xl bg-slate-50 mb-6 fade-in">
+                        <div class="text-xl text-blue-900 font-bold mb-6">Paciente já cadastrado!</div>
+                        <div class="flex flex-col sm:flex-row gap-4 justify-center max-w-md mx-auto">
+                            <button type="button" onclick="editarPaciente()" class="flex-1 bg-white border border-slate-300 text-slate-700 py-3 px-4 rounded-lg hover:bg-slate-50 font-medium transition shadow-sm flex items-center justify-center gap-2"><i data-lucide="edit-3" class="w-4 h-4"></i> Editar Dados</button>
+                            <button type="button" onclick="irParaAtendimento()" class="flex-1 bg-emerald-600 text-white py-3 px-4 rounded-lg hover:bg-emerald-700 font-bold shadow-md transition flex items-center justify-center gap-2"><i data-lucide="plus-circle" class="w-4 h-4"></i> Criar Atendimento</button>
+                        </div>
+                    </div>
+                    <div id="resto-form-paciente" class="hidden fade-in space-y-8">
+                        <div>
+                            <h3 class="form-section-title">Dados Pessoais</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+                                <div class="md:col-span-8"><label class="label-field">Nome Completo *</label><input type="text" name="nome" id="field_nome" required class="input-field uppercase"></div>
+                                <div class="md:col-span-4"><label class="label-field">Apelido</label><input type="text" name="apelido" id="field_apelido" class="input-field uppercase"></div>
+                                <div class="md:col-span-4"><label class="label-field">Família</label><input type="text" name="familia" id="field_familia" class="input-field uppercase"></div>
+                                <div class="md:col-span-4"><label class="label-field">RG</label><input type="text" name="rg" id="field_rg" class="input-field"></div>
+                                <div class="md:col-span-4"><label class="label-field">Data de Nascimento</label><input type="date" name="nascimento" id="field_nascimento" class="input-field"></div>
+                                <div class="md:col-span-4"><label class="label-field">Sexo</label><select name="sexo" id="field_sexo" class="input-field bg-white"><option value="">Selecione...</option><option value="MASCULINO">Masculino</option><option value="FEMININO">Feminino</option><option value="OUTRO">Outro</option></select></div>
+                                <div class="md:col-span-4"><label class="label-field">WhatsApp *</label><input type="text" name="tel1" id="field_tel1" required class="input-field"></div>
+                                <div class="md:col-span-4"><label class="label-field">Telefone 2</label><input type="text" name="tel2" id="field_tel2" class="input-field"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <h3 class="form-section-title">Endereço</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+                                <div class="md:col-span-3"><label class="label-field">CEP</label><input type="text" name="cep" id="field_cep" class="input-field"></div>
+                                <div class="md:col-span-5" id="container_municipio"></div>
+                                <div class="md:col-span-4" id="container_bairro"></div>
+                                <div class="md:col-span-12"><label class="label-field">Logradouro</label><input type="text" name="logradouro" id="field_logradouro" class="input-field uppercase"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <h3 class="form-section-title">Dados Eleitorais & Extras</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+                                <div class="md:col-span-3"><label class="label-field">Possui SUS?</label><select name="sus" id="field_sus" class="input-field bg-white"><option value="SIM">Sim</option><option value="NAO">Não</option></select></div>
+                                <div class="md:col-span-5"><label class="label-field">Título de Eleitor</label><input type="text" name="titulo" id="field_titulo" class="input-field"></div>
+                                <div class="md:col-span-4" id="container_status_titulo"></div>
+                                <div class="md:col-span-6"><label class="label-field">Vota no Município?</label><select name="municipio_titulo" id="field_municipio_titulo" class="input-field bg-white uppercase"><option value="">Selecione...</option><option value="SIM">SIM</option><option value="NAO">NÃO</option></select></div>
+                                <div class="md:col-span-3"><label class="label-field">Zona</label><input type="text" name="zona" id="field_zona" class="input-field"></div>
+                                <div class="md:col-span-3"><label class="label-field">Seção</label><input type="text" name="secao" id="field_secao" class="input-field"></div>
+                                <div class="md:col-span-12"><label class="label-field">Observações Gerais</label><textarea name="obs" id="field_obs" rows="3" class="input-field uppercase"></textarea></div>
+                            </div>
+                        </div>
+                        <div class="pt-6 border-t border-slate-100">
+                            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all flex justify-center items-center gap-2 transform active:scale-[0.99]"><i data-lucide="save" class="w-5 h-5"></i> Salvar Cadastro</button>
+                        </div>
+                    </div>
+                </form>
+                <div id="loading-paciente" class="loading-overlay absolute inset-0 hidden flex-col items-center justify-center rounded-xl z-10"><div class="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-800 mb-2"></div><p class="text-blue-800 font-medium">Salvando...</p></div>
+            </div>
+        </div>
+
+        <!-- FORM ATENDIMENTO -->
+        <div id="view-form-atendimento" class="hidden bg-white rounded-xl shadow-lg border border-slate-200 relative fade-in overflow-hidden">
+            <div class="bg-slate-50 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
+                <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2"><i data-lucide="clipboard-list" class="text-emerald-600 w-5 h-5"></i> <span id="titulo_form_atend">Novo Atendimento</span></h2>
+                <button onclick="voltarInicio()" class="text-slate-400 hover:text-slate-600 transition"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div class="p-6 md:p-8">
+                <form id="frmAtendimento" onsubmit="submitAtendimento(event)">
+                    <input type="hidden" name="id" id="atend_id_hidden">
+                    <div class="mb-8 p-6 bg-slate-50 rounded-xl border border-slate-200">
+                        <label class="block text-sm font-bold text-slate-700 mb-2">Buscar Paciente</label>
+                        <div class="flex gap-3">
+                            <input type="text" id="busca_cpf" placeholder="Digite o CPF ou Nome..." class="flex-1 rounded-lg border-slate-300 border p-3 shadow-sm focus:border-emerald-500 outline-none text-lg" onkeydown="if(event.key === 'Enter'){event.preventDefault(); buscarPacienteParaAtendimento();}">
+                            <button type="button" onclick="buscarPacienteParaAtendimento()" class="bg-slate-600 text-white px-6 py-2 rounded-lg hover:bg-slate-700 shadow-sm transition"><i data-lucide="search" class="w-5 h-5"></i></button>
+                        </div>
+                        <div id="resultado_busca" class="mt-3 text-sm text-slate-600 h-6 font-medium"></div>
+                        <input type="hidden" name="cpf_paciente" id="hidden_cpf">
+                        <input type="hidden" name="nome_paciente" id="hidden_nome">
+                    </div>
+                    <div id="resto-form-atendimento" class="hidden fade-in space-y-8">
+                        <div>
+                            <h3 class="form-section-title">Detalhes do Serviço</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+                                <div class="md:col-span-3"><label class="label-field">Data Abertura</label><input type="date" name="data_abertura" id="data_abertura" required class="input-field"></div>
+                                <div class="md:col-span-5" id="container_indicacao"></div>
+                                <div class="md:col-span-4"><label class="label-field">Liderança?</label><select name="lideranca" id="field_lideranca" class="input-field bg-white uppercase"><option value="">Selecione...</option><option value="SIM">SIM</option><option value="NAO">NÃO</option></select></div>
+                                <div class="md:col-span-4" id="container_tipo_servico"></div>
+                                <div class="md:col-span-4" id="container_parceiro"></div>
+                                <div class="md:col-span-4" id="container_especialidade"></div>
+                                <div class="md:col-span-6" id="container_procedimento"></div>
+                                <div class="md:col-span-6" id="container_local"></div>
+                                <div class="md:col-span-12" id="container_tipo"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <h3 class="form-section-title">Agendamento & Status</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+                                <div class="md:col-span-3"><label class="label-field">Data Marcação</label><input type="date" name="data_marcacao" id="field_data_marcacao" onchange="calcularDataRisco()" class="input-field"></div>
+                                <div class="md:col-span-3"><label class="label-field">Data Risco (Auto)</label><input type="date" name="data_risco" id="field_data_risco" class="input-field bg-slate-50"></div>
+                                <div class="md:col-span-3"><label class="label-field">Valor (R$)</label><input type="number" step="0.01" name="valor" id="field_valor" class="input-field" placeholder="0,00"></div>
+                                <div class="md:col-span-3" id="container_status_atendimento"></div>
+                                <div class="md:col-span-12"><label class="label-field">Observações do Atendimento</label><textarea name="obs_atendimento" id="field_obs_atendimento" rows="3" class="input-field uppercase"></textarea></div>
+                            </div>
+                        </div>
+                        <div class="pt-6 border-t border-slate-100">
+                            <button type="submit" id="btn-save-atendimento" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all flex justify-center items-center gap-2 transform active:scale-[0.99]"><i data-lucide="check-circle" class="w-5 h-5"></i> <span id="txt_btn_atend">Confirmar Atendimento</span></button>
+                        </div>
+                    </div>
+                </form>
+                 <div id="loading-atendimento" class="loading-overlay absolute inset-0 hidden flex-col items-center justify-center rounded-xl z-10"><div class="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-600 mb-2"></div><p class="text-emerald-800 font-medium">Processando...</p></div>
+            </div>
+        </div>
+        <div id="printable-area" class="hidden"></div>
+        
+        <!-- MODAL LISTA DETALHE RELATORIO (NOVO) -->
+        <div id="modal-lista-relatorio" class="fixed inset-0 bg-black/60 z-[80] hidden flex items-center justify-center p-4 backdrop-blur-sm">
+            <div class="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden max-h-[90vh] flex flex-col animate-fade-in">
+                <div class="bg-slate-50 px-6 py-4 border-b border-slate-200 flex justify-between items-center shrink-0">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-800" id="titulo-modal-relatorio">Detalhes</h2>
+                        <p class="text-xs text-slate-500">Clique no paciente para ver a ficha completa</p>
+                    </div>
+                    <button onclick="document.getElementById('modal-lista-relatorio').classList.add('hidden')" class="text-slate-400 hover:text-slate-600 transition"><i data-lucide="x" class="w-6 h-6"></i></button>
+                </div>
+                <div class="overflow-y-auto flex-1 p-0">
+                    <table class="w-full text-left text-sm text-slate-600">
+                        <thead class="bg-slate-50 text-slate-700 uppercase font-bold text-xs sticky top-0 shadow-sm">
+                            <tr><th class="px-6 py-3">Data Abertura</th><th class="px-6 py-3">Paciente</th><th class="px-6 py-3 text-right">Espera</th></tr>
+                        </thead>
+                        <tbody id="tbody-modal-relatorio" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- CARREGAMENTO DOS SCRIPTS -->
+    <script src="js/config.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/charts.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/main.js"></script>
 </body>
 </html>
