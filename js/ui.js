@@ -1,84 +1,293 @@
-function countByField(arr, field) {
-    const counts = {};
-    arr.forEach(item => {
-        const val = item[field] ? item[field].trim().toUpperCase() : 'N/I';
-        counts[val] = (counts[val] || 0) + 1;
+/**
+ * js/ui.js
+ * Funções de manipulação da interface (DOM), abas, modais e renderização de HTML.
+ */
+
+// ============================================================================
+// 1. NAVEGAÇÃO E ABAS
+// ============================================================================
+
+function switchTab(tabId) {
+    // Rola para o topo sempre que mudar de aba
+    window.scrollTo({ top: 0, behavior: 'instant' });
+
+    // Oculta todas as views
+    const views = [
+        'view-lista-pacientes', 'view-lista-atendimentos', 
+        'view-form-paciente', 'view-form-atendimento', 
+        'view-dashboard', 'view-relatorios', 
+        'view-parceiros', 'view-historico-paciente', 
+        'view-detalhe-atendimento'
+    ];
+    
+    views.forEach(id => {
+        const el = document.getElementById(id);
+        if(el) el.classList.add('hidden');
     });
-    return Object.entries(counts)
-        .sort((a,b) => b[1] - a[1])
-        .slice(0, 10); 
+    
+    // Mostra a view alvo
+    const target = document.getElementById('view-' + tabId);
+    if(target) target.classList.remove('hidden');
+    
+    // Ações específicas ao abrir certas abas
+    if (tabId === 'form-paciente') resetFormPaciente();
+    if (tabId === 'form-atendimento') resetFormAtendimento();
+    
+    if (tabId === 'lista-pacientes') {
+        const listaVisible = !document.getElementById('subview-pacientes-lista').classList.contains('hidden');
+        // Funções de carga (carregarListaPacientes/carregarAniversarios) estão em api.js
+        if(listaVisible && typeof carregarListaPacientes === 'function') carregarListaPacientes();
+        else if (typeof carregarAniversarios === 'function') carregarAniversarios();
+    }
+
+    if (tabId === 'lista-atendimentos' && typeof carregarListaAtendimentos === 'function') carregarListaAtendimentos();
+    if (tabId === 'dashboard' && typeof loadDashboard === 'function') loadDashboard();
+    if (tabId === 'parceiros' && typeof initParceiros === 'function') initParceiros();
+    if (tabId === 'relatorios' && typeof initRelatorios === 'function') initRelatorios();
 }
 
-function createChart(canvasId, type, labels, data, options) {
-    if(chartsInstance[canvasId]) chartsInstance[canvasId].destroy();
-    const ctx = document.getElementById(canvasId).getContext('2d');
-    
-    const bg = type === 'bar' ? options.backgroundColor : options.backgroundColor;
+function voltarInicio() { 
+    switchTab('lista-pacientes'); 
+}
 
-    const defaultDatalabels = {
-        anchor: 'end', 
-        align: 'end',  
-        color: '#64748b', 
-        font: { weight: 'bold', size: 11 },
-        formatter: (value) => value > 0 ? value : '' 
+function alternarSubAbaPacientes(aba) {
+    const listaDiv = document.getElementById('subview-pacientes-lista');
+    const niverDiv = document.getElementById('subview-pacientes-niver');
+    const btnLista = document.getElementById('tab-btn-lista');
+    const btnNiver = document.getElementById('tab-btn-niver');
+    const buscaContainer = document.getElementById('container-busca-pacientes');
+    const filtroNiver = document.getElementById('container-filtro-niver');
+
+    if (aba === 'lista') {
+        listaDiv.classList.remove('hidden');
+        niverDiv.classList.add('hidden');
+        buscaContainer.classList.remove('hidden');
+        filtroNiver.classList.add('hidden');
+        
+        btnLista.className = "text-blue-600 border-b-2 border-blue-600 pb-2 transition-all";
+        btnNiver.className = "text-slate-500 hover:text-blue-500 pb-2 transition-all flex items-center gap-1";
+        
+        if(typeof carregarListaPacientes === 'function') carregarListaPacientes();
+    } else {
+        listaDiv.classList.add('hidden');
+        niverDiv.classList.remove('hidden');
+        buscaContainer.classList.add('hidden');
+        filtroNiver.classList.remove('hidden');
+        filtroNiver.style.display = 'flex';
+
+        btnNiver.className = "text-pink-600 border-b-2 border-pink-600 pb-2 transition-all flex items-center gap-1";
+        btnLista.className = "text-slate-500 hover:text-blue-500 pb-2 transition-all";
+
+        if(typeof carregarAniversarios === 'function') carregarAniversarios();
+    }
+}
+
+// ============================================================================
+// 2. MODAIS E DETALHES
+// ============================================================================
+
+function showMessage(msg, type) {
+    const el = document.getElementById('system-message');
+    el.innerHTML = msg;
+    el.className = `mb-4 p-4 rounded-lg border flex items-center gap-2 ${type === 'error' ? 'bg-red-50 text-red-800 border-red-200' : 'bg-green-50 text-green-800 border-green-200'}`;
+    el.classList.remove('hidden');
+    if(type !== 'error') setTimeout(() => el.classList.add('hidden'), 5000);
+}
+
+function abrirDetalheAtendimento(at) {
+    const backdrop = document.getElementById('modal-backdrop-detalhe');
+    if(!backdrop) return;
+    const innerModal = document.getElementById('view-detalhe-atendimento');
+    innerModal.classList.remove('hidden');
+    backdrop.classList.remove('hidden');
+
+    document.getElementById('det-paciente').innerText = at.nome || '-';
+    document.getElementById('det-cpf').innerText = `CPF: ${at.cpf || '-'}`;
+    document.getElementById('det-status').innerText = at.status || 'PENDENTE';
+    
+    const statusEl = document.getElementById('det-status');
+    statusEl.className = "px-3 py-1 rounded-full text-xs font-bold border shadow-sm " + 
+        (at.status === 'CONCLUIDO' ? 'bg-emerald-100 text-emerald-700' : 
+        (at.status === 'PENDENTE' ? 'bg-amber-100 text-amber-700' : 
+        (at.status === 'CANCELADO' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600')));
+
+    document.getElementById('det-data').innerText = at.data_abertura ? at.data_abertura.split('-').reverse().join('/') : '-';
+    document.getElementById('det-tipo').innerText = (at.tipo_servico || '') + (at.tipo ? ` - ${at.tipo}` : '');
+    document.getElementById('det-servico').innerText = at.especialidade || '-';
+    document.getElementById('det-local').innerText = at.local || '-';
+    document.getElementById('det-parceiro').innerText = at.parceiro || '-';
+    document.getElementById('det-indicacao').innerText = at.indicacao || '-';
+    
+    document.getElementById('det-marcacao').innerText = at.data_marcacao ? at.data_marcacao.split('-').reverse().join('/') : '-';
+    document.getElementById('det-risco').innerText = at.data_risco ? at.data_risco.split('-').reverse().join('/') : '-';
+    document.getElementById('det-obs').innerText = at.obs_atendimento || 'Sem observações.';
+
+    const btnEdit = document.getElementById('btn-editar-detalhe');
+    btnEdit.onclick = function() {
+        fecharDetalhe();
+        abrirEdicaoAtendimento(at);
     };
+}
 
-    const userDatalabels = options.plugins && options.plugins.datalabels ? options.plugins.datalabels : {};
+function fecharDetalhe() {
+    document.getElementById('modal-backdrop-detalhe').classList.add('hidden');
+}
+
+// Modal de Drill-down dos Relatórios
+function abrirListaRelatorio(tipo, index) {
+    if(!window.dadosRelatorioCache || !window.dadosRelatorioCache[tipo]) return;
     
-    const chartOptions = {
-        ...options,
-        layout: {
-            padding: { top: 25, right: 35, left: 0, bottom: 0 }
-        },
-        plugins: {
-            ...options.plugins,
-            datalabels: { ...defaultDatalabels, ...userDatalabels }
+    const dados = window.dadosRelatorioCache[tipo][index];
+    if(!dados) return;
+
+    document.getElementById('modal-lista-relatorio').classList.remove('hidden');
+    document.getElementById('titulo-modal-relatorio').innerText = `${dados.nome} (${dados.qtd})`;
+    
+    const tbody = document.getElementById('tbody-modal-relatorio');
+    tbody.innerHTML = '';
+
+    dados.lista.forEach(at => {
+        const tempId = 'rel_item_' + Math.random().toString(36).substr(2, 9);
+        window[tempId] = at;
+
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-blue-50 cursor-pointer transition border-b border-slate-50";
+        
+        let badgeEspera = "bg-slate-100 text-slate-600";
+        if(at.diasEspera > 90) badgeEspera = "bg-red-100 text-red-700";
+        else if(at.diasEspera > 30) badgeEspera = "bg-orange-100 text-orange-700";
+        else badgeEspera = "bg-green-100 text-green-700";
+
+        tr.innerHTML = `
+            <td class="px-6 py-3 font-mono text-xs text-slate-500">${at.data_abertura ? at.data_abertura.split('-').reverse().join('/') : '-'}</td>
+            <td class="px-6 py-3">
+                <div class="font-bold text-slate-700 text-sm uppercase">${at.nome}</div>
+                <div class="text-xs text-slate-400 flex gap-2">
+                    <span>${at.local || 'Local N/I'}</span>
+                    <span class="text-slate-300">|</span>
+                    <span>CPF: ${at.cpf || '...'}</span>
+                </div>
+            </td>
+            <td class="px-6 py-3 text-right">
+                <span class="${badgeEspera} px-2 py-1 rounded text-xs font-bold">${at.diasEspera} dias</span>
+            </td>
+        `;
+        tr.onclick = () => {
+            document.getElementById('modal-lista-relatorio').classList.add('hidden');
+            abrirDetalheAtendimento(window[tempId]);
+        };
+        tbody.appendChild(tr);
+    });
+}
+
+// ============================================================================
+// 3. RENDERIZAÇÃO DE COMPONENTES E LISTAS
+// ============================================================================
+
+function renderizarSelectsVazios() {
+    // Usa a constante CONFIG_SELECTS definida em config.js
+    if(typeof CONFIG_SELECTS === 'undefined') return;
+    
+    CONFIG_SELECTS.forEach(cfg => {
+        const el = document.getElementById(cfg.container);
+        if(el) {
+            const fieldName = cfg.nameOverride || cfg.id;
+            el.innerHTML = `
+                <label class="label-field">${cfg.label}</label>
+                <div class="relative">
+                    <select id="sel_${cfg.id}" onchange="checkSelectNew('${cfg.id}')" class="input-field bg-white uppercase">
+                        <option value="">Carregando...</option>
+                    </select>
+                    <div id="grp_new_${cfg.id}" class="hidden mt-1 flex gap-1 animate-fade-in">
+                        <input type="text" id="inp_${cfg.id}" placeholder="Digite novo..." class="switched-input flex-1 input-field uppercase">
+                        <button type="button" onclick="cancelSelectNew('${cfg.id}')" class="bg-red-100 text-red-600 px-3 rounded hover:bg-red-200">✕</button>
+                    </div>
+                    <input type="hidden" name="${fieldName}" id="field_${cfg.id}">
+                </div>`;
         }
-    };
-
-    chartsInstance[canvasId] = new Chart(ctx, {
-        type: type,
-        data: {
-            labels: labels,
-            datasets: [{
-                data: data,
-                backgroundColor: bg,
-                borderWidth: 1
-            }]
-        },
-        options: chartOptions,
-        plugins: [ChartDataLabels] 
     });
 }
 
-function renderizarGraficos(atendimentos, pacientes) {
-    const barOptions = { indexAxis: 'y', responsive: true, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true } } };
+function checkSelectNew(id) {
+    const sel = document.getElementById(`sel_${id}`);
+    if (sel.value === '__NEW__') {
+        sel.classList.add('hidden');
+        document.getElementById(`grp_new_${id}`).classList.remove('hidden');
+        document.getElementById(`inp_${id}`).focus();
+        document.getElementById(`field_${id}`).value = '';
+    } else {
+        document.getElementById(`field_${id}`).value = sel.value;
+    }
+}
+
+function cancelSelectNew(id) {
+    const sel = document.getElementById(`sel_${id}`);
+    sel.value = ""; 
+    document.getElementById(`field_${id}`).value = "";
+    sel.classList.remove('hidden'); 
+    document.getElementById(`grp_new_${id}`).classList.add('hidden');
+}
+
+function preencherSelectInteligente(id, valor) {
+    if(!valor) return;
+    const sel = document.getElementById(`sel_${id}`);
+    const hidden = document.getElementById(`field_${id}`);
     
-    const especData = countByField(atendimentos, 'especialidade');
-    createChart('chartEspecialidade', 'bar', especData.map(i=>i[0]), especData.map(i=>i[1]), { ...barOptions, backgroundColor: '#3b82f6' });
-
-    const procData = countByField(atendimentos, 'procedimento');
-    createChart('chartProcedimento', 'bar', procData.map(i=>i[0]), procData.map(i=>i[1]), { ...barOptions, backgroundColor: '#10b981' });
-
-    const localData = countByField(atendimentos, 'local');
-    createChart('chartLocal', 'bar', localData.map(i=>i[0]), localData.map(i=>i[1]), { ...barOptions, backgroundColor: '#8b5cf6' });
-
-    const tipoData = countByField(atendimentos, 'tipo');
-    createChart('chartTipo', 'bar', tipoData.map(i=>i[0]), tipoData.map(i=>i[1]), { ...barOptions, backgroundColor: '#f59e0b' });
-
-    const tituloData = countByField(pacientes, 'status_titulo');
+    hidden.value = valor;
     
-    const towerOptions = { 
-        responsive: true, 
-        maintainAspectRatio: false,
-        plugins: { legend: { display: false } }, 
-        scales: { y: { beginAtZero: true } }     
-    };
+    sel.classList.remove('hidden');
+    document.getElementById(`grp_new_${id}`).classList.add('hidden');
+    
+    let exists = false;
+    for(let i=0; i<sel.options.length; i++) {
+        if(sel.options[i].value.toUpperCase() === valor.toUpperCase()) {
+            sel.selectedIndex = i;
+            exists = true;
+            break;
+        }
+    }
+    
+    if(!exists) {
+        const novaOpcao = new Option(valor, valor, true, true);
+        const lastIndex = sel.options.length - 1;
+        if (lastIndex >= 0 && sel.options[lastIndex].value === '__NEW__') {
+            sel.add(novaOpcao, sel.options[lastIndex]); 
+        } else {
+            sel.add(novaOpcao);
+        }
+        sel.value = valor;
+    }
+}
 
-    createChart('chartTitulo', 'bar', tituloData.map(i=>i[0]), tituloData.map(i=>i[1]), { 
-        ...towerOptions,
-        backgroundColor: ['#22c55e', '#ef4444', '#eab308', '#94a3b8', '#3b82f6']
+function renderizarTabelaPacientes(lista) {
+    const tbody = document.getElementById('tabela-pacientes-body');
+    tbody.innerHTML = '';
+    if(lista.length === 0) { 
+        tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-slate-500">Nenhum registro encontrado.</td></tr>'; 
+        return; 
+    }
+    
+    lista.forEach(p => {
+        const tr = document.createElement('tr');
+        tr.className = "border-b border-slate-100 hover:bg-blue-50 cursor-pointer transition-colors";
+        
+        // Escape simples para segurança no inline onclick (embora o ideal fosse addEventListener)
+        const pStr = JSON.stringify(p).replace(/"/g, '&quot;');
+        
+        tr.innerHTML = `
+            <td class="px-6 py-4 font-medium text-slate-800 uppercase" onclick="verHistoricoCompleto(${pStr})">${p.nome}</td>
+            <td class="px-6 py-4 text-slate-600" onclick="verHistoricoCompleto(${pStr})">${p.cpf || '<span class="text-orange-500 text-xs font-bold px-2 py-1 bg-orange-100 rounded">SEM CPF</span>'}</td>
+            <td class="px-6 py-4 hidden sm:table-cell text-slate-500" onclick="verHistoricoCompleto(${pStr})">${p.tel||'-'}</td>
+            <td class="px-6 py-4 hidden md:table-cell uppercase text-slate-500" onclick="verHistoricoCompleto(${pStr})">${p.municipio||'-'}</td>
+            <td class="px-6 py-4 text-right">
+                <button onclick="event.stopPropagation(); abrirAtendimentoDireto('${p.cpf}','${p.id}')" class="bg-emerald-100 text-emerald-700 p-2 rounded-lg mr-2 hover:bg-emerald-200 transition" title="Novo Atendimento"><i data-lucide="plus" class="w-4 h-4"></i></button>
+                <button onclick="event.stopPropagation(); abrirEdicaoDireta('${p.cpf}','${p.id}')" class="bg-blue-100 text-blue-700 p-2 rounded-lg hover:bg-blue-200 transition" title="Editar"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
+            </td>`;
+        tbody.appendChild(tr);
     });
+    
+    // Atualiza ícones Lucide
+    if(typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 function renderizarTorreGenero(pacientes) {
@@ -97,45 +306,154 @@ function renderizarTorreGenero(pacientes) {
     document.getElementById('val-fem').innerText = fem;
     
     setTimeout(() => {
-        document.getElementById('tower-masc').style.height = `${pMasc}%`;
-        document.getElementById('tower-fem').style.height = `${pFem}%`;
+        const tMasc = document.getElementById('tower-masc');
+        const tFem = document.getElementById('tower-fem');
+        if(tMasc) tMasc.style.height = `${pMasc}%`;
+        if(tFem) tFem.style.height = `${pFem}%`;
     }, 100);
 }
 
-function calcularMetricasTempo(atendimentos) {
-    const hoje = new Date();
-    let totalDiasEspera = 0;
-    let countEspera = 0;
+// ============================================================================
+// 4. CONTROLE DE FORMULÁRIOS
+// ============================================================================
+
+function resetFormPaciente() {
+    document.getElementById('frmPaciente').reset();
+    document.getElementById('paciente_id_hidden').value = "";
+    document.getElementById('msg_cpf_paciente').innerText = '';
+    document.getElementById('opcoes-paciente-existente').classList.add('hidden');
+    document.getElementById('resto-form-paciente').classList.add('hidden');
+    document.getElementById('btn-imprimir').classList.add('hidden');
     
-    let totalDiasMarcacao = 0;
-    let countMarcacao = 0;
-
-    atendimentos.forEach(at => {
-        if(!at.data_abertura) return;
-        const dAbertura = new Date(at.data_abertura);
-        
-        if(at.status === 'PENDENTE') {
-            const diffTime = Math.abs(hoje - dAbertura);
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-            totalDiasEspera += diffDays;
-            countEspera++;
-        } else if (at.data_marcacao) {
-            const dMarcacao = new Date(at.data_marcacao);
-            const diffTime = Math.abs(dMarcacao - dAbertura);
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            
-            totalDiasEspera += diffDays;
-            countEspera++;
-
-            totalDiasMarcacao += diffDays;
-            countMarcacao++;
-        }
+    CONFIG_SELECTS.forEach(cfg => {
+        const sel = document.getElementById(`sel_${cfg.id}`);
+        if(sel && cfg.id !== 'status_atendimento') sel.value = "";
+        cancelSelectNew(cfg.id);
     });
+}
 
-    const mediaEspera = countEspera > 0 ? Math.round(totalDiasEspera / countEspera) : 0;
-    const mediaMarcacao = countMarcacao > 0 ? Math.round(totalDiasMarcacao / countMarcacao) : 0;
+function resetFormAtendimento() {
+    document.getElementById('frmAtendimento').reset();
+    document.getElementById('atend_id_hidden').value = "";
+    document.getElementById('titulo_form_atend').innerText = "Novo Atendimento";
+    document.getElementById('txt_btn_atend').innerText = "Confirmar Atendimento";
+    document.getElementById('resultado_busca').innerText = '';
+    document.getElementById('resto-form-atendimento').classList.add('hidden');
+    document.getElementById('data_abertura').valueAsDate = new Date();
+    
+    CONFIG_SELECTS.forEach(cfg => {
+        const sel = document.getElementById(`sel_${cfg.id}`);
+        if(sel) sel.value = "";
+        cancelSelectNew(cfg.id);
+    });
+}
 
-    document.getElementById('dash-tempo-espera').innerText = mediaEspera;
-    document.getElementById('dash-tempo-marcacao').innerText = mediaMarcacao;
-    document.getElementById('dash-tempo-total').innerText = mediaEspera;
+function mostrarFormularioPaciente(isEdit, dados = null) {
+    document.getElementById('resto-form-paciente').classList.remove('hidden');
+    document.getElementById('opcoes-paciente-existente').classList.add('hidden');
+    
+    const btnPrint = document.getElementById('btn-imprimir');
+    if(isEdit) btnPrint.classList.remove('hidden');
+    else btnPrint.classList.add('hidden');
+
+    if(isEdit && dados) {
+        document.getElementById('paciente_id_hidden').value = dados.id;
+        
+        // Campos de texto simples
+        const fields = ['nome','apelido','familia','rg','nascimento','sexo','tel1','tel2','cep','logradouro','municipio_titulo','zona','secao','obs'];
+        fields.forEach(k => {
+            const el = document.getElementById(`field_${k}`);
+            if(el) el.value = dados[k] || '';
+        });
+
+        // Selects inteligentes
+        ['municipio','bairro','status_titulo'].forEach(k => {
+            preencherSelectInteligente(k, dados[k]);
+        });
+        
+        // Tratamento especial para SUS (Select Simples)
+        const elSus = document.getElementById('field_sus');
+        if(elSus) elSus.value = dados.sus || 'SIM';
+        
+        // Tratamento especial para Título
+        const elTitulo = document.getElementById('field_titulo');
+        if(elTitulo) elTitulo.value = dados.titulo || '';
+    }
+}
+
+function abrirEdicaoDireta(cpf, id) {
+    switchTab('form-paciente');
+    const inputCpf = document.getElementById('paciente_cpf_check');
+    inputCpf.value = cpf || '';
+    
+    // Funções de verificação estão em api.js, mas são chamadas aqui
+    if(cpf && cpf.length > 4 && typeof verificarCpfInicial === 'function') verificarCpfInicial();
+    else if(id && typeof verificarPorId === 'function') verificarPorId(id);
+}
+
+function abrirEdicaoAtendimento(at) {
+    switchTab('form-atendimento');
+    document.getElementById('titulo_form_atend').innerText = "Editar Atendimento";
+    document.getElementById('txt_btn_atend').innerText = "Atualizar Dados";
+    document.getElementById('atend_id_hidden').value = at.id;
+    document.getElementById('busca_cpf').value = at.cpf;
+    document.getElementById('hidden_cpf').value = at.cpf;
+    document.getElementById('hidden_nome').value = at.nome;
+    
+    document.getElementById('resultado_busca').innerHTML = `<span class="text-blue-700 font-bold flex items-center gap-1"><i data-lucide="user" class="w-4 h-4"></i> Editando: ${at.nome}</span>`;
+    document.getElementById('resto-form-atendimento').classList.remove('hidden');
+
+    document.getElementById('data_abertura').value = at.data_abertura || '';
+    document.getElementById('field_lideranca').value = at.lideranca || ''; 
+    document.getElementById('field_tipo').value = at.tipo || ''; // Nota: campo 'tipo' em config é 'sub-tipo' visualmente
+    document.getElementById('field_data_marcacao').value = at.data_marcacao || '';
+    document.getElementById('field_data_risco').value = at.data_risco || '';
+    document.getElementById('field_valor').value = at.valor || '';
+    document.getElementById('field_obs_atendimento').value = at.obs_atendimento || '';
+
+    ['indicacao','tipo_servico','parceiro','especialidade','procedimento','local','tipo','status_atendimento'].forEach(k => {
+        // status_atendimento mapeia para at.status
+        const val = k === 'status_atendimento' ? at.status : at[k];
+        preencherSelectInteligente(k, val);
+    });
+    
+    if(typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+function abrirEdicaoAtendimentoId(id) {
+    // todosAtendimentos é global (definido em config.js)
+    const at = todosAtendimentos.find(x => x.id === id);
+    if(at) abrirEdicaoAtendimento(at);
+}
+
+function abrirAtendimentoDireto(cpf, id) {
+    if(!cpf || cpf.length < 5) { 
+        alert("Paciente sem CPF. Edite o cadastro primeiro."); 
+        abrirEdicaoDireta(cpf, id); 
+        return; 
+    }
+    switchTab('form-atendimento');
+    document.getElementById('busca_cpf').value = cpf;
+    if(typeof buscarPacienteParaAtendimento === 'function') buscarPacienteParaAtendimento();
+}
+
+function calcularDataRisco() {
+    const dataMarcacao = document.getElementById('field_data_marcacao').value;
+    const campoEspec = document.getElementById('field_especialidade'); // Input hidden do select
+    
+    if(!dataMarcacao) return;
+
+    const d = new Date(dataMarcacao);
+    let meses = 3; 
+    
+    // Verifica se é oftalmologia
+    if(campoEspec && campoEspec.value && campoEspec.value.toUpperCase().includes("OFTALMOLOGIA")) {
+        meses = 6;
+    }
+
+    d.setMonth(d.getMonth() + meses);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    document.getElementById('field_data_risco').value = `${yyyy}-${mm}-${dd}`;
 }
