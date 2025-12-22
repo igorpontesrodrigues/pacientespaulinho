@@ -130,7 +130,7 @@ function alternarSubAbaPacientes(aba) {
         niverDiv.classList.add('hidden');
         buscaContainer.classList.remove('hidden');
         filtroNiver.classList.add('hidden');
-        filtroNiver.style.display = 'none'; // CORREÇÃO: Garante que o inline style flex não sobrescreva o hidden
+        filtroNiver.style.display = 'none'; 
 
         btnLista.className = "text-blue-600 border-b-2 border-blue-600 pb-2 transition-all";
         btnNiver.className = "text-slate-500 hover:text-blue-500 pb-2 transition-all flex items-center gap-1";
@@ -244,7 +244,7 @@ function abrirListaRelatorio(tipo, index) {
 }
 
 // ============================================================================
-// 4. IMPRESSÃO DE FICHA EM BRANCO (NOVO)
+// 4. IMPRESSÃO DE FICHA EM BRANCO
 // ============================================================================
 
 function imprimirFichaEmBranco() {
@@ -691,4 +691,85 @@ function confirmarExclusaoAtendimento() {
     if(confirmacao) {
         if(typeof excluirAtendimentoAPI === 'function') excluirAtendimentoAPI(id);
     }
+}
+
+// ============================================================================
+// 7. RELATÓRIO ELEITORAL (NOVO)
+// ============================================================================
+
+function abrirRelatorioEleitoral() {
+    // Verifica se os dados do dashboard já foram carregados
+    if (!dashboardRawData || !dashboardRawData.pacientes) {
+        alert("Dados do dashboard ainda não carregados. Aguarde um momento.");
+        return;
+    }
+
+    const modal = document.getElementById('modal-relatorio-eleitoral');
+    modal.classList.remove('hidden');
+
+    // Popula o select de filtro com os status existentes
+    const statusSet = new Set();
+    dashboardRawData.pacientes.forEach(p => {
+        if(p.status_titulo) statusSet.add(p.status_titulo.trim().toUpperCase());
+    });
+    
+    const sel = document.getElementById('filtro-modal-eleitoral');
+    sel.innerHTML = '<option value="">Todos os Status</option>';
+    Array.from(statusSet).sort().forEach(s => {
+        sel.innerHTML += `<option value="${s}">${s}</option>`;
+    });
+
+    filtrarRelatorioEleitoral();
+}
+
+function filtrarRelatorioEleitoral() {
+    const filtro = document.getElementById('filtro-modal-eleitoral').value;
+    const tbody = document.getElementById('tbody-relatorio-eleitoral');
+    tbody.innerHTML = '';
+
+    const lista = dashboardRawData.pacientes.filter(p => {
+        if (filtro && (!p.status_titulo || p.status_titulo.toUpperCase() !== filtro)) return false;
+        return true;
+    });
+
+    if (lista.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="px-6 py-8 text-center text-slate-400">Nenhum registro encontrado.</td></tr>';
+        document.getElementById('contador-eleitoral').innerText = '0 registros';
+        return;
+    }
+
+    lista.forEach(p => {
+        const tr = document.createElement('tr');
+        tr.className = "border-b border-slate-100 hover:bg-blue-50 transition-colors";
+        
+        let statusColor = "bg-slate-100 text-slate-600";
+        const st = p.status_titulo ? p.status_titulo.toUpperCase() : 'N/I';
+        if (st.includes('REGULAR')) statusColor = "bg-green-100 text-green-700";
+        else if (st.includes('CANCELADO') || st.includes('SUSPENSO')) statusColor = "bg-red-100 text-red-700";
+        else if (st.includes('TRANSFERIDO')) statusColor = "bg-orange-100 text-orange-700";
+
+        // Preparar dados para o clique (visualizar histórico)
+        const pStr = JSON.stringify(p).replace(/"/g, '&quot;');
+
+        tr.innerHTML = `
+            <td class="px-6 py-3">
+                <div class="font-bold text-slate-800 text-sm uppercase cursor-pointer hover:text-blue-600" onclick="verHistoricoCompleto(${pStr})">${p.nome}</div>
+                <div class="text-xs text-slate-400 font-mono">${p.cpf || 'SEM CPF'}</div>
+            </td>
+            <td class="px-6 py-3 text-sm text-slate-600">
+                <div class="flex items-center gap-1"><i data-lucide="phone" class="w-3 h-3"></i> ${p.tel || '-'}</div>
+            </td>
+            <td class="px-6 py-3 text-sm text-slate-600">
+                <div class="uppercase text-xs font-bold">${p.bairro || '-'}</div>
+                <div class="text-[10px] text-slate-400">Bairro</div>
+            </td>
+            <td class="px-6 py-3 text-center">
+                <span class="${statusColor} px-2 py-1 rounded text-[10px] font-bold uppercase border border-black/5">${st}</span>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    document.getElementById('contador-eleitoral').innerText = `${lista.length} registros encontrados`;
+    if(typeof lucide !== 'undefined') lucide.createIcons();
 }
