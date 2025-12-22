@@ -710,7 +710,9 @@ function abrirRelatorioEleitoral() {
     // Popula o select de filtro com os status existentes
     const statusSet = new Set();
     dashboardRawData.pacientes.forEach(p => {
-        if(p.status_titulo) statusSet.add(p.status_titulo.trim().toUpperCase());
+        // Trata vazio/null como "N/I" e garante que "N/I" sempre entre na lista
+        const st = p.status_titulo ? p.status_titulo.trim().toUpperCase() : 'N/I';
+        statusSet.add(st);
     });
     
     const sel = document.getElementById('filtro-modal-eleitoral');
@@ -725,15 +727,30 @@ function abrirRelatorioEleitoral() {
 function filtrarRelatorioEleitoral() {
     const filtro = document.getElementById('filtro-modal-eleitoral').value;
     const tbody = document.getElementById('tbody-relatorio-eleitoral');
+    const theadTr = document.querySelector('#modal-relatorio-eleitoral thead tr');
+    
+    // Atualiza o cabeçalho para ter a coluna de Ação, caso não tenha (prevenção)
+    if(theadTr && theadTr.children.length === 4) {
+        const thAcao = document.createElement('th');
+        thAcao.className = "px-6 py-3 text-right";
+        thAcao.innerText = "Ação";
+        theadTr.appendChild(thAcao);
+    }
+
     tbody.innerHTML = '';
 
     const lista = dashboardRawData.pacientes.filter(p => {
-        if (filtro && (!p.status_titulo || p.status_titulo.toUpperCase() !== filtro)) return false;
+        // Normaliza o status do paciente para N/I se estiver vazio
+        const st = p.status_titulo ? p.status_titulo.trim().toUpperCase() : 'N/I';
+        
+        // Se houver filtro selecionado, compara exatamente
+        if (filtro && st !== filtro) return false;
+        
         return true;
     });
 
     if (lista.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" class="px-6 py-8 text-center text-slate-400">Nenhum registro encontrado.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-slate-400">Nenhum registro encontrado.</td></tr>';
         document.getElementById('contador-eleitoral').innerText = '0 registros';
         return;
     }
@@ -765,6 +782,11 @@ function filtrarRelatorioEleitoral() {
             </td>
             <td class="px-6 py-3 text-center">
                 <span class="${statusColor} px-2 py-1 rounded text-[10px] font-bold uppercase border border-black/5">${st}</span>
+            </td>
+            <td class="px-6 py-3 text-right">
+                <button onclick="document.getElementById('modal-relatorio-eleitoral').classList.add('hidden'); abrirEdicaoDireta('${p.cpf}', '${p.id}')" class="text-blue-600 hover:bg-blue-100 p-2 rounded border border-transparent hover:border-blue-200 transition" title="Editar Cadastro">
+                    <i data-lucide="edit-2" class="w-4 h-4"></i>
+                </button>
             </td>
         `;
         tbody.appendChild(tr);
