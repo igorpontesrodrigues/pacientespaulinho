@@ -61,7 +61,7 @@ function aplicarPermissoes() {
         }
     });
 
-    // 3. Travar inputs para visitantes, exceto filtros e buscas
+    // 3. Travar inputs para visitantes
     const inputs = document.querySelectorAll('input, select, textarea');
     inputs.forEach(inp => {
         const id = inp.id || '';
@@ -115,7 +115,7 @@ function switchTab(tabId) {
     if (tabId === 'parceiros' && typeof initParceiros === 'function') initParceiros();
     if (tabId === 'relatorios' && typeof initRelatorios === 'function') initRelatorios();
 
-    // Reaplicar permissões ao trocar de tela para garantir integridade
+    // Reaplicar permissões ao trocar de tela
     if(currentUserRole) aplicarPermissoes();
 }
 
@@ -250,8 +250,79 @@ function abrirListaRelatorio(tipo, index) {
 }
 
 // ============================================================================
-// 4. IMPRESSÃO DE FICHA EM BRANCO
+// 4. IMPRESSÃO E RELATÓRIOS
 // ============================================================================
+
+function imprimirRelatorioEleitoral() {
+    // Verifica se os dados existem
+    if (!dashboardRawData || !dashboardRawData.pacientes) {
+        alert("Aguarde o carregamento dos dados.");
+        return;
+    }
+
+    const printArea = document.getElementById('printable-area');
+    if (!printArea) return;
+
+    // Obtém o filtro atual do modal
+    const filtro = document.getElementById('filtro-modal-eleitoral').value;
+    
+    // Filtra os dados novamente (mesma lógica da tela)
+    const lista = dashboardRawData.pacientes.filter(p => {
+        const st = p.status_titulo ? p.status_titulo.trim().toUpperCase() : 'N/I';
+        if (filtro && st !== filtro) return false;
+        return true;
+    });
+
+    const tituloRelatorio = filtro ? `Relatório Eleitoral - Status: ${filtro}` : 'Relatório Eleitoral - Geral';
+
+    // Gera o HTML para impressão
+    let html = `
+        <div style="font-family: 'Segoe UI', Tahoma, sans-serif; padding: 20px; color: #333;">
+            <div style="text-align: center; border-bottom: 2px solid #333; margin-bottom: 20px; padding-bottom: 10px;">
+                <h1 style="margin: 0; font-size: 18px; text-transform: uppercase;">${tituloRelatorio}</h1>
+                <p style="margin: 5px 0 0; font-size: 12px; color: #666;">Gabinete Paulinho Tudo a Ver | Total: ${lista.length} registros | Emissão: ${new Date().toLocaleString('pt-BR')}</p>
+            </div>
+            <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+                <thead>
+                    <tr style="background-color: #f1f5f9; text-align: left;">
+                        <th style="padding: 8px 5px; border-bottom: 1px solid #ccc;">NOME / CPF</th>
+                        <th style="padding: 8px 5px; border-bottom: 1px solid #ccc;">CONTATO</th>
+                        <th style="padding: 8px 5px; border-bottom: 1px solid #ccc;">LOCALIZAÇÃO</th>
+                        <th style="padding: 8px 5px; border-bottom: 1px solid #ccc; text-align: center;">STATUS</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+
+    if (lista.length === 0) {
+        html += `<tr><td colspan="4" style="padding: 15px; text-align: center; color: #666;">Nenhum registro encontrado.</td></tr>`;
+    } else {
+        lista.forEach((p, index) => {
+            const bg = index % 2 === 0 ? '#fff' : '#f8fafc';
+            const st = p.status_titulo ? p.status_titulo.toUpperCase() : 'N/I';
+            
+            html += `
+                <tr style="background-color: ${bg}; border-bottom: 1px solid #eee;">
+                    <td style="padding: 6px 5px;">
+                        <strong style="text-transform: uppercase;">${p.nome}</strong><br>
+                        ${p.cpf || '-'}
+                    </td>
+                    <td style="padding: 6px 5px;">${p.tel || '-'}</td>
+                    <td style="padding: 6px 5px; text-transform: uppercase;">${p.bairro || '-'}</td>
+                    <td style="padding: 6px 5px; text-align: center; font-weight: bold;">${st}</td>
+                </tr>
+            `;
+        });
+    }
+
+    html += `</tbody></table>
+        <div style="margin-top: 20px; font-size: 10px; text-align: right; color: #999;">Sistema de Gestão Interna</div>
+    </div>`;
+
+    // Insere na área de impressão e chama o comando
+    printArea.innerHTML = html;
+    window.print();
+}
 
 function imprimirFichaEmBranco() {
     const printArea = document.getElementById('printable-area');
