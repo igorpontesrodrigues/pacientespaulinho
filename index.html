@@ -687,6 +687,10 @@
                         <select id="filtro-modal-eleitoral" onchange="filtrarRelatorioEleitoral()" class="text-sm border border-slate-300 rounded-lg px-3 py-1.5 focus:border-blue-500 outline-none">
                             <option value="">Todos os Status</option>
                         </select>
+                        <!-- BOTÃO DE IMPRIMIR ADICIONADO -->
+                        <button onclick="imprimirRelatorioEleitoral()" class="text-slate-500 hover:text-blue-600 transition p-2 rounded hover:bg-slate-100" title="Imprimir Relatório">
+                            <i data-lucide="printer" class="w-5 h-5"></i>
+                        </button>
                         <button onclick="document.getElementById('modal-relatorio-eleitoral').classList.add('hidden')" class="text-slate-400 hover:text-slate-600 transition"><i data-lucide="x" class="w-6 h-6"></i></button>
                     </div>
                 </div>
