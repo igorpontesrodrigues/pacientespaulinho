@@ -5,18 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestão Gabinete - Paulinho Tudo a Ver</title>
     
-    <!-- Bibliotecas Externas -->
+    <!-- BIBLIOTECAS EXTERNAS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
     
-    <!-- Seu CSS Personalizado -->
+    <!-- ESTILOS (CSS) -->
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body class="bg-slate-100 min-h-screen font-sans flex">
 
-    <!-- SIDEBAR -->
+    <!-- BARRA LATERAL (SIDEBAR) -->
     <aside class="w-64 bg-slate-900 text-white fixed h-full left-0 top-0 overflow-y-auto hidden md:flex flex-col z-50 shadow-2xl">
         <div class="p-6 border-b border-slate-800">
             <div class="flex items-center gap-2 font-bold text-xl text-blue-400">
@@ -54,7 +54,7 @@
         </div>
     </aside>
 
-    <!-- MOBILE HEADER -->
+    <!-- CABEÇALHO MOBILE -->
     <div class="md:hidden fixed w-full bg-slate-900 text-white z-50 p-4 flex justify-between items-center shadow-lg">
         <div>
             <div class="font-bold flex items-center gap-2 text-blue-400"><i data-lucide="activity"></i> Paulinho Tudo a Ver</div>
@@ -62,7 +62,7 @@
         <button onclick="document.querySelector('aside').classList.toggle('hidden'); document.querySelector('aside').classList.toggle('flex');" class="text-white"><i data-lucide="menu"></i></button>
     </div>
 
-    <!-- MAIN CONTENT -->
+    <!-- CONTEÚDO PRINCIPAL -->
     <main class="flex-1 md:ml-64 p-6 pt-20 md:pt-6 bg-slate-100 min-h-screen">
         <div id="system-message" class="hidden mb-6 p-4 rounded-lg border text-sm break-words shadow-sm"></div>
 
@@ -120,7 +120,7 @@
                 </div>
             </div>
 
-            <!-- Gráficos Demográficos e Tempos -->
+            <!-- Gráficos -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                 <!-- Torre de Gênero -->
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex flex-col items-center">
@@ -168,7 +168,6 @@
                 </div>
             </div>
 
-            <!-- Rankings e Top 5 -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
                     <h3 class="text-sm font-bold text-slate-600 uppercase mb-4">Especialidades (Top 10)</h3>
@@ -278,8 +277,8 @@
                         <div class="md:col-span-2 bg-blue-50 p-4 rounded-lg border border-blue-100 flex justify-between items-center">
                             <div>
                                 <span class="block text-xs font-bold text-blue-500 uppercase tracking-wide">Paciente</span>
-                                <span class="text-lg font-bold text-slate-800" id="det-paciente">Nome do Paciente</span>
-                                <span class="text-slate-500 text-xs ml-2" id="det-cpf">CPF: 000...</span>
+                                <span class="text-lg font-bold text-slate-800" id="det-paciente">-</span>
+                                <span class="text-slate-500 text-xs ml-2" id="det-cpf">CPF: -</span>
                             </div>
                             <div class="text-right">
                                 <span class="block text-xs font-bold text-blue-500 uppercase tracking-wide">Status</span>
@@ -287,14 +286,14 @@
                             </div>
                         </div>
                         
-                        <div><span class="block text-xs font-bold text-slate-400 uppercase">Data Abertura</span><span class="text-slate-800 font-medium" id="det-data">10/10/2024</span></div>
-                        <div><span class="block text-xs font-bold text-slate-400 uppercase">Tipo / Sub-tipo</span><span class="text-slate-800 font-medium" id="det-tipo">CONSULTA - Retorno</span></div>
+                        <div><span class="block text-xs font-bold text-slate-400 uppercase">Data Abertura</span><span class="text-slate-800 font-medium" id="det-data">-</span></div>
+                        <div><span class="block text-xs font-bold text-slate-400 uppercase">Tipo / Sub-tipo</span><span class="text-slate-800 font-medium" id="det-tipo">-</span></div>
                         
-                        <div><span class="block text-xs font-bold text-slate-400 uppercase">Serviço/Especialidade</span><span class="text-slate-800 font-medium" id="det-servico">OFTALMOLOGIA</span></div>
-                        <div><span class="block text-xs font-bold text-slate-400 uppercase">Local</span><span class="text-slate-800 font-medium" id="det-local">CLINICA X</span></div>
+                        <div><span class="block text-xs font-bold text-slate-400 uppercase">Serviço/Especialidade</span><span class="text-slate-800 font-medium" id="det-servico">-</span></div>
+                        <div><span class="block text-xs font-bold text-slate-400 uppercase">Local</span><span class="text-slate-800 font-medium" id="det-local">-</span></div>
                         
-                        <div><span class="block text-xs font-bold text-slate-400 uppercase">Parceiro</span><span class="text-slate-800 font-medium" id="det-parceiro">DR. JOAO</span></div>
-                        <div><span class="block text-xs font-bold text-slate-400 uppercase">Indicação</span><span class="text-slate-800 font-medium" id="det-indicacao">GABINETE</span></div>
+                        <div><span class="block text-xs font-bold text-slate-400 uppercase">Parceiro</span><span class="text-slate-800 font-medium" id="det-parceiro">-</span></div>
+                        <div><span class="block text-xs font-bold text-slate-400 uppercase">Indicação</span><span class="text-slate-800 font-medium" id="det-indicacao">-</span></div>
                         
                         <div><span class="block text-xs font-bold text-slate-400 uppercase">Data Marcação</span><span class="text-slate-800 font-medium" id="det-marcacao">-</span></div>
                         <div><span class="block text-xs font-bold text-slate-400 uppercase">Data Risco</span><span class="text-red-600 font-bold" id="det-risco">-</span></div>
@@ -577,7 +576,7 @@
         </div>
         <div id="printable-area" class="hidden"></div>
         
-        <!-- MODAL LISTA DETALHE RELATORIO (NOVO) -->
+        <!-- MODAL LISTA DETALHE RELATORIO -->
         <div id="modal-lista-relatorio" class="fixed inset-0 bg-black/60 z-[80] hidden flex items-center justify-center p-4 backdrop-blur-sm">
             <div class="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden max-h-[90vh] flex flex-col animate-fade-in">
                 <div class="bg-slate-50 px-6 py-4 border-b border-slate-200 flex justify-between items-center shrink-0">
