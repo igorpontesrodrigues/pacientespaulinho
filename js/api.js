@@ -380,9 +380,11 @@ async function verificarPorId(id) {
         if(json.found) {
             pacienteAtual = json;
             
-            // CORREÇÃO AQUI: Verifica se o paciente tem CPF antes de mostrar o aviso
+            // CORREÇÃO: Verifica se o paciente tem CPF válido (convertendo para string primeiro)
             const msgElement = document.getElementById('msg_cpf_paciente');
-            if (json.cpf && json.cpf.length > 4) {
+            const cpfStr = json.cpf ? String(json.cpf) : '';
+
+            if (cpfStr.length > 4) {
                 msgElement.innerHTML = `<span class="text-blue-700 font-bold flex items-center gap-1"><i data-lucide="check" class="w-4 h-4"></i> Paciente Encontrado: ${json.nome}</span>`;
             } else {
                 msgElement.innerHTML = `<span class="text-orange-600 font-bold flex items-center gap-1"><i data-lucide="alert-circle" class="w-4 h-4"></i> Editando cadastro sem CPF (ID: ${id})</span>`;
