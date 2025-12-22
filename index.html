@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestão Gabinete - Paulinho Tudo a Ver</title>
     
+    <!-- FAVICON (Ícone da aba) -->
+    <!-- Você pode substituir o href por qualquer URL de imagem .png ou .ico -->
+    <link rel="icon" type="image/png" href="https://img.icons8.com/fluency/48/pulse.png">
+    
     <!-- BIBLIOTECAS EXTERNAS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -14,7 +18,6 @@
     <!-- ESTILOS (CSS) -->
     <link rel="stylesheet" href="css/style.css">
 </head>
-<!-- REMOVIDO 'overflow-hidden' PARA CORRIGIR A ROLAGEM -->
 <body class="bg-slate-100 min-h-screen font-sans flex">
 
     <!-- TELA DE LOGIN -->
@@ -80,6 +83,11 @@
         </nav>
 
         <div id="sidebar-actions" class="p-4 border-t border-slate-800">
+            <!-- NOVO BOTÃO: GERAR FICHA EM BRANCO -->
+            <button onclick="imprimirFichaEmBranco()" class="w-full bg-slate-700 hover:bg-slate-600 text-white py-2 rounded-lg font-bold shadow-md mb-3 flex items-center justify-center gap-2 transition border border-slate-600">
+                <i data-lucide="file-text"></i> Gerar Ficha
+            </button>
+
             <button onclick="switchTab('form-paciente')" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-bold shadow-lg mb-2 flex items-center justify-center gap-2">
                 <i data-lucide="plus"></i> Paciente
             </button>
