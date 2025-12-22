@@ -130,7 +130,8 @@ function alternarSubAbaPacientes(aba) {
         niverDiv.classList.add('hidden');
         buscaContainer.classList.remove('hidden');
         filtroNiver.classList.add('hidden');
-        
+        filtroNiver.style.display = 'none'; // CORREÇÃO: Garante que o inline style flex não sobrescreva o hidden
+
         btnLista.className = "text-blue-600 border-b-2 border-blue-600 pb-2 transition-all";
         btnNiver.className = "text-slate-500 hover:text-blue-500 pb-2 transition-all flex items-center gap-1";
         
