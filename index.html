@@ -14,7 +14,36 @@
     <!-- ESTILOS (CSS) -->
     <link rel="stylesheet" href="css/style.css">
 </head>
-<body class="bg-slate-100 min-h-screen font-sans flex">
+<body class="bg-slate-100 min-h-screen font-sans flex overflow-hidden">
+
+    <!-- TELA DE LOGIN (NOVO) -->
+    <div id="view-login" class="fixed inset-0 z-[100] bg-slate-900 flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden fade-in">
+            <div class="bg-blue-600 p-8 text-center">
+                <i data-lucide="activity" class="w-16 h-16 text-white mx-auto mb-4"></i>
+                <h1 class="text-2xl font-bold text-white">Gestão Gabinete</h1>
+                <p class="text-blue-200 text-sm">Paulinho Tudo a Ver</p>
+            </div>
+            <div class="p-8">
+                <form onsubmit="event.preventDefault(); fazerLogin();" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-bold text-slate-600 mb-1">Senha de Acesso</label>
+                        <input type="password" id="login-senha" placeholder="Digite a senha..." class="w-full border border-slate-300 rounded-lg p-3 outline-none focus:border-blue-500 transition">
+                    </div>
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition shadow-lg">Entrar como Admin</button>
+                    
+                    <div class="relative flex py-2 items-center">
+                        <div class="flex-grow border-t border-slate-200"></div>
+                        <span class="flex-shrink mx-4 text-slate-400 text-xs uppercase">Ou</span>
+                        <div class="flex-grow border-t border-slate-200"></div>
+                    </div>
+
+                    <button type="button" onclick="loginVisitante()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3 rounded-lg transition border border-slate-200">Entrar como Visitante</button>
+                </form>
+                <p id="login-msg" class="text-center text-red-500 text-sm mt-4 font-bold min-h-[20px]"></p>
+            </div>
+        </div>
+    </div>
 
     <!-- BARRA LATERAL (SIDEBAR) -->
     <aside class="w-64 bg-slate-900 text-white fixed h-full left-0 top-0 overflow-y-auto hidden md:flex flex-col z-50 shadow-2xl">
@@ -22,8 +51,13 @@
             <div class="flex items-center gap-2 font-bold text-xl text-blue-400">
                 <i data-lucide="activity"></i> Gestão Saúde
             </div>
-            <p class="text-xs text-slate-400 mt-1 uppercase tracking-wider font-semibold">Paulinho Tudo a Ver</p>
-            <p class="text-[10px] text-slate-500">Vereador de Queimados</p>
+            <div class="flex justify-between items-end">
+                <div>
+                    <p class="text-xs text-slate-400 mt-1 uppercase tracking-wider font-semibold">Paulinho Tudo a Ver</p>
+                    <p class="text-[10px] text-slate-500" id="user-role-display">Carregando...</p>
+                </div>
+                <button onclick="logout()" class="text-xs text-red-400 hover:text-red-300 border border-red-900 bg-red-900/20 px-2 py-1 rounded">Sair</button>
+            </div>
         </div>
 
         <nav class="flex-1 p-4 space-y-1">
@@ -44,7 +78,8 @@
             </button>
         </nav>
 
-        <div class="p-4 border-t border-slate-800">
+        <!-- Botões de Ação (Serão ocultados para visitante via JS) -->
+        <div id="sidebar-actions" class="p-4 border-t border-slate-800">
             <button onclick="switchTab('form-paciente')" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-bold shadow-lg mb-2 flex items-center justify-center gap-2">
                 <i data-lucide="plus"></i> Paciente
             </button>
@@ -57,17 +92,21 @@
     <!-- CABEÇALHO MOBILE -->
     <div class="md:hidden fixed w-full bg-slate-900 text-white z-50 p-4 flex justify-between items-center shadow-lg">
         <div>
-            <div class="font-bold flex items-center gap-2 text-blue-400"><i data-lucide="activity"></i> Paulinho Tudo a Ver</div>
+            <div class="font-bold flex items-center gap-2 text-blue-400"><i data-lucide="activity"></i> Gestão</div>
         </div>
-        <button onclick="document.querySelector('aside').classList.toggle('hidden'); document.querySelector('aside').classList.toggle('flex');" class="text-white"><i data-lucide="menu"></i></button>
+        <div class="flex gap-4">
+            <button onclick="logout()" class="text-xs text-red-400 border border-red-900 px-2 py-1 rounded">Sair</button>
+            <button onclick="document.querySelector('aside').classList.toggle('hidden'); document.querySelector('aside').classList.toggle('flex');" class="text-white"><i data-lucide="menu"></i></button>
+        </div>
     </div>
 
     <!-- CONTEÚDO PRINCIPAL -->
-    <main class="flex-1 md:ml-64 p-6 pt-20 md:pt-6 bg-slate-100 min-h-screen">
+    <main class="flex-1 md:ml-64 p-6 pt-20 md:pt-6 bg-slate-100 min-h-screen overflow-y-auto">
         <div id="system-message" class="hidden mb-6 p-4 rounded-lg border text-sm break-words shadow-sm"></div>
 
         <!-- DASHBOARD -->
-        <div id="view-dashboard" class="fade-in">
+        <div id="view-dashboard" class="hidden fade-in">
+            <!-- (Conteúdo Dashboard igual, apenas escondido inicialmente) -->
             <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
                 <h2 class="text-2xl font-bold text-slate-800">Dashboard Analítico</h2>
                 
@@ -92,7 +131,6 @@
                 </div>
             </div>
 
-            <!-- KPIs -->
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
                     <div class="flex justify-between items-start">
@@ -120,9 +158,7 @@
                 </div>
             </div>
 
-            <!-- Gráficos -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                <!-- Torre de Gênero -->
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex flex-col items-center">
                     <h3 class="text-sm font-bold text-slate-600 uppercase mb-6 w-full text-center border-b pb-2">Distribuição por Sexo</h3>
                     <div class="flex gap-8 items-end">
@@ -143,7 +179,6 @@
                     </div>
                 </div>
 
-                <!-- Título de Eleitor -->
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
                     <h3 class="text-sm font-bold text-slate-600 uppercase mb-4 w-full text-center border-b pb-2">Situação Eleitoral</h3>
                     <div class="h-64 relative">
@@ -151,7 +186,6 @@
                     </div>
                 </div>
 
-                <!-- Tempos Médios -->
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-center gap-4">
                     <h3 class="text-sm font-bold text-slate-600 uppercase mb-2 w-full text-center border-b pb-2">Eficiência</h3>
                     <div class="text-center">
@@ -306,7 +340,8 @@
 
                     <div class="mt-8 pt-6 border-t border-slate-100 flex justify-end gap-3">
                         <button onclick="fecharDetalhe()" class="px-4 py-2 border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50 font-medium">Fechar</button>
-                        <button id="btn-editar-detalhe" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold shadow-md flex items-center gap-2">
+                        <!-- Botão Editar apenas para Admin (Via JS) -->
+                        <button id="btn-editar-detalhe" class="btn-action px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold shadow-md flex items-center gap-2">
                             <i data-lucide="edit-3" class="w-4 h-4"></i> Editar Atendimento
                         </button>
                     </div>
@@ -315,7 +350,8 @@
         </div>
 
         <div id="view-parceiros" class="hidden fade-in">
-            <div class="flex flex-col md:flex-row justify-between items-end mb-6 gap-4 border-b border-slate-200 pb-6">
+             <!-- (Conteúdo Parceiros) -->
+             <div class="flex flex-col md:flex-row justify-between items-end mb-6 gap-4 border-b border-slate-200 pb-6">
                 <div>
                     <h2 class="text-2xl font-bold text-slate-800 flex items-center gap-2"><i data-lucide="handshake" class="text-emerald-600"></i> Central de Parceiros & Liderança</h2>
                     <p class="text-slate-500 text-sm">Gestão de produtividade e apoio político</p>
@@ -344,11 +380,8 @@
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
                     <h3 class="text-sm font-bold text-slate-600 uppercase mb-4">Volume por Parceiro (Execução)</h3>
-                    <div class="h-80">
-                        <canvas id="chartParceirosRanking"></canvas>
-                    </div>
+                    <div class="h-80"><canvas id="chartParceirosRanking"></canvas></div>
                 </div>
-
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex flex-col">
                     <h3 class="text-sm font-bold text-slate-600 uppercase mb-4 flex justify-between items-center">
                         <span>Desempenho Lideranças</span>
@@ -373,13 +406,12 @@
 
             <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 mb-8">
                 <h3 class="text-sm font-bold text-slate-600 uppercase mb-4">Procedimentos (Filtro Atual)</h3>
-                <div class="h-64">
-                    <canvas id="chartProcedimentosGeral"></canvas>
-                </div>
+                <div class="h-64"><canvas id="chartProcedimentosGeral"></canvas></div>
             </div>
         </div>
 
         <div id="view-relatorios" class="hidden fade-in">
+            <!-- (Conteúdo Relatórios) -->
             <div class="flex flex-col md:flex-row justify-between items-end mb-6 gap-4 border-b border-slate-200 pb-6">
                 <div>
                     <h2 class="text-2xl font-bold text-slate-800 flex items-center gap-2"><i data-lucide="bar-chart-2" class="text-indigo-600"></i> Relatórios de Espera</h2>
@@ -404,7 +436,6 @@
                     <button onclick="initRelatorios()" class="text-indigo-600 hover:bg-indigo-50 p-2 rounded border border-transparent hover:border-indigo-100"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>
                 </div>
             </div>
-
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
                     <h3 class="text-sm font-bold text-slate-600 uppercase mb-4 border-b pb-2 flex justify-between">
@@ -421,7 +452,6 @@
                     <div id="listaRelProcedimento" class="flex flex-col gap-3 min-h-[200px]"></div>
                 </div>
             </div>
-
             <div class="flex justify-between items-center mb-4 mt-8">
                 <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2"><i data-lucide="alert-triangle" class="text-red-500"></i> Alertas de Risco Próximo</h3>
             </div>
@@ -443,8 +473,8 @@
                         <div class="flex gap-4 text-sm text-slate-500 mt-1"><span id="hist-cpf">CPF: ...</span><span id="hist-tel">Tel: ...</span></div>
                     </div>
                     <div class="flex gap-2">
-                        <button onclick="abrirEdicaoDireta(histPacienteAtual.cpf, histPacienteAtual.id)" class="bg-white border border-slate-300 text-slate-700 px-4 py-2 rounded-lg hover:bg-slate-50 text-sm font-medium flex items-center gap-2"><i data-lucide="edit-2" class="w-4 h-4"></i> Editar Dados</button>
-                        <button onclick="abrirAtendimentoDireto(histPacienteAtual.cpf, histPacienteAtual.id)" class="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 text-sm font-medium flex items-center gap-2"><i data-lucide="plus" class="w-4 h-4"></i> Novo Atend.</button>
+                        <button id="btn-hist-editar" onclick="abrirEdicaoDireta(histPacienteAtual.cpf, histPacienteAtual.id)" class="btn-action bg-white border border-slate-300 text-slate-700 px-4 py-2 rounded-lg hover:bg-slate-50 text-sm font-medium flex items-center gap-2"><i data-lucide="edit-2" class="w-4 h-4"></i> Editar Dados</button>
+                        <button id="btn-hist-novo" onclick="abrirAtendimentoDireto(histPacienteAtual.cpf, histPacienteAtual.id)" class="btn-action bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 text-sm font-medium flex items-center gap-2"><i data-lucide="plus" class="w-4 h-4"></i> Novo Atend.</button>
                     </div>
                 </div>
                 <div class="relative pl-4 border-l-2 border-slate-200 space-y-8" id="hist-timeline"><p class="text-slate-400 text-sm italic pl-4">Carregando histórico...</p></div>
@@ -457,6 +487,8 @@
                 <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2"><i data-lucide="user-plus" class="text-blue-600 w-5 h-5"></i> Ficha de Paciente</h2>
                 <div class="flex gap-2">
                     <button id="btn-imprimir" onclick="imprimirFicha()" class="hidden text-slate-500 hover:text-blue-600 text-sm border border-slate-300 px-3 py-1 rounded bg-white hover:bg-blue-50 transition items-center gap-1"><i data-lucide="printer" class="w-4 h-4"></i> Imprimir</button>
+                    <!-- BOTÃO DE EXCLUIR PACIENTE (NOVO) -->
+                    <button id="btn-delete-paciente" onclick="confirmarExclusaoPaciente()" class="hidden text-red-500 hover:text-white hover:bg-red-600 text-sm border border-red-200 px-3 py-1 rounded bg-red-50 transition items-center gap-1 btn-delete"><i data-lucide="trash-2" class="w-4 h-4"></i> Excluir</button>
                     <button onclick="voltarInicio()" class="text-slate-400 hover:text-slate-600 transition"><i data-lucide="x" class="w-5 h-5"></i></button>
                 </div>
             </div>
@@ -474,8 +506,8 @@
                     <div id="opcoes-paciente-existente" class="hidden text-center p-8 border-2 border-dashed border-blue-200 rounded-xl bg-slate-50 mb-6 fade-in">
                         <div class="text-xl text-blue-900 font-bold mb-6">Paciente já cadastrado!</div>
                         <div class="flex flex-col sm:flex-row gap-4 justify-center max-w-md mx-auto">
-                            <button type="button" onclick="editarPaciente()" class="flex-1 bg-white border border-slate-300 text-slate-700 py-3 px-4 rounded-lg hover:bg-slate-50 font-medium transition shadow-sm flex items-center justify-center gap-2"><i data-lucide="edit-3" class="w-4 h-4"></i> Editar Dados</button>
-                            <button type="button" onclick="irParaAtendimento()" class="flex-1 bg-emerald-600 text-white py-3 px-4 rounded-lg hover:bg-emerald-700 font-bold shadow-md transition flex items-center justify-center gap-2"><i data-lucide="plus-circle" class="w-4 h-4"></i> Criar Atendimento</button>
+                            <button type="button" onclick="editarPaciente()" class="btn-action flex-1 bg-white border border-slate-300 text-slate-700 py-3 px-4 rounded-lg hover:bg-slate-50 font-medium transition shadow-sm flex items-center justify-center gap-2"><i data-lucide="edit-3" class="w-4 h-4"></i> Editar Dados</button>
+                            <button type="button" onclick="irParaAtendimento()" class="btn-action flex-1 bg-emerald-600 text-white py-3 px-4 rounded-lg hover:bg-emerald-700 font-bold shadow-md transition flex items-center justify-center gap-2"><i data-lucide="plus-circle" class="w-4 h-4"></i> Criar Atendimento</button>
                         </div>
                     </div>
                     <div id="resto-form-paciente" class="hidden fade-in space-y-8">
@@ -514,7 +546,7 @@
                             </div>
                         </div>
                         <div class="pt-6 border-t border-slate-100">
-                            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all flex justify-center items-center gap-2 transform active:scale-[0.99]"><i data-lucide="save" class="w-5 h-5"></i> Salvar Cadastro</button>
+                            <button type="submit" id="btn-save-paciente" class="btn-action w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all flex justify-center items-center gap-2 transform active:scale-[0.99]"><i data-lucide="save" class="w-5 h-5"></i> Salvar Cadastro</button>
                         </div>
                     </div>
                 </form>
@@ -526,7 +558,11 @@
         <div id="view-form-atendimento" class="hidden bg-white rounded-xl shadow-lg border border-slate-200 relative fade-in overflow-hidden">
             <div class="bg-slate-50 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
                 <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2"><i data-lucide="clipboard-list" class="text-emerald-600 w-5 h-5"></i> <span id="titulo_form_atend">Novo Atendimento</span></h2>
-                <button onclick="voltarInicio()" class="text-slate-400 hover:text-slate-600 transition"><i data-lucide="x" class="w-5 h-5"></i></button>
+                <div class="flex gap-2">
+                    <!-- BOTÃO DE EXCLUIR ATENDIMENTO (NOVO) -->
+                    <button id="btn-delete-atendimento" onclick="confirmarExclusaoAtendimento()" class="hidden text-red-500 hover:text-white hover:bg-red-600 text-sm border border-red-200 px-3 py-1 rounded bg-red-50 transition items-center gap-1 btn-delete"><i data-lucide="trash-2" class="w-4 h-4"></i> Excluir</button>
+                    <button onclick="voltarInicio()" class="text-slate-400 hover:text-slate-600 transition"><i data-lucide="x" class="w-5 h-5"></i></button>
+                </div>
             </div>
             <div class="p-6 md:p-8">
                 <form id="frmAtendimento" onsubmit="submitAtendimento(event)">
@@ -567,7 +603,7 @@
                             </div>
                         </div>
                         <div class="pt-6 border-t border-slate-100">
-                            <button type="submit" id="btn-save-atendimento" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all flex justify-center items-center gap-2 transform active:scale-[0.99]"><i data-lucide="check-circle" class="w-5 h-5"></i> <span id="txt_btn_atend">Confirmar Atendimento</span></button>
+                            <button type="submit" id="btn-save-atendimento" class="btn-action w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all flex justify-center items-center gap-2 transform active:scale-[0.99]"><i data-lucide="check-circle" class="w-5 h-5"></i> <span id="txt_btn_atend">Confirmar Atendimento</span></button>
                         </div>
                     </div>
                 </form>
@@ -576,7 +612,6 @@
         </div>
         <div id="printable-area" class="hidden"></div>
         
-        <!-- MODAL LISTA DETALHE RELATORIO -->
         <div id="modal-lista-relatorio" class="fixed inset-0 bg-black/60 z-[80] hidden flex items-center justify-center p-4 backdrop-blur-sm">
             <div class="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden max-h-[90vh] flex flex-col animate-fade-in">
                 <div class="bg-slate-50 px-6 py-4 border-b border-slate-200 flex justify-between items-center shrink-0">
