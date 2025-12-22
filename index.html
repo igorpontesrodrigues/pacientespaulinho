@@ -5,17 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestão Gabinete - Paulinho Tudo a Ver</title>
     
-    <!-- FAVICON -->
-    <link rel="icon" type="image/png" href="https://img.icons8.com/fluency/48/pulse.png">
+    <!-- FAVICON (Local) -->
+    <link rel="icon" type="image/png" href="favicon.png">
     
-    <!-- BIBLIOTECAS EXTERNAS -->
+    <!-- BIBLIOTECAS EXTERNAS (CDNs mantêm cache normal) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
     
-    <!-- ESTILOS (CSS) -->
-    <link rel="stylesheet" href="css/style.css">
+    <!-- ESTILOS (CSS) COM CACHE BUSTING -->
+    <script>
+        document.write('<link rel="stylesheet" href="css/style.css?v=' + Date.now() + '">');
+    </script>
 </head>
 <body class="bg-slate-100 min-h-screen font-sans flex">
 
@@ -696,6 +698,7 @@
                                 <th class="px-6 py-3">Contato</th>
                                 <th class="px-6 py-3">Localização</th>
                                 <th class="px-6 py-3 text-center">Status</th>
+                                <th class="px-6 py-3 text-right">Ação</th>
                             </tr>
                         </thead>
                         <tbody id="tbody-relatorio-eleitoral" class="divide-y divide-slate-100"></tbody>
@@ -706,11 +709,19 @@
         </div>
     </main>
 
-    <!-- CARREGAMENTO DOS SCRIPTS -->
-    <script src="js/config.js"></script>
-    <script src="js/ui.js"></script>
-    <script src="js/charts.js"></script>
-    <script src="js/api.js"></script>
-    <script src="js/main.js"></script>
+    <!-- SCRIPTS DINÂMICOS (CACHE BUSTING) -->
+    <script>
+        const scripts = [
+            'js/config.js',
+            'js/ui.js',
+            'js/charts.js',
+            'js/api.js',
+            'js/main.js'
+        ];
+        // Adiciona um timestamp único para forçar o download dos scripts
+        scripts.forEach(s => {
+            document.write('<script src="' + s + '?v=' + Date.now() + '"><\/script>');
+        });
+    </script>
 </body>
 </html>
