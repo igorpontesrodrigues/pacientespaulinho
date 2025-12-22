@@ -51,7 +51,14 @@ function aplicarPermissoes() {
     const botoesAcao = document.querySelectorAll('.btn-action, .btn-delete');
     botoesAcao.forEach(btn => {
         if(isVisitor) btn.classList.add('hidden');
-        else btn.classList.remove('hidden'); // Remove hidden se for admin (exceto btn-delete que tem lógica própria)
+        else {
+            // Se for admin, remove hidden, MAS...
+            // Para botões de delete, a lógica de mostrar/esconder é controlada pelas funções de abrir formulário
+            // Então não removemos cegamente o hidden de .btn-delete aqui, deixamos as funções específicas cuidarem disso
+            if(!btn.classList.contains('btn-delete')) {
+                btn.classList.remove('hidden');
+            }
+        }
     });
 
     // 3. Travar inputs para visitantes
@@ -102,7 +109,7 @@ function switchTab(tabId) {
     if (tabId === 'parceiros' && typeof initParceiros === 'function') initParceiros();
     if (tabId === 'relatorios' && typeof initRelatorios === 'function') initRelatorios();
 
-    // Reaplicar permissões ao trocar de tela (para garantir que botões novos fiquem ocultos)
+    // Reaplicar permissões ao trocar de tela
     if(currentUserRole) aplicarPermissoes();
 }
 
@@ -184,7 +191,6 @@ function abrirDetalheAtendimento(at) {
 
     const btnEdit = document.getElementById('btn-editar-detalhe');
     
-    // Controle de Permissão no Modal
     if(currentUserRole === 'VISITOR') {
         btnEdit.classList.add('hidden');
     } else {
@@ -365,7 +371,10 @@ function resetFormPaciente() {
     document.getElementById('opcoes-paciente-existente').classList.add('hidden');
     document.getElementById('resto-form-paciente').classList.add('hidden');
     document.getElementById('btn-imprimir').classList.add('hidden');
-    document.getElementById('btn-delete-paciente').classList.add('hidden'); // Esconde botão excluir ao resetar
+    
+    // Esconde o botão de excluir ao resetar o form (modo novo cadastro)
+    const btnDelete = document.getElementById('btn-delete-paciente');
+    if(btnDelete) btnDelete.classList.add('hidden');
     
     CONFIG_SELECTS.forEach(cfg => {
         const sel = document.getElementById(`sel_${cfg.id}`);
@@ -381,7 +390,11 @@ function resetFormAtendimento() {
     document.getElementById('txt_btn_atend').innerText = "Confirmar Atendimento";
     document.getElementById('resultado_busca').innerText = '';
     document.getElementById('resto-form-atendimento').classList.add('hidden');
-    document.getElementById('btn-delete-atendimento').classList.add('hidden'); // Esconde botão excluir
+    
+    // Esconde botão excluir no modo novo
+    const btnDelete = document.getElementById('btn-delete-atendimento');
+    if(btnDelete) btnDelete.classList.add('hidden');
+    
     document.getElementById('data_abertura').valueAsDate = new Date();
     
     CONFIG_SELECTS.forEach(cfg => {
@@ -400,8 +413,13 @@ function mostrarFormularioPaciente(isEdit, dados = null) {
     
     if(isEdit) {
         btnPrint.classList.remove('hidden');
-        // Só mostra excluir se for Admin
-        if(currentUserRole === 'ADMIN') btnDelete.classList.remove('hidden');
+        // Lógica de visualização do botão de excluir:
+        // Só aparece se for edição E usuário for ADMIN
+        if(currentUserRole === 'ADMIN') {
+            btnDelete.classList.remove('hidden');
+        } else {
+            btnDelete.classList.add('hidden');
+        }
     } else {
         btnPrint.classList.add('hidden');
         btnDelete.classList.add('hidden');
@@ -436,8 +454,13 @@ function abrirEdicaoAtendimento(at) {
     document.getElementById('resultado_busca').innerHTML = `<span class="text-blue-700 font-bold flex items-center gap-1"><i data-lucide="user" class="w-4 h-4"></i> Editando: ${at.nome}</span>`;
     document.getElementById('resto-form-atendimento').classList.remove('hidden');
 
-    // Botão Excluir (Só Admin)
-    if(currentUserRole === 'ADMIN') document.getElementById('btn-delete-atendimento').classList.remove('hidden');
+    // Lógica do botão Excluir Atendimento
+    const btnDelete = document.getElementById('btn-delete-atendimento');
+    if(currentUserRole === 'ADMIN') {
+        btnDelete.classList.remove('hidden');
+    } else {
+        btnDelete.classList.add('hidden');
+    }
 
     document.getElementById('data_abertura').value = at.data_abertura || '';
     document.getElementById('field_lideranca').value = at.lideranca || ''; 
@@ -454,7 +477,7 @@ function abrirEdicaoAtendimento(at) {
     
     if(typeof lucide !== 'undefined') lucide.createIcons();
     
-    // REAPLICA PERMISSÕES (Caso seja Visitante tentando editar via URL/Console)
+    // REAPLICA PERMISSÕES para garantir que inputs fiquem travados se for visitante
     if(currentUserRole === 'VISITOR') aplicarPermissoes();
 }
 
