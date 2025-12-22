@@ -1,24 +1,117 @@
-.loading-overlay { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(4px); }
-input::-webkit-calendar-picker-indicator { opacity: 100; }
-.fade-in { animation: fadeIn 0.3s ease-in; }
-@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-.table-row:hover { background-color: #f8fafc; cursor: pointer; }
-.switched-input { border-color: #2563eb; background-color: #eff6ff; }
+/* * css/style.css
+ * Estilos personalizados do sistema de gestão
+ */
 
-.form-section-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; font-weight: 700; margin-bottom: 0.75rem; padding-bottom: 0.25rem; border-bottom: 1px solid #e2e8f0; }
-.input-field { width: 100%; border-radius: 0.5rem; border: 1px solid #cbd5e1; padding: 0.625rem; font-size: 0.875rem; transition: all 0.2s; }
-.input-field:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); outline: none; }
-.label-field { display: block; font-size: 0.875rem; font-weight: 500; color: #334155; margin-bottom: 0.25rem; }
+/* Overlay de carregamento */
+.loading-overlay { 
+    background: rgba(255, 255, 255, 0.95); 
+    backdrop-filter: blur(4px); 
+}
 
-/* Estilos para o Gráfico de Torre Humano */
-.gender-tower { width: 60px; height: 150px; background: #e2e8f0; border-radius: 999px; position: relative; overflow: hidden; display: flex; align-items: flex-end; justify-content: center; }
-.gender-fill { width: 100%; transition: height 1s ease-in-out; position: absolute; bottom: 0; }
-.gender-icon { z-index: 10; font-size: 24px; margin-bottom: 10px; color: white; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3)); }
+/* Garante visibilidade do ícone de calendário em inputs date */
+input::-webkit-calendar-picker-indicator { 
+    opacity: 100; 
+}
 
+/* Animação de entrada suave */
+.fade-in { 
+    animation: fadeIn 0.3s ease-in; 
+}
+
+@keyframes fadeIn { 
+    from { opacity: 0; transform: translateY(5px); } 
+    to { opacity: 1; transform: translateY(0); } 
+}
+
+/* Estilos de Tabela */
+.table-row:hover { 
+    background-color: #f8fafc; 
+    cursor: pointer; 
+}
+
+/* Input alternativo (para cadastro de novos itens nos selects) */
+.switched-input { 
+    border-color: #2563eb; 
+    background-color: #eff6ff; 
+}
+
+/* Estilos de Formulário */
+.form-section-title { 
+    font-size: 0.75rem; 
+    text-transform: uppercase; 
+    letter-spacing: 0.05em; 
+    color: #64748b; 
+    font-weight: 700; 
+    margin-bottom: 0.75rem; 
+    padding-bottom: 0.25rem; 
+    border-bottom: 1px solid #e2e8f0; 
+}
+
+.input-field { 
+    width: 100%; 
+    border-radius: 0.5rem; 
+    border: 1px solid #cbd5e1; 
+    padding: 0.625rem; 
+    font-size: 0.875rem; 
+    transition: all 0.2s; 
+}
+
+.input-field:focus { 
+    border-color: #2563eb; 
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); 
+    outline: none; 
+}
+
+.label-field { 
+    display: block; 
+    font-size: 0.875rem; 
+    font-weight: 500; 
+    color: #334155; 
+    margin-bottom: 0.25rem; 
+}
+
+/* Estilos para o Gráfico de Torre Humano (Dashboard) */
+.gender-tower { 
+    width: 60px; 
+    height: 150px; 
+    background: #e2e8f0; 
+    border-radius: 999px; 
+    position: relative; 
+    overflow: hidden; 
+    display: flex; 
+    align-items: flex-end; 
+    justify-content: center; 
+}
+
+.gender-fill { 
+    width: 100%; 
+    transition: height 1s ease-in-out; 
+    position: absolute; 
+    bottom: 0; 
+}
+
+.gender-icon { 
+    z-index: 10; 
+    font-size: 24px; 
+    margin-bottom: 10px; 
+    color: white; 
+    filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3)); 
+}
+
+/* Configurações de Impressão */
 @media print {
     body * { visibility: hidden; }
     #printable-area, #printable-area * { visibility: visible; }
-    #printable-area { position: absolute; left: 0; top: 0; width: 100%; padding: 20px; background: white; }
+    #printable-area { 
+        position: absolute; 
+        left: 0; 
+        top: 0; 
+        width: 100%; 
+        padding: 20px; 
+        background: white; 
+    }
+    
+    /* Esconde elementos de navegação na impressão */
     nav, button, aside, .no-print { display: none !important; }
     .bg-slate-100 { background: white !important; }
     main { margin-left: 0 !important; width: 100% !important; padding: 0 !important; }
