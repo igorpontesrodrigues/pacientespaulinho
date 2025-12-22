@@ -768,6 +768,9 @@ function filtrarRelatorioEleitoral() {
         // Preparar dados para o clique (visualizar histórico)
         const pStr = JSON.stringify(p).replace(/"/g, '&quot;');
 
+        // CONTROLE DO BOTÃO DE EDIÇÃO PARA VISITANTES
+        const btnEditClass = currentUserRole === 'VISITOR' ? 'hidden' : '';
+
         tr.innerHTML = `
             <td class="px-6 py-3">
                 <div class="font-bold text-slate-800 text-sm uppercase cursor-pointer hover:text-blue-600" onclick="verHistoricoCompleto(${pStr})">${p.nome}</div>
@@ -784,7 +787,7 @@ function filtrarRelatorioEleitoral() {
                 <span class="${statusColor} px-2 py-1 rounded text-[10px] font-bold uppercase border border-black/5">${st}</span>
             </td>
             <td class="px-6 py-3 text-right">
-                <button onclick="document.getElementById('modal-relatorio-eleitoral').classList.add('hidden'); abrirEdicaoDireta('${p.cpf}', '${p.id}')" class="text-blue-600 hover:bg-blue-100 p-2 rounded border border-transparent hover:border-blue-200 transition" title="Editar Cadastro">
+                <button onclick="document.getElementById('modal-relatorio-eleitoral').classList.add('hidden'); abrirEdicaoDireta('${p.cpf}', '${p.id}')" class="text-blue-600 hover:bg-blue-100 p-2 rounded border border-transparent hover:border-blue-200 transition ${btnEditClass}" title="Editar Cadastro">
                     <i data-lucide="edit-2" class="w-4 h-4"></i>
                 </button>
             </td>
