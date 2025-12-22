@@ -4,14 +4,27 @@
  */
 
 // ============================================================================
+// 0. UTILITÁRIOS DE UI (Loading Dinâmico)
+// ============================================================================
+
+function setLoadingText(loadingId, text) {
+    // O ID do texto é sempre "lbl-" + o ID da div de loading
+    const label = document.getElementById('lbl-' + loadingId);
+    if (label) label.innerText = text;
+}
+
+// ============================================================================
 // 1. FUNÇÕES BASE (FETCH E DEBUG)
 // ============================================================================
 
 async function sendData(action, data, loadingId) {
     const loading = document.getElementById(loadingId);
+    
+    // Define texto para "Salvando..." pois é um envio de dados
+    setLoadingText(loadingId, "Salvando...");
+    
     if(loading) { loading.classList.remove('hidden'); loading.classList.add('flex'); }
     
-    // Converte strings para uppercase, exceto IDs e CPFs e datas
     for(let k in data) {
         if(typeof data[k] === 'string' && !['cpf','id'].includes(k) && !k.includes('data')) {
             data[k] = data[k].toUpperCase();
@@ -41,19 +54,8 @@ async function sendData(action, data, loadingId) {
     }
 }
 
-async function verificarDebug() {
-    showMessage("Testando conexão...", "info");
-    try {
-        const response = await fetch(`${SCRIPT_URL}?action=getFilters`);
-        const result = await response.json();
-        if (result.status === 'success') {
-            const keys = Object.keys(result.data);
-            showMessage(`<b>Sucesso!</b> Chaves: ${keys.join(', ')}`, 'success');
-        } else showMessage(`<b>Erro:</b> ${result.message}`, 'error');
-    } catch (err) { showMessage(`<b>Erro Crítico:</b> ${err}`, 'error'); }
-}
-
 async function carregarFiltros() {
+    // Carregamento silencioso, sem overlay
     const safety = setTimeout(() => {
         if(typeof CONFIG_SELECTS !== 'undefined') {
             CONFIG_SELECTS.forEach(cfg => {
@@ -71,8 +73,7 @@ async function carregarFiltros() {
         clearTimeout(safety);
 
         if (result.status === 'success') {
-            opcoesFiltros = result.data; // Cache global
-            
+            opcoesFiltros = result.data;
             if(typeof CONFIG_SELECTS !== 'undefined') {
                 CONFIG_SELECTS.forEach(cfg => {
                     const lista = opcoesFiltros[cfg.key];
@@ -90,19 +91,13 @@ async function carregarFiltros() {
                         let exists = false;
                         for(let i=0; i<sel.options.length; i++) {
                             if(sel.options[i].value.toUpperCase() === hiddenVal.toUpperCase()) {
-                                sel.selectedIndex = i;
-                                exists = true;
-                                break;
+                                sel.selectedIndex = i; exists = true; break;
                             }
                         }
                         if(!exists) {
                             const novaOpcao = new Option(hiddenVal, hiddenVal, true, true);
                             const lastIndex = sel.options.length - 1;
-                            if (lastIndex >= 0 && sel.options[lastIndex].value === '__NEW__') {
-                                sel.add(novaOpcao, sel.options[lastIndex]); 
-                            } else {
-                                sel.add(novaOpcao);
-                            }
+                            sel.add(novaOpcao, lastIndex >= 0 ? sel.options[lastIndex] : null);
                             sel.value = hiddenVal; 
                         }
                     }
@@ -113,17 +108,17 @@ async function carregarFiltros() {
 }
 
 // ============================================================================
-// 2. PACIENTES E HISTÓRICO
+// 2. PACIENTES E HISTÓRICO COMPLETO
 // ============================================================================
 
 async function carregarListaPacientes() {
     const tbody = document.getElementById('tabela-pacientes-body');
-    if(tbody) tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-slate-400">Carregando...</td></tr>';
+    if(tbody) tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-slate-400">Carregando lista...</td></tr>';
     
     try {
         const res = await fetch(`${SCRIPT_URL}?action=getPatientsList`);
         const json = await res.json();
-        todosPacientes = json.data; // Cache global
+        todosPacientes = json.data;
         if(typeof renderizarTabelaPacientes === 'function') renderizarTabelaPacientes(todosPacientes);
     } catch(e) { 
         if(tbody) tbody.innerHTML = '<tr><td colspan="5" class="text-center text-red-500 py-4">Erro de conexão.</td></tr>'; 
@@ -158,7 +153,6 @@ async function carregarAniversarios() {
 
         json.data.forEach(p => {
             if(p.data_completa && p.data_completa.startsWith('1900')) return;
-
             let statusClass = "text-slate-600";
             let rowClass = "hover:bg-blue-50 cursor-pointer transition-all border-b border-slate-100";
             let statusText = "Futuro";
@@ -198,8 +192,7 @@ async function carregarAniversarios() {
                 const parts = p.data_completa.split('-');
                 if(parts.length === 3) {
                     const ano = parseInt(parts[0]);
-                    if(ano > 1901) dataFmt = `${parts[2]}/${parts[1]}/${parts[0]}`;
-                    else dataFmt = `${parts[2]}/${parts[1]}`; 
+                    if(ano > 1901) dataFmt = `${parts[2]}/${parts[1]}/${parts[0]}`; else dataFmt = `${parts[2]}/${parts[1]}`; 
                 }
             }
 
@@ -225,80 +218,118 @@ async function carregarAniversarios() {
     } catch(e) { tbody.innerHTML = '<tr><td colspan="5" class="text-center text-red-500 py-4">Erro ao carregar.</td></tr>'; }
 }
 
+// FUNÇÃO ATUALIZADA: Busca todos os dados e histórico
 async function verHistoricoCompleto(p) {
-    // Define tanto a variável do histórico quanto a do paciente atual
-    // Isso é CRUCIAL para que os botões de Excluir e Imprimir no histórico saibam quem é o paciente
-    histPacienteAtual = p;
-    pacienteAtual = p;
-    
-    // SwitchTab está em ui.js
     if(typeof switchTab === 'function') switchTab('historico-paciente');
     
+    // Atualiza interface básica enquanto carrega
     document.getElementById('hist-nome').innerText = p.nome;
     document.getElementById('hist-cpf').innerText = p.cpf ? `CPF: ${p.cpf}` : 'SEM CPF REGISTRADO';
     document.getElementById('hist-tel').innerText = `Tel: ${p.tel || '-'}`;
     
-    // Re-checa permissões para garantir que botão excluir apareça apenas para admin
-    if(typeof aplicarPermissoes === 'function') aplicarPermissoes();
+    // Mostra loading nos detalhes
+    const divDetalhes = document.getElementById('hist-detalhes');
+    divDetalhes.innerHTML = '<div class="col-span-3 text-center text-blue-500"><i class="animate-spin inline-block mr-2" data-lucide="loader-2"></i> Carregando dados completos...</div>';
     
     const timeline = document.getElementById('hist-timeline');
     timeline.innerHTML = '<p class="text-slate-400 text-sm italic pl-4">Buscando histórico completo...</p>';
 
+    // Se for Admin, garante que botão excluir está visível
+    const btnHistDelete = document.getElementById('btn-hist-delete');
+    if(btnHistDelete && typeof currentUserRole !== 'undefined') {
+        btnHistDelete.classList.toggle('hidden', currentUserRole !== 'ADMIN');
+    }
+
     try {
-        const res = await fetch(`${SCRIPT_URL}?action=getPatientHistory&cpf=${p.cpf || ''}&nome=${encodeURIComponent(p.nome)}`);
-        const json = await res.json();
-        const history = json.data || [];
+        // 1. Busca DADOS COMPLETOS do paciente (para preencher o cabeçalho do histórico)
+        // Usa o ID se disponível, senão CPF
+        let buscaParam = p.id ? `&busca=${p.id}&tipo=id` : `&busca=${p.cpf}&tipo=cpf`;
+        const resPac = await fetch(`${SCRIPT_URL}?action=findPatient${buscaParam}`);
+        const jsonPac = await resPac.json();
+        
+        let pacienteCompleto = p;
+        if(jsonPac.found) {
+            pacienteCompleto = jsonPac;
+            pacienteAtual = jsonPac; // Atualiza global para edição/exclusão/impressão funcionar com dados frescos
+            histPacienteAtual = jsonPac;
+        } else {
+            pacienteAtual = p;
+            histPacienteAtual = p;
+        }
+
+        // Renderiza os detalhes completos no topo do histórico
+        divDetalhes.innerHTML = `
+            <div><span class="block text-xs font-bold text-slate-400 uppercase">Data Nasc.</span> <span class="font-medium text-slate-800">${pacienteCompleto.nascimento ? pacienteCompleto.nascimento.split('-').reverse().join('/') : '-'}</span></div>
+            <div><span class="block text-xs font-bold text-slate-400 uppercase">RG</span> <span class="font-medium text-slate-800">${pacienteCompleto.rg || '-'}</span></div>
+            <div><span class="block text-xs font-bold text-slate-400 uppercase">Município</span> <span class="font-medium text-slate-800">${pacienteCompleto.municipio || '-'}</span></div>
+            
+            <div><span class="block text-xs font-bold text-slate-400 uppercase">Bairro</span> <span class="font-medium text-slate-800">${pacienteCompleto.bairro || '-'}</span></div>
+            <div class="md:col-span-2"><span class="block text-xs font-bold text-slate-400 uppercase">Endereço</span> <span class="font-medium text-slate-800">${pacienteCompleto.logradouro || '-'}</span></div>
+            
+            <div><span class="block text-xs font-bold text-slate-400 uppercase">Título Eleitor</span> <span class="font-medium text-slate-800">${pacienteCompleto.titulo || '-'}</span></div>
+            <div><span class="block text-xs font-bold text-slate-400 uppercase">Zona/Seção</span> <span class="font-medium text-slate-800">${pacienteCompleto.zona || '-'}/${pacienteCompleto.secao || '-'}</span></div>
+            <div><span class="block text-xs font-bold text-slate-400 uppercase">Família</span> <span class="font-medium text-slate-800">${pacienteCompleto.familia || '-'}</span></div>
+            
+            ${pacienteCompleto.obs ? `<div class="md:col-span-3 mt-2 pt-2 border-t border-slate-100"><span class="block text-xs font-bold text-slate-400 uppercase">Observações</span> <p class="italic text-slate-600">${pacienteCompleto.obs}</p></div>` : ''}
+        `;
+
+        // 2. Busca HISTÓRICO DE ATENDIMENTOS
+        const resHist = await fetch(`${SCRIPT_URL}?action=getPatientHistory&cpf=${pacienteCompleto.cpf || ''}&nome=${encodeURIComponent(pacienteCompleto.nome)}`);
+        const jsonHist = await resHist.json();
+        const history = jsonHist.data || [];
 
         if(history.length === 0) {
             timeline.innerHTML = '<p class="text-slate-400 pl-4">Nenhum atendimento registrado.</p>';
-            return;
-        }
+        } else {
+            const itemsHtml = history.map(at => {
+                const dataFmt = at.data_abertura.split('-').reverse().join('/');
+                let statusColor = "bg-slate-100 text-slate-600";
+                if(at.status === 'CONCLUIDO') statusColor = "bg-emerald-100 text-emerald-700";
+                if(at.status === 'PENDENTE') statusColor = "bg-amber-100 text-amber-700";
+                if(at.status === 'CANCELADO') statusColor = "bg-red-100 text-red-700";
 
-        const itemsHtml = history.map(at => {
-            const dataFmt = at.data_abertura.split('-').reverse().join('/');
-            let statusColor = "bg-slate-100 text-slate-600";
-            if(at.status === 'CONCLUIDO') statusColor = "bg-emerald-100 text-emerald-700";
-            if(at.status === 'PENDENTE') statusColor = "bg-amber-100 text-amber-700";
-            if(at.status === 'CANCELADO') statusColor = "bg-red-100 text-red-700";
+                const tempId = 'hist_' + Math.random().toString(36).substr(2, 9);
+                window[tempId] = at;
 
-            const tempId = 'hist_' + Math.random().toString(36).substr(2, 9);
-            window[tempId] = at;
-
-            return `
-                <div class="relative pl-4 pb-6 cursor-pointer hover:opacity-80 transition" onclick="abrirDetalheAtendimento(window['${tempId}'])">
-                    <div class="absolute -left-[9px] top-0 w-4 h-4 bg-blue-500 rounded-full border-4 border-slate-100"></div>
-                    <div class="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
-                        <div class="flex justify-between items-start mb-2">
-                            <span class="font-bold text-slate-800">${dataFmt}</span>
-                            <span class="${statusColor} text-[10px] px-2 py-0.5 rounded font-bold uppercase">${at.status}</span>
-                        </div>
-                        <div class="text-sm text-slate-700">
-                            <span class="font-bold">${at.tipo_servico || 'SERVIÇO'}</span> 
-                            <span class="text-slate-400 mx-1">•</span> 
-                            ${at.especialidade || at.local || 'Geral'}
-                        </div>
-                        <div class="text-xs text-slate-500 mt-2 flex justify-between items-center">
-                            <span>Clique para ver detalhes</span>
-                            <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                return `
+                    <div class="relative pl-4 pb-6 cursor-pointer hover:opacity-80 transition" onclick="abrirDetalheAtendimento(window['${tempId}'])">
+                        <div class="absolute -left-[9px] top-0 w-4 h-4 bg-blue-500 rounded-full border-4 border-slate-100"></div>
+                        <div class="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
+                            <div class="flex justify-between items-start mb-2">
+                                <span class="font-bold text-slate-800">${dataFmt}</span>
+                                <span class="${statusColor} text-[10px] px-2 py-0.5 rounded font-bold uppercase">${at.status}</span>
+                            </div>
+                            <div class="text-sm text-slate-700">
+                                <span class="font-bold">${at.tipo_servico || 'SERVIÇO'}</span> 
+                                <span class="text-slate-400 mx-1">•</span> 
+                                ${at.especialidade || at.local || 'Geral'}
+                            </div>
+                            <div class="text-xs text-slate-500 mt-2 flex justify-between items-center">
+                                <span>Clique para ver detalhes</span>
+                                <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                            </div>
                         </div>
                     </div>
-                </div>
-            `;
-        }).join('');
+                `;
+            }).join('');
+            timeline.innerHTML = itemsHtml;
+        }
         
-        timeline.innerHTML = itemsHtml;
         if(typeof lucide !== 'undefined') lucide.createIcons();
 
     } catch(e) {
+        divDetalhes.innerHTML = '<div class="col-span-3 text-red-500">Erro ao carregar detalhes do paciente.</div>';
         timeline.innerHTML = '<p class="text-red-500 pl-4">Erro ao carregar histórico.</p>';
+        console.error(e);
     }
 }
 
 async function imprimirFicha() {
     if(!pacienteAtual) { alert("Busque um paciente para imprimir."); return; }
     
-    // Mostra loading se houver
     const loading = document.getElementById('loading-paciente');
+    setLoadingText('loading-paciente', "Gerando impressão...");
+    
     if (loading) {
         loading.classList.remove('hidden'); loading.classList.add('flex');
     } else {
@@ -306,16 +337,13 @@ async function imprimirFicha() {
     }
 
     try {
-        // Busca histórico completo atualizado para garantir dados frescos na impressão
         const res = await fetch(`${SCRIPT_URL}?action=getPatientHistory&cpf=${pacienteAtual.cpf || ''}&nome=${encodeURIComponent(pacienteAtual.nome)}`);
         const json = await res.json();
         const history = json.data || [];
 
-        // Monta HTML de impressão CONDENSADO e ORGANIZADO
         let html = `
             <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; color: #333; max-width: 100%;">
                 
-                <!-- CABEÇALHO -->
                 <div style="text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end;">
                     <div style="text-align: left;">
                         <h1 style="margin: 0; font-size: 22px; font-weight: 700; text-transform: uppercase;">Ficha de Acompanhamento</h1>
@@ -326,7 +354,6 @@ async function imprimirFicha() {
                     </div>
                 </div>
 
-                <!-- DADOS CADASTRAIS (Compacto) -->
                 <div style="background-color: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px; margin-bottom: 20px; font-size: 12px;">
                     <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px; margin-bottom: 5px;">
                         <div><strong>NOME:</strong> ${pacienteAtual.nome}</div>
@@ -345,7 +372,6 @@ async function imprimirFicha() {
                     </div>` : ''}
                 </div>
 
-                <!-- HISTÓRICO COMPLETO (Tabela Condensada) -->
                 <h3 style="font-size: 14px; margin-bottom: 8px; border-bottom: 1px solid #333; padding-bottom: 4px; text-transform: uppercase;">
                     Histórico de Atendimentos (${history.length})
                 </h3>
@@ -368,12 +394,10 @@ async function imprimirFicha() {
         } else {
             history.forEach((at, index) => {
                 const bg = index % 2 === 0 ? '#fff' : '#f8fafc';
-                
-                // Formatação simples para status na impressão
                 let statusStyle = "font-weight: bold;";
-                if(at.status === 'PENDENTE') statusStyle += "color: #d97706;"; // Laranja
-                else if(at.status === 'CANCELADO') statusStyle += "color: #dc2626;"; // Vermelho
-                else statusStyle += "color: #059669;"; // Verde
+                if(at.status === 'PENDENTE') statusStyle += "color: #d97706;";
+                else if(at.status === 'CANCELADO') statusStyle += "color: #dc2626;";
+                else statusStyle += "color: #059669;";
 
                 html += `
                     <tr style="background-color: ${bg};">
@@ -400,11 +424,7 @@ async function imprimirFicha() {
             });
         }
 
-        html += `
-                    </tbody>
-                </table>
-            </div>
-        `;
+        html += `</tbody></table></div>`;
 
         const printArea = document.getElementById('printable-area');
         if (printArea) {
@@ -427,6 +447,9 @@ async function verificarCpfInicial() {
     const msg = document.getElementById('msg_cpf_paciente');
     const loading = document.getElementById('loading-paciente');
     
+    // Texto de Loading customizado
+    setLoadingText('loading-paciente', "Buscando...");
+
     if(cpf.length < 5) { msg.innerHTML = "<span class='text-red-600 font-bold'>CPF Inválido.</span>"; return; }
     loading.classList.remove('hidden'); loading.classList.add('flex');
     document.getElementById('opcoes-paciente-existente').classList.add('hidden');
@@ -451,6 +474,8 @@ async function verificarCpfInicial() {
 
 async function verificarPorId(id) {
     const loading = document.getElementById('loading-paciente');
+    setLoadingText('loading-paciente', "Carregando dados...");
+    
     loading.classList.remove('hidden'); loading.classList.add('flex');
     try {
         const res = await fetch(`${SCRIPT_URL}?action=findPatient&busca=${id}&tipo=id`);
@@ -459,7 +484,6 @@ async function verificarPorId(id) {
         if(json.found) {
             pacienteAtual = json;
             
-            // CORREÇÃO: Verifica se o paciente tem CPF válido (convertendo para string primeiro)
             const msgElement = document.getElementById('msg_cpf_paciente');
             const cpfStr = json.cpf ? String(json.cpf) : '';
 
@@ -486,6 +510,7 @@ async function submitPaciente(e) {
     data.cpf = document.getElementById('paciente_cpf_check').value;
     if(!data.cpf || data.cpf.length < 5) { alert("CPF obrigatório."); return; }
     
+    // Texto de Loading para Salvar
     if(await sendData('registerPatient', data, 'loading-paciente')) { 
         if(typeof resetFormPaciente === 'function') resetFormPaciente(); 
         if(typeof voltarInicio === 'function') voltarInicio(); 
@@ -975,6 +1000,8 @@ async function buscarPacienteParaAtendimento() {
     resDiv.innerText = "Buscando..."; 
     document.getElementById('resto-form-atendimento').classList.add('hidden');
     
+    // Texto de Loading customizado (caso tenhamos loading aqui) - neste caso, é inline
+    
     try {
         const res = await fetch(`${SCRIPT_URL}?action=findPatient&busca=${encodeURIComponent(termo)}&tipo=cpf`);
         const json = await res.json();
@@ -1005,8 +1032,11 @@ async function submitAtendimento(e) {
 // ============================================================================
 
 async function excluirPacienteAPI(id, cpf) {
-    // Reutiliza o loading do form paciente
     const loading = document.getElementById('loading-paciente');
+    
+    // Define texto para "Excluindo..."
+    setLoadingText('loading-paciente', "Excluindo...");
+    
     if(loading) { loading.classList.remove('hidden'); loading.classList.add('flex'); }
 
     try {
@@ -1033,6 +1063,10 @@ async function excluirPacienteAPI(id, cpf) {
 
 async function excluirAtendimentoAPI(id) {
     const loading = document.getElementById('loading-atendimento');
+    
+    // Define texto para "Excluindo..."
+    setLoadingText('loading-atendimento', "Excluindo...");
+    
     if(loading) { loading.classList.remove('hidden'); loading.classList.add('flex'); }
 
     try {
