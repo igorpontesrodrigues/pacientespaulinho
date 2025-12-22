@@ -1,17 +1,77 @@
 /**
  * js/ui.js
- * Funções de manipulação da interface (DOM), abas, modais e renderização de HTML.
+ * Funções de manipulação da interface (DOM) e lógica de visualização.
  */
 
 // ============================================================================
-// 1. NAVEGAÇÃO E ABAS
+// 1. LOGIN E PERMISSÕES
+// ============================================================================
+
+function fazerLogin() {
+    const senha = document.getElementById('login-senha').value;
+    const msg = document.getElementById('login-msg');
+
+    if (senha === 'simone123') {
+        currentUserRole = 'ADMIN';
+        iniciarSistema('Administrador');
+    } else {
+        msg.innerText = "Senha incorreta.";
+    }
+}
+
+function loginVisitante() {
+    currentUserRole = 'VISITOR';
+    iniciarSistema('Visitante');
+}
+
+function iniciarSistema(roleName) {
+    document.getElementById('view-login').classList.add('hidden');
+    document.getElementById('user-role-display').innerText = roleName;
+    
+    // Mostra dashboard inicial
+    switchTab('dashboard');
+    
+    // Aplica permissões visuais
+    aplicarPermissoes();
+}
+
+function logout() {
+    location.reload(); // Recarrega a página para limpar tudo
+}
+
+function aplicarPermissoes() {
+    const isVisitor = currentUserRole === 'VISITOR';
+    
+    // 1. Esconde botões de ação na Sidebar (Novo Paciente/Atend)
+    const sidebarActions = document.getElementById('sidebar-actions');
+    if(sidebarActions) sidebarActions.style.display = isVisitor ? 'none' : 'block';
+
+    // 2. Desabilita/Esconde botões de edição e salvar
+    // Usamos CSS classes .btn-action e .btn-delete para controlar em massa
+    const botoesAcao = document.querySelectorAll('.btn-action, .btn-delete');
+    botoesAcao.forEach(btn => {
+        if(isVisitor) btn.classList.add('hidden');
+        else btn.classList.remove('hidden'); // Remove hidden se for admin (exceto btn-delete que tem lógica própria)
+    });
+
+    // 3. Travar inputs para visitantes
+    const inputs = document.querySelectorAll('input, select, textarea');
+    inputs.forEach(inp => {
+        // Não trava campos de filtro/busca, apenas formulários
+        if(!inp.id.includes('filtro') && !inp.id.includes('busca')) {
+            if(isVisitor) inp.setAttribute('disabled', 'true');
+            else inp.removeAttribute('disabled');
+        }
+    });
+}
+
+// ============================================================================
+// 2. NAVEGAÇÃO
 // ============================================================================
 
 function switchTab(tabId) {
-    // Rola para o topo sempre que mudar de aba
     window.scrollTo({ top: 0, behavior: 'instant' });
 
-    // Oculta todas as views
     const views = [
         'view-lista-pacientes', 'view-lista-atendimentos', 
         'view-form-paciente', 'view-form-atendimento', 
@@ -25,17 +85,14 @@ function switchTab(tabId) {
         if(el) el.classList.add('hidden');
     });
     
-    // Mostra a view alvo
     const target = document.getElementById('view-' + tabId);
     if(target) target.classList.remove('hidden');
     
-    // Ações específicas ao abrir certas abas
     if (tabId === 'form-paciente') resetFormPaciente();
     if (tabId === 'form-atendimento') resetFormAtendimento();
     
     if (tabId === 'lista-pacientes') {
         const listaVisible = !document.getElementById('subview-pacientes-lista').classList.contains('hidden');
-        // Funções de carga (carregarListaPacientes/carregarAniversarios) estão em api.js
         if(listaVisible && typeof carregarListaPacientes === 'function') carregarListaPacientes();
         else if (typeof carregarAniversarios === 'function') carregarAniversarios();
     }
@@ -44,6 +101,9 @@ function switchTab(tabId) {
     if (tabId === 'dashboard' && typeof loadDashboard === 'function') loadDashboard();
     if (tabId === 'parceiros' && typeof initParceiros === 'function') initParceiros();
     if (tabId === 'relatorios' && typeof initRelatorios === 'function') initRelatorios();
+
+    // Reaplicar permissões ao trocar de tela (para garantir que botões novos fiquem ocultos)
+    if(currentUserRole) aplicarPermissoes();
 }
 
 function voltarInicio() { 
@@ -83,7 +143,7 @@ function alternarSubAbaPacientes(aba) {
 }
 
 // ============================================================================
-// 2. MODAIS E DETALHES
+// 3. MODAIS E AÇÕES ESPECÍFICAS
 // ============================================================================
 
 function showMessage(msg, type) {
@@ -123,36 +183,38 @@ function abrirDetalheAtendimento(at) {
     document.getElementById('det-obs').innerText = at.obs_atendimento || 'Sem observações.';
 
     const btnEdit = document.getElementById('btn-editar-detalhe');
-    btnEdit.onclick = function() {
-        fecharDetalhe();
-        abrirEdicaoAtendimento(at);
-    };
+    
+    // Controle de Permissão no Modal
+    if(currentUserRole === 'VISITOR') {
+        btnEdit.classList.add('hidden');
+    } else {
+        btnEdit.classList.remove('hidden');
+        btnEdit.onclick = function() {
+            fecharDetalhe();
+            abrirEdicaoAtendimento(at);
+        };
+    }
 }
 
 function fecharDetalhe() {
     document.getElementById('modal-backdrop-detalhe').classList.add('hidden');
 }
 
-// Modal de Drill-down dos Relatórios
 function abrirListaRelatorio(tipo, index) {
     if(!window.dadosRelatorioCache || !window.dadosRelatorioCache[tipo]) return;
-    
     const dados = window.dadosRelatorioCache[tipo][index];
     if(!dados) return;
 
     document.getElementById('modal-lista-relatorio').classList.remove('hidden');
     document.getElementById('titulo-modal-relatorio').innerText = `${dados.nome} (${dados.qtd})`;
-    
     const tbody = document.getElementById('tbody-modal-relatorio');
     tbody.innerHTML = '';
 
     dados.lista.forEach(at => {
         const tempId = 'rel_item_' + Math.random().toString(36).substr(2, 9);
         window[tempId] = at;
-
         const tr = document.createElement('tr');
         tr.className = "hover:bg-blue-50 cursor-pointer transition border-b border-slate-50";
-        
         let badgeEspera = "bg-slate-100 text-slate-600";
         if(at.diasEspera > 90) badgeEspera = "bg-red-100 text-red-700";
         else if(at.diasEspera > 30) badgeEspera = "bg-orange-100 text-orange-700";
@@ -162,15 +224,9 @@ function abrirListaRelatorio(tipo, index) {
             <td class="px-6 py-3 font-mono text-xs text-slate-500">${at.data_abertura ? at.data_abertura.split('-').reverse().join('/') : '-'}</td>
             <td class="px-6 py-3">
                 <div class="font-bold text-slate-700 text-sm uppercase">${at.nome}</div>
-                <div class="text-xs text-slate-400 flex gap-2">
-                    <span>${at.local || 'Local N/I'}</span>
-                    <span class="text-slate-300">|</span>
-                    <span>CPF: ${at.cpf || '...'}</span>
-                </div>
+                <div class="text-xs text-slate-400 flex gap-2"><span>${at.local || 'Local N/I'}</span><span class="text-slate-300">|</span><span>CPF: ${at.cpf || '...'}</span></div>
             </td>
-            <td class="px-6 py-3 text-right">
-                <span class="${badgeEspera} px-2 py-1 rounded text-xs font-bold">${at.diasEspera} dias</span>
-            </td>
+            <td class="px-6 py-3 text-right"><span class="${badgeEspera} px-2 py-1 rounded text-xs font-bold">${at.diasEspera} dias</span></td>
         `;
         tr.onclick = () => {
             document.getElementById('modal-lista-relatorio').classList.add('hidden');
@@ -181,13 +237,11 @@ function abrirListaRelatorio(tipo, index) {
 }
 
 // ============================================================================
-// 3. RENDERIZAÇÃO DE COMPONENTES E LISTAS
+// 4. FORMULÁRIOS E PREENCHIMENTO
 // ============================================================================
 
 function renderizarSelectsVazios() {
-    // Usa a constante CONFIG_SELECTS definida em config.js
     if(typeof CONFIG_SELECTS === 'undefined') return;
-    
     CONFIG_SELECTS.forEach(cfg => {
         const el = document.getElementById(cfg.container);
         if(el) {
@@ -232,9 +286,7 @@ function preencherSelectInteligente(id, valor) {
     if(!valor) return;
     const sel = document.getElementById(`sel_${id}`);
     const hidden = document.getElementById(`field_${id}`);
-    
     hidden.value = valor;
-    
     sel.classList.remove('hidden');
     document.getElementById(`grp_new_${id}`).classList.add('hidden');
     
@@ -246,7 +298,6 @@ function preencherSelectInteligente(id, valor) {
             break;
         }
     }
-    
     if(!exists) {
         const novaOpcao = new Option(valor, valor, true, true);
         const lastIndex = sel.options.length - 1;
@@ -263,16 +314,15 @@ function renderizarTabelaPacientes(lista) {
     const tbody = document.getElementById('tabela-pacientes-body');
     tbody.innerHTML = '';
     if(lista.length === 0) { 
-        tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-slate-500">Nenhum registro encontrado.</td></tr>'; 
-        return; 
+        tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-slate-500">Nenhum registro encontrado.</td></tr>'; return; 
     }
-    
     lista.forEach(p => {
         const tr = document.createElement('tr');
         tr.className = "border-b border-slate-100 hover:bg-blue-50 cursor-pointer transition-colors";
-        
-        // Escape simples para segurança no inline onclick (embora o ideal fosse addEventListener)
         const pStr = JSON.stringify(p).replace(/"/g, '&quot;');
+        
+        // Controle de botões por CSS (btn-action) para visitantes
+        const btnEditClass = currentUserRole === 'VISITOR' ? 'hidden' : '';
         
         tr.innerHTML = `
             <td class="px-6 py-4 font-medium text-slate-800 uppercase" onclick="verHistoricoCompleto(${pStr})">${p.nome}</td>
@@ -280,13 +330,11 @@ function renderizarTabelaPacientes(lista) {
             <td class="px-6 py-4 hidden sm:table-cell text-slate-500" onclick="verHistoricoCompleto(${pStr})">${p.tel||'-'}</td>
             <td class="px-6 py-4 hidden md:table-cell uppercase text-slate-500" onclick="verHistoricoCompleto(${pStr})">${p.municipio||'-'}</td>
             <td class="px-6 py-4 text-right">
-                <button onclick="event.stopPropagation(); abrirAtendimentoDireto('${p.cpf}','${p.id}')" class="bg-emerald-100 text-emerald-700 p-2 rounded-lg mr-2 hover:bg-emerald-200 transition" title="Novo Atendimento"><i data-lucide="plus" class="w-4 h-4"></i></button>
-                <button onclick="event.stopPropagation(); abrirEdicaoDireta('${p.cpf}','${p.id}')" class="bg-blue-100 text-blue-700 p-2 rounded-lg hover:bg-blue-200 transition" title="Editar"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
+                <button onclick="event.stopPropagation(); abrirAtendimentoDireto('${p.cpf}','${p.id}')" class="btn-action bg-emerald-100 text-emerald-700 p-2 rounded-lg mr-2 hover:bg-emerald-200 transition ${btnEditClass}" title="Novo Atendimento"><i data-lucide="plus" class="w-4 h-4"></i></button>
+                <button onclick="event.stopPropagation(); abrirEdicaoDireta('${p.cpf}','${p.id}')" class="btn-action bg-blue-100 text-blue-700 p-2 rounded-lg hover:bg-blue-200 transition ${btnEditClass}" title="Editar"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
             </td>`;
         tbody.appendChild(tr);
     });
-    
-    // Atualiza ícones Lucide
     if(typeof lucide !== 'undefined') lucide.createIcons();
 }
 
@@ -297,14 +345,11 @@ function renderizarTorreGenero(pacientes) {
         if(s === 'M' || s === 'MASCULINO') masc++;
         else if(s === 'F' || s === 'FEMININO') fem++;
     });
-
     const total = masc + fem || 1;
     const pMasc = Math.round((masc / total) * 100);
     const pFem = Math.round((fem / total) * 100);
-
     document.getElementById('val-masc').innerText = masc;
     document.getElementById('val-fem').innerText = fem;
-    
     setTimeout(() => {
         const tMasc = document.getElementById('tower-masc');
         const tFem = document.getElementById('tower-fem');
@@ -313,10 +358,6 @@ function renderizarTorreGenero(pacientes) {
     }, 100);
 }
 
-// ============================================================================
-// 4. CONTROLE DE FORMULÁRIOS
-// ============================================================================
-
 function resetFormPaciente() {
     document.getElementById('frmPaciente').reset();
     document.getElementById('paciente_id_hidden').value = "";
@@ -324,6 +365,7 @@ function resetFormPaciente() {
     document.getElementById('opcoes-paciente-existente').classList.add('hidden');
     document.getElementById('resto-form-paciente').classList.add('hidden');
     document.getElementById('btn-imprimir').classList.add('hidden');
+    document.getElementById('btn-delete-paciente').classList.add('hidden'); // Esconde botão excluir ao resetar
     
     CONFIG_SELECTS.forEach(cfg => {
         const sel = document.getElementById(`sel_${cfg.id}`);
@@ -339,6 +381,7 @@ function resetFormAtendimento() {
     document.getElementById('txt_btn_atend').innerText = "Confirmar Atendimento";
     document.getElementById('resultado_busca').innerText = '';
     document.getElementById('resto-form-atendimento').classList.add('hidden');
+    document.getElementById('btn-delete-atendimento').classList.add('hidden'); // Esconde botão excluir
     document.getElementById('data_abertura').valueAsDate = new Date();
     
     CONFIG_SELECTS.forEach(cfg => {
@@ -353,31 +396,24 @@ function mostrarFormularioPaciente(isEdit, dados = null) {
     document.getElementById('opcoes-paciente-existente').classList.add('hidden');
     
     const btnPrint = document.getElementById('btn-imprimir');
-    if(isEdit) btnPrint.classList.remove('hidden');
-    else btnPrint.classList.add('hidden');
+    const btnDelete = document.getElementById('btn-delete-paciente');
+    
+    if(isEdit) {
+        btnPrint.classList.remove('hidden');
+        // Só mostra excluir se for Admin
+        if(currentUserRole === 'ADMIN') btnDelete.classList.remove('hidden');
+    } else {
+        btnPrint.classList.add('hidden');
+        btnDelete.classList.add('hidden');
+    }
 
     if(isEdit && dados) {
         document.getElementById('paciente_id_hidden').value = dados.id;
-        
-        // Campos de texto simples
         const fields = ['nome','apelido','familia','rg','nascimento','sexo','tel1','tel2','cep','logradouro','municipio_titulo','zona','secao','obs'];
-        fields.forEach(k => {
-            const el = document.getElementById(`field_${k}`);
-            if(el) el.value = dados[k] || '';
-        });
-
-        // Selects inteligentes
-        ['municipio','bairro','status_titulo'].forEach(k => {
-            preencherSelectInteligente(k, dados[k]);
-        });
-        
-        // Tratamento especial para SUS (Select Simples)
-        const elSus = document.getElementById('field_sus');
-        if(elSus) elSus.value = dados.sus || 'SIM';
-        
-        // Tratamento especial para Título
-        const elTitulo = document.getElementById('field_titulo');
-        if(elTitulo) elTitulo.value = dados.titulo || '';
+        fields.forEach(k => { const el = document.getElementById(`field_${k}`); if(el) el.value = dados[k] || ''; });
+        ['municipio','bairro','status_titulo'].forEach(k => { preencherSelectInteligente(k, dados[k]); });
+        const elSus = document.getElementById('field_sus'); if(elSus) elSus.value = dados.sus || 'SIM';
+        const elTitulo = document.getElementById('field_titulo'); if(elTitulo) elTitulo.value = dados.titulo || '';
     }
 }
 
@@ -385,8 +421,6 @@ function abrirEdicaoDireta(cpf, id) {
     switchTab('form-paciente');
     const inputCpf = document.getElementById('paciente_cpf_check');
     inputCpf.value = cpf || '';
-    
-    // Funções de verificação estão em api.js, mas são chamadas aqui
     if(cpf && cpf.length > 4 && typeof verificarCpfInicial === 'function') verificarCpfInicial();
     else if(id && typeof verificarPorId === 'function') verificarPorId(id);
 }
@@ -399,39 +433,38 @@ function abrirEdicaoAtendimento(at) {
     document.getElementById('busca_cpf').value = at.cpf;
     document.getElementById('hidden_cpf').value = at.cpf;
     document.getElementById('hidden_nome').value = at.nome;
-    
     document.getElementById('resultado_busca').innerHTML = `<span class="text-blue-700 font-bold flex items-center gap-1"><i data-lucide="user" class="w-4 h-4"></i> Editando: ${at.nome}</span>`;
     document.getElementById('resto-form-atendimento').classList.remove('hidden');
 
+    // Botão Excluir (Só Admin)
+    if(currentUserRole === 'ADMIN') document.getElementById('btn-delete-atendimento').classList.remove('hidden');
+
     document.getElementById('data_abertura').value = at.data_abertura || '';
     document.getElementById('field_lideranca').value = at.lideranca || ''; 
-    document.getElementById('field_tipo').value = at.tipo || ''; // Nota: campo 'tipo' em config é 'sub-tipo' visualmente
+    document.getElementById('field_tipo').value = at.tipo || ''; 
     document.getElementById('field_data_marcacao').value = at.data_marcacao || '';
     document.getElementById('field_data_risco').value = at.data_risco || '';
     document.getElementById('field_valor').value = at.valor || '';
     document.getElementById('field_obs_atendimento').value = at.obs_atendimento || '';
 
     ['indicacao','tipo_servico','parceiro','especialidade','procedimento','local','tipo','status_atendimento'].forEach(k => {
-        // status_atendimento mapeia para at.status
         const val = k === 'status_atendimento' ? at.status : at[k];
         preencherSelectInteligente(k, val);
     });
     
     if(typeof lucide !== 'undefined') lucide.createIcons();
+    
+    // REAPLICA PERMISSÕES (Caso seja Visitante tentando editar via URL/Console)
+    if(currentUserRole === 'VISITOR') aplicarPermissoes();
 }
 
 function abrirEdicaoAtendimentoId(id) {
-    // todosAtendimentos é global (definido em config.js)
     const at = todosAtendimentos.find(x => x.id === id);
     if(at) abrirEdicaoAtendimento(at);
 }
 
 function abrirAtendimentoDireto(cpf, id) {
-    if(!cpf || cpf.length < 5) { 
-        alert("Paciente sem CPF. Edite o cadastro primeiro."); 
-        abrirEdicaoDireta(cpf, id); 
-        return; 
-    }
+    if(!cpf || cpf.length < 5) { alert("Paciente sem CPF. Edite o cadastro primeiro."); abrirEdicaoDireta(cpf, id); return; }
     switchTab('form-atendimento');
     document.getElementById('busca_cpf').value = cpf;
     if(typeof buscarPacienteParaAtendimento === 'function') buscarPacienteParaAtendimento();
@@ -439,21 +472,35 @@ function abrirAtendimentoDireto(cpf, id) {
 
 function calcularDataRisco() {
     const dataMarcacao = document.getElementById('field_data_marcacao').value;
-    const campoEspec = document.getElementById('field_especialidade'); // Input hidden do select
-    
+    const campoEspec = document.getElementById('field_especialidade');
     if(!dataMarcacao) return;
-
     const d = new Date(dataMarcacao);
     let meses = 3; 
-    
-    // Verifica se é oftalmologia
-    if(campoEspec && campoEspec.value && campoEspec.value.toUpperCase().includes("OFTALMOLOGIA")) {
-        meses = 6;
-    }
-
+    if(campoEspec && campoEspec.value && campoEspec.value.toUpperCase().includes("OFTALMOLOGIA")) meses = 6;
     d.setMonth(d.getMonth() + meses);
     const yyyy = d.getFullYear();
     const mm = String(d.getMonth() + 1).padStart(2, '0');
     const dd = String(d.getDate()).padStart(2, '0');
     document.getElementById('field_data_risco').value = `${yyyy}-${mm}-${dd}`;
+}
+
+// ============================================================================
+// 5. FUNÇÕES DE EXCLUSÃO (UI HANDLERS)
+// ============================================================================
+
+function confirmarExclusaoPaciente() {
+    if(!pacienteAtual) return;
+    const confirmacao = confirm(`ATENÇÃO: Você está prestes a excluir o paciente ${pacienteAtual.nome}.\n\nISSO APAGARÁ TAMBÉM TODOS OS ATENDIMENTOS DELE.\n\nTem certeza absoluta?`);
+    if(confirmacao) {
+        if(typeof excluirPacienteAPI === 'function') excluirPacienteAPI(pacienteAtual.id, pacienteAtual.cpf);
+    }
+}
+
+function confirmarExclusaoAtendimento() {
+    const id = document.getElementById('atend_id_hidden').value;
+    if(!id) return;
+    const confirmacao = confirm("Tem certeza que deseja excluir este atendimento?");
+    if(confirmacao) {
+        if(typeof excluirAtendimentoAPI === 'function') excluirAtendimentoAPI(id);
+    }
 }
