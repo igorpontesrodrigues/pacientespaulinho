@@ -313,10 +313,19 @@
             <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                 <div class="overflow-x-auto">
                     <table class="w-full text-left text-sm text-slate-600">
+                        <!-- HEADER DA TABELA ATUALIZADO (NOVAS COLUNAS) -->
                         <thead class="bg-slate-50 text-slate-700 uppercase font-bold text-xs border-b border-slate-200">
-                            <tr><th class="px-6 py-4">Data</th><th class="px-6 py-4">Eleitor</th><th class="px-6 py-4">Serviço</th><th class="px-6 py-4">Status</th><th class="px-6 py-4 text-right">Ação</th></tr>
+                            <tr>
+                                <th class="px-4 py-4">Data</th>
+                                <th class="px-4 py-4">Eleitor</th>
+                                <th class="px-4 py-4">Serviço</th>
+                                <th class="px-4 py-4">Especialidade</th>
+                                <th class="px-4 py-4">Procedimento</th>
+                                <th class="px-4 py-4">Status</th>
+                                <th class="px-4 py-4 text-right">Ação</th>
+                            </tr>
                         </thead>
-                        <tbody id="tabela-atendimentos-body" class="divide-y divide-slate-100"><tr><td colspan="5" class="px-6 py-8 text-center text-slate-400">Carregando...</td></tr></tbody>
+                        <tbody id="tabela-atendimentos-body" class="divide-y divide-slate-100"><tr><td colspan="7" class="px-6 py-8 text-center text-slate-400">Carregando...</td></tr></tbody>
                     </table>
                 </div>
             </div>
@@ -351,7 +360,6 @@
                         <div><span class="block text-xs font-bold text-slate-400 uppercase">Local</span><span class="text-slate-800 font-medium" id="det-local">-</span></div>
                         
                         <div><span class="block text-xs font-bold text-slate-400 uppercase">Parceiro</span><span class="text-slate-800 font-medium" id="det-parceiro">-</span></div>
-                        <!-- Indicação Removida daqui (Visualização) -->
                         
                         <div><span class="block text-xs font-bold text-slate-400 uppercase">Data Marcação</span><span class="text-slate-800 font-medium" id="det-marcacao">-</span></div>
                         <div><span class="block text-xs font-bold text-slate-400 uppercase">Data Risco</span><span class="text-red-600 font-bold" id="det-risco">-</span></div>
@@ -373,7 +381,7 @@
             </div>
         </div>
 
-        <!-- VIEW PARCEIROS (RESTAURADA) -->
+        <!-- VIEW PARCEIROS -->
         <div id="view-parceiros" class="hidden fade-in">
              <div class="flex flex-col md:flex-row justify-between items-end mb-6 gap-4 border-b border-slate-200 pb-6">
                 <div>
@@ -434,7 +442,7 @@
             </div>
         </div>
 
-        <!-- VIEW RELATÓRIOS (RESTAURADA) -->
+        <!-- VIEW RELATÓRIOS -->
         <div id="view-relatorios" class="hidden fade-in">
             <div class="flex flex-col md:flex-row justify-between items-end mb-6 gap-4 border-b border-slate-200 pb-6">
                 <div>
@@ -555,9 +563,9 @@
                             <h3 class="form-section-title">Dados Pessoais</h3>
                             <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
                                 <div class="md:col-span-8"><label class="label-field">Nome Completo *</label><input type="text" name="nome" id="field_nome" required class="input-field uppercase"></div>
-                                <div class="md:col-span-4"><label class="label-field">Apelido</label><input type="text" name="apelido" id="field_apelido" class="input-field uppercase"></div>
+                                <!-- MUDANÇA: LABEL ALTERADA DE APELIDO PARA REFERÊNCIA -->
+                                <div class="md:col-span-4"><label class="label-field">Referência</label><input type="text" name="apelido" id="field_apelido" class="input-field uppercase"></div>
                                 
-                                <!-- MUDANÇA: RG ANTES DE FAMÍLIA -->
                                 <div class="md:col-span-4"><label class="label-field">RG</label><input type="text" name="rg" id="field_rg" class="input-field"></div>
                                 <div class="md:col-span-4"><label class="label-field">Família</label><input type="text" name="familia" id="field_familia" class="input-field uppercase"></div>
                                 <div class="md:col-span-4"><label class="label-field">Data de Nascimento</label><input type="date" name="nascimento" id="field_nascimento" class="input-field"></div>
@@ -574,14 +582,12 @@
                                 <div class="md:col-span-5" id="container_municipio"></div>
                                 <div class="md:col-span-4" id="container_bairro"></div>
                                 <div class="md:col-span-8"><label class="label-field">Logradouro</label><input type="text" name="logradouro" id="field_logradouro" class="input-field uppercase"></div>
-                                <!-- NOVO: PONTO DE REFERÊNCIA -->
                                 <div class="md:col-span-4"><label class="label-field">Ponto de Referência</label><input type="text" name="referencia" id="field_referencia" class="input-field uppercase"></div>
                             </div>
                         </div>
                         <div>
                             <h3 class="form-section-title">Dados Eleitorais & Extras</h3>
                             <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
-                                <!-- MUDANÇA: SUS AGORA É CAMPO DE TEXTO -->
                                 <div class="md:col-span-4"><label class="label-field">Número Cartão do SUS</label><input type="text" name="sus" id="field_sus" class="input-field" placeholder="000 0000 0000 0000"></div>
                                 <div class="md:col-span-4"><label class="label-field">Título de Eleitor</label><input type="text" name="titulo" id="field_titulo" class="input-field"></div>
                                 <div class="md:col-span-4" id="container_status_titulo"></div>
@@ -589,7 +595,6 @@
                                 <div class="md:col-span-3"><label class="label-field">Zona</label><input type="text" name="zona" id="field_zona" class="input-field"></div>
                                 <div class="md:col-span-3"><label class="label-field">Seção</label><input type="text" name="secao" id="field_secao" class="input-field"></div>
                                 
-                                <!-- MUDANÇA: CAMPOS VINDOS DO ATENDIMENTO -->
                                 <div class="md:col-span-6" id="container_indicacao"></div>
                                 <div class="md:col-span-6"><label class="label-field">Liderança?</label><select name="lideranca" id="field_lideranca" class="input-field bg-white uppercase"><option value="">Selecione...</option><option value="SIM">SIM</option><option value="NAO">NÃO</option></select></div>
 
