@@ -1,7 +1,6 @@
 /**
  * js/api.js
  * Funções de comunicação com o backend (Apps Script) e lógica de negócios.
- * (Versão Limpa: Funções de UI removidas para evitar duplicidade com js/ui.js)
  */
 
 // ============================================================================
@@ -23,7 +22,6 @@ async function sendData(action, data, loadingId) {
     
     if(loading) { loading.classList.remove('hidden'); loading.classList.add('flex'); }
     
-    // Normalização para maiúsculas (exceto IDs e datas)
     const normalize = (obj) => {
         for(let k in obj) {
             if(typeof obj[k] === 'string' && !['cpf','id'].includes(k) && !k.includes('data')) {
@@ -62,7 +60,6 @@ async function sendData(action, data, loadingId) {
 }
 
 async function carregarFiltros() {
-    // Carregamento silencioso dos selects
     const safety = setTimeout(() => {
         if(typeof CONFIG_SELECTS !== 'undefined') {
             CONFIG_SELECTS.forEach(cfg => {
@@ -126,7 +123,6 @@ async function carregarListaPacientes() {
         const res = await fetch(`${SCRIPT_URL}?action=getPatientsList`);
         const json = await res.json();
         todosPacientes = json.data;
-        // Chama a função de renderização que agora está no ui.js
         if(typeof renderizarTabelaPacientes === 'function') renderizarTabelaPacientes(todosPacientes);
     } catch(e) { 
         if(tbody) tbody.innerHTML = '<tr><td colspan="5" class="text-center text-red-500 py-4">Erro de conexão.</td></tr>'; 
@@ -330,10 +326,7 @@ async function submitAtendimento(e) {
 
     // --- MODO EDIÇÃO (Single) ---
     if (id) {
-        // Coleta dados do formulário único (campos do card)
         const data = Object.fromEntries(new FormData(e.target).entries());
-        
-        // Garante que campos desabilitados ou fora do fluxo padrão sejam pegos
         data.data_conclusao = document.getElementById('field_data_conclusao').value;
         data.prontuario = document.getElementById('field_prontuario').value;
         data.status = document.getElementById('field_status_atendimento').value;
@@ -346,7 +339,6 @@ async function submitAtendimento(e) {
     }
 
     // --- MODO CRIAÇÃO (Lote/Batch) ---
-    // listaProcedimentosTemp está definida no global do js/ui.js, mas acessível aqui
     if (typeof listaProcedimentosTemp === 'undefined' || listaProcedimentosTemp.length === 0) {
         alert("Adicione pelo menos um procedimento à lista antes de salvar.");
         return;
@@ -357,7 +349,6 @@ async function submitAtendimento(e) {
 
     if(!cpf && !nome) { alert("Busque o eleitor."); return; }
 
-    // Cria o lote enriquecendo os itens com os dados do paciente
     const batch = listaProcedimentosTemp.map(item => ({
         ...item,
         cpf_paciente: cpf,
@@ -370,9 +361,103 @@ async function submitAtendimento(e) {
     }
 }
 
-// REMOVIDO: carregarListaAtendimentos (Duplicado no ui.js)
-// REMOVIDO: atualizarFiltrosData (Duplicado no ui.js)
-// REMOVIDO: filtrarAtendimentos (Duplicado no ui.js e causava o bug)
+// --------------------------------------------------------
+// FUNÇÕES DE LISTAGEM DE ATENDIMENTOS (RESTAURADAS)
+// --------------------------------------------------------
+
+async function carregarListaAtendimentos() {
+    const tbody = document.getElementById('tabela-atendimentos-body');
+    const contador = document.getElementById('contador-atendimentos');
+    
+    if(tbody) tbody.innerHTML = '<tr><td colspan="7" class="px-6 py-8 text-center text-slate-400">Carregando histórico...</td></tr>';
+    
+    try {
+        const res = await fetch(`${SCRIPT_URL}?action=getServicesList`);
+        const json = await res.json();
+        
+        todosAtendimentos = json.data || [];
+        
+        atualizarFiltrosData(); // Popula selects de Ano e Mês
+        
+        // Chama a função de renderização no UI.js (que iremos criar em breve)
+        if(typeof renderizarTabelaAtendimentos === 'function') {
+            renderizarTabelaAtendimentos(todosAtendimentos);
+        } else {
+             // Fallback temporário caso o ui.js ainda não tenha sido atualizado
+             if(tbody) tbody.innerHTML = '<tr><td colspan="7" class="text-center text-red-500 py-4">Erro: renderizarTabelaAtendimentos não encontrada (Atualize o ui.js)</td></tr>';
+        }
+        
+    } catch(e) { 
+        console.error(e);
+        if(tbody) tbody.innerHTML = '<tr><td colspan="7" class="text-center text-red-500 py-4">Erro de conexão ao carregar atendimentos.</td></tr>'; 
+    }
+}
+
+function atualizarFiltrosData() {
+    if(!todosAtendimentos) return;
+    
+    const anos = new Set();
+    const meses = [
+        {v:'01',n:'Janeiro'},{v:'02',n:'Fevereiro'},{v:'03',n:'Março'},
+        {v:'04',n:'Abril'},{v:'05',n:'Maio'},{v:'06',n:'Junho'},
+        {v:'07',n:'Julho'},{v:'08',n:'Agosto'},{v:'09',n:'Setembro'},
+        {v:'10',n:'Outubro'},{v:'11',n:'Novembro'},{v:'12',n:'Dezembro'}
+    ];
+
+    todosAtendimentos.forEach(at => {
+        if(at.data_abertura) {
+            anos.add(at.data_abertura.split('-')[0]);
+        }
+    });
+
+    const selAno = document.getElementById('filtro-ano');
+    const selMes = document.getElementById('filtro-mes');
+    
+    if(selAno) {
+        const current = selAno.value;
+        selAno.innerHTML = '<option value="">Ano</option>';
+        Array.from(anos).sort().reverse().forEach(a => selAno.innerHTML += `<option value="${a}">${a}</option>`);
+        selAno.value = current;
+    }
+    
+    if(selMes && selMes.options.length <= 1) {
+        selMes.innerHTML = '<option value="">Mês</option>';
+        meses.forEach(m => selMes.innerHTML += `<option value="${m.v}">${m.n}</option>`);
+    }
+}
+
+function filtrarAtendimentos() {
+    if(!todosAtendimentos) return;
+    
+    const termo = document.getElementById('filtro-atendimento-input').value.toLowerCase();
+    const status = document.getElementById('filtro-status').value;
+    const mes = document.getElementById('filtro-mes').value;
+    const ano = document.getElementById('filtro-ano').value;
+
+    const filtrados = todosAtendimentos.filter(at => {
+        // Filtro Texto (Nome, CPF, Especialidade ou Tipo)
+        const textoMatch = (at.nome_paciente && at.nome_paciente.toLowerCase().includes(termo)) ||
+                           (at.cpf_paciente && String(at.cpf_paciente).includes(termo)) ||
+                           (at.especialidade && at.especialidade.toLowerCase().includes(termo)) ||
+                           (at.tipo_servico && at.tipo_servico.toLowerCase().includes(termo));
+        
+        if(!textoMatch) return false;
+
+        // Filtro Status
+        if(status && at.status !== status) return false;
+
+        // Filtros Data
+        const [y, m, d] = at.data_abertura ? at.data_abertura.split('-') : ['','',''];
+        if(mes && m !== mes) return false;
+        if(ano && y !== ano) return false;
+
+        return true;
+    });
+
+    if(typeof renderizarTabelaAtendimentos === 'function') {
+        renderizarTabelaAtendimentos(filtrados);
+    }
+}
 
 async function loadDashboard() {
     try {
@@ -853,6 +938,3 @@ async function excluirAtendimentoAPI(id) {
         alert("Erro ao excluir: " + e);
     }
 }
-
-// REMOVIDO: Funções de UI duplicadas (renderizarTabelaPacientes, resets, etc.)
-// Agora o sistema usará as versões corretas definidas no js/ui.js
