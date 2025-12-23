@@ -12,15 +12,34 @@ let listaProcedimentosTemp = []; // Armazena os itens adicionados antes de salva
 // 1. LOGIN E PERMISSÕES
 // ============================================================================
 
+// CORREÇÃO: Listener robusto para tecla Enter no login
+document.addEventListener('DOMContentLoaded', function() {
+    const inputSenha = document.getElementById('login-senha');
+    if (inputSenha) {
+        inputSenha.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault(); // Impede o submit padrão do form se houver conflito
+                fazerLogin();
+            }
+        });
+    }
+});
+
 function fazerLogin() {
-    const senha = document.getElementById('login-senha').value;
+    const senhaEl = document.getElementById('login-senha');
     const msg = document.getElementById('login-msg');
+
+    if (!senhaEl) return;
+    const senha = senhaEl.value;
 
     if (senha === 'simone123') {
         currentUserRole = 'ADMIN';
         iniciarSistema('Administrador');
     } else {
         msg.innerText = "Senha incorreta.";
+        // Adiciona efeito visual de erro
+        senhaEl.classList.add('border-red-500');
+        setTimeout(() => senhaEl.classList.remove('border-red-500'), 2000);
     }
 }
 
@@ -246,7 +265,7 @@ function abrirListaRelatorio(tipo, index) {
 }
 
 // ============================================================================
-// 4. LOGICA DE PROCEDIMENTOS MÚLTIPLOS (NOVO)
+// 4. LOGICA DE PROCEDIMENTOS MÚLTIPLOS
 // ============================================================================
 
 function adicionarProcedimentoNaLista() {
@@ -358,10 +377,418 @@ function checkStatusConclusao() {
 }
 
 // ============================================================================
-// 5. IMPRESSÃO E RELATÓRIOS
+// 4. ATENDIMENTOS E FILTROS (ATUALIZADO COM BUSCA INTELIGENTE)
 // ============================================================================
 
-// --- FUNÇÕES DE RELATÓRIO ELEITORAL RESTAURADAS ---
+async function carregarListaAtendimentos() {
+    const tbody = document.getElementById('tabela-atendimentos-body');
+    if(tbody) tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-slate-400">Buscando...</td></tr>';
+    try {
+        const res = await fetch(`${SCRIPT_URL}?action=getServicesList`);
+        const json = await res.json();
+        todosAtendimentos = json.data; // Cache global
+        if(typeof atualizarFiltrosData === 'function') atualizarFiltrosData();
+        if(typeof filtrarAtendimentos === 'function') filtrarAtendimentos();
+    } catch(e) { if(tbody) tbody.innerHTML = '<tr><td colspan="5" class="text-center text-red-500 py-4">Erro.</td></tr>'; }
+}
+
+function atualizarFiltrosData() {
+    const anos = new Set();
+    const meses = new Set();
+    todosAtendimentos.forEach(at => {
+        if(at.data_abertura) {
+            const [y, m] = at.data_abertura.split('-');
+            if(y) anos.add(y); if(m) meses.add(m);
+        }
+    });
+    let htmlAno = '<option value="">Todos Anos</option>';
+    Array.from(anos).sort().reverse().forEach(a => htmlAno += `<option value="${a}">${a}</option>`);
+    document.getElementById('filtro-ano').innerHTML = htmlAno;
+
+    const nomesMeses = {"01":"Janeiro","02":"Fevereiro","03":"Março","04":"Abril","05":"Maio","06":"Junho","07":"Julho","08":"Agosto","09":"Setembro","10":"Outubro","11":"Novembro","12":"Dezembro"};
+    let htmlMes = '<option value="">Todos Meses</option>';
+    Array.from(meses).sort().forEach(m => { if(nomesMeses[m]) htmlMes += `<option value="${m}">${m} - ${nomesMeses[m]}</option>`; });
+    document.getElementById('filtro-mes').innerHTML = htmlMes;
+}
+
+function filtrarAtendimentos() {
+    const mes = document.getElementById('filtro-mes').value;
+    const ano = document.getElementById('filtro-ano').value;
+    const status = document.getElementById('filtro-status').value;
+    const buscaTexto = document.getElementById('filtro-atendimento-input').value.toLowerCase().trim(); // NOVO FILTRO
+    const tbody = document.getElementById('tabela-atendimentos-body');
+
+    const filtrados = todosAtendimentos.filter(at => {
+        const [y, m] = at.data_abertura ? at.data_abertura.split('-') : ['',''];
+        
+        // Filtros Dropdown
+        if (mes && m !== mes) return false;
+        if (ano && y !== ano) return false;
+        if (status && at.status !== status) return false;
+        
+        // Filtro de Texto (Nome, CPF, Prontuário, Serviço) - BUSCA ABRANGENTE
+        if (buscaTexto) {
+            // Helper function para verificar se contém o texto de forma segura
+            const check = (val) => (val ? String(val).toLowerCase() : '').includes(buscaTexto);
+
+            // Verifica em múltiplos campos para garantir que encontre
+            const match = check(at.nome) || 
+                          check(at.nome_paciente) || 
+                          check(at.cpf) || 
+                          check(at.cpf_paciente) || 
+                          check(at.prontuario) || 
+                          check(at.tipo_servico) || 
+                          check(at.especialidade) || 
+                          check(at.procedimento) ||
+                          check(at.local);
+
+            if (!match) return false;
+        }
+        
+        return true;
+    });
+
+    tbody.innerHTML = '';
+    if(filtrados.length === 0) { tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-slate-500">Nenhum registro.</td></tr>'; return; }
+    
+    filtrados.forEach(at => {
+        let color = at.status === 'CONCLUIDO' ? 'bg-emerald-100 text-emerald-700' : (at.status === 'PENDENTE' ? 'bg-amber-100 text-amber-700' : (at.status === 'CANCELADO' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600'));
+        
+        const tempId = 'at_' + Math.random().toString(36).substr(2, 9);
+        window[tempId] = at;
+
+        // Usa os campos corretos para exibição (com fallback para compatibilidade)
+        const nomeExibir = at.nome_paciente || at.nome || 'NOME N/D';
+        const cpfExibir = at.cpf_paciente || at.cpf || '';
+        const servicoExibir = at.tipo_servico || '-';
+        const detalheExibir = at.local || at.especialidade || '';
+
+        const tr = document.createElement('tr');
+        tr.className = "border-b border-slate-100 hover:bg-blue-50 transition-colors cursor-pointer";
+        tr.innerHTML = `
+            <td class="px-6 py-4 font-mono text-slate-600 text-xs">${at.data_abertura ? at.data_abertura.split('-').reverse().join('/') : '-'}</td>
+            <td class="px-6 py-4 font-medium text-slate-800 uppercase text-sm">${nomeExibir}<br><span class="text-slate-400 font-normal text-xs">${cpfExibir}</span></td>
+            <td class="px-6 py-4 text-slate-600 uppercase text-xs"><span class="font-bold text-slate-700">${servicoExibir}</span><br>${detalheExibir}</td>
+            <td class="px-6 py-4"><span class="${color} px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-black/5">${at.status}</span></td>
+            <td class="px-6 py-4 text-right"><button onclick="event.stopPropagation(); abrirEdicaoAtendimentoId('${at.id}')" class="btn-action bg-blue-100 text-blue-700 p-2 rounded-lg hover:bg-blue-200 transition" title="Editar"><i data-lucide="edit-2" class="w-4 h-4"></i></button></td>
+        `;
+        tr.onclick = () => abrirDetalheAtendimento(window[tempId]);
+        tbody.appendChild(tr);
+    });
+    document.getElementById('contador-atendimentos').innerText = `Exibindo ${filtrados.length} registros`;
+    if(typeof lucide !== 'undefined') lucide.createIcons();
+    
+    if(typeof aplicarPermissoes === 'function' && typeof currentUserRole !== 'undefined') aplicarPermissoes();
+}
+
+// ============================================================================
+// 5. FORMULÁRIOS E PREENCHIMENTO
+// ============================================================================
+
+function renderizarSelectsVazios() {
+    if(typeof CONFIG_SELECTS === 'undefined') return;
+    CONFIG_SELECTS.forEach(cfg => {
+        const el = document.getElementById(cfg.container);
+        if(el) {
+            const fieldName = cfg.nameOverride || cfg.id;
+            el.innerHTML = `
+                <label class="label-field">${cfg.label}</label>
+                <div class="relative">
+                    <select id="sel_${cfg.id}" onchange="checkSelectNew('${cfg.id}')" class="input-field bg-white uppercase">
+                        <option value="">Carregando...</option>
+                    </select>
+                    <div id="grp_new_${cfg.id}" class="hidden mt-1 flex gap-1 animate-fade-in">
+                        <input type="text" id="inp_${cfg.id}" placeholder="Digite novo..." class="switched-input flex-1 input-field uppercase">
+                        <button type="button" onclick="cancelSelectNew('${cfg.id}')" class="bg-red-100 text-red-600 px-3 rounded hover:bg-red-200">✕</button>
+                    </div>
+                    <input type="hidden" name="${fieldName}" id="field_${cfg.id}">
+                </div>`;
+        }
+    });
+}
+
+function checkSelectNew(id) {
+    const sel = document.getElementById(`sel_${id}`);
+    if (sel.value === '__NEW__') {
+        sel.classList.add('hidden');
+        document.getElementById(`grp_new_${id}`).classList.remove('hidden');
+        document.getElementById(`inp_${id}`).focus();
+        document.getElementById(`field_${id}`).value = '';
+    } else {
+        document.getElementById(`field_${id}`).value = sel.value;
+    }
+}
+
+function cancelSelectNew(id) {
+    const sel = document.getElementById(`sel_${id}`);
+    sel.value = ""; 
+    document.getElementById(`field_${id}`).value = "";
+    sel.classList.remove('hidden'); 
+    document.getElementById(`grp_new_${id}`).classList.add('hidden');
+}
+
+function preencherSelectInteligente(id, valor) {
+    if(!valor) return;
+    const sel = document.getElementById(`sel_${id}`);
+    const hidden = document.getElementById(`field_${id}`);
+    hidden.value = valor;
+    sel.classList.remove('hidden');
+    document.getElementById(`grp_new_${id}`).classList.add('hidden');
+    
+    let exists = false;
+    for(let i=0; i<sel.options.length; i++) {
+        if(sel.options[i].value.toUpperCase() === valor.toUpperCase()) {
+            sel.selectedIndex = i;
+            exists = true;
+            break;
+        }
+    }
+    if(!exists) {
+        const novaOpcao = new Option(valor, valor, true, true);
+        const lastIndex = sel.options.length - 1;
+        if (lastIndex >= 0 && sel.options[lastIndex].value === '__NEW__') {
+            sel.add(novaOpcao, sel.options[lastIndex]); 
+        } else {
+            sel.add(novaOpcao);
+        }
+        sel.value = valor;
+    }
+}
+
+function renderizarTabelaPacientes(lista) {
+    const tbody = document.getElementById('tabela-pacientes-body');
+    tbody.innerHTML = '';
+    if(lista.length === 0) { 
+        tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-slate-500">Nenhum registro encontrado.</td></tr>'; return; 
+    }
+    lista.forEach(p => {
+        const tr = document.createElement('tr');
+        tr.className = "border-b border-slate-100 hover:bg-blue-50 cursor-pointer transition-colors";
+        const pStr = JSON.stringify(p).replace(/"/g, '&quot;');
+        
+        const btnEditClass = currentUserRole === 'VISITOR' ? 'hidden' : '';
+        
+        tr.innerHTML = `
+            <td class="px-6 py-4 font-medium text-slate-800 uppercase" onclick="verHistoricoCompleto(${pStr})">${p.nome}</td>
+            <td class="px-6 py-4 text-slate-600" onclick="verHistoricoCompleto(${pStr})">${p.cpf || '<span class="text-orange-500 text-xs font-bold px-2 py-1 bg-orange-100 rounded">SEM CPF</span>'}</td>
+            <td class="px-6 py-4 hidden sm:table-cell text-slate-500" onclick="verHistoricoCompleto(${pStr})">${p.tel||'-'}</td>
+            <td class="px-6 py-4 hidden md:table-cell uppercase text-slate-500" onclick="verHistoricoCompleto(${pStr})">${p.municipio||'-'}</td>
+            <td class="px-6 py-4 text-right">
+                <button onclick="event.stopPropagation(); abrirAtendimentoDireto('${p.cpf}','${p.id}')" class="btn-action bg-emerald-100 text-emerald-700 p-2 rounded-lg mr-2 hover:bg-emerald-200 transition ${btnEditClass}" title="Novo Atendimento"><i data-lucide="plus" class="w-4 h-4"></i></button>
+                <button onclick="event.stopPropagation(); abrirEdicaoDireta('${p.cpf}','${p.id}')" class="btn-action bg-blue-100 text-blue-700 p-2 rounded-lg hover:bg-blue-200 transition ${btnEditClass}" title="Editar"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
+            </td>`;
+        tbody.appendChild(tr);
+    });
+    if(typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+function renderizarTorreGenero(pacientes) {
+    let masc = 0, fem = 0;
+    pacientes.forEach(p => {
+        const s = p.sexo ? p.sexo.toUpperCase() : '';
+        if(s === 'M' || s === 'MASCULINO') masc++;
+        else if(s === 'F' || s === 'FEMININO') fem++;
+    });
+    const total = masc + fem || 1;
+    const pMasc = Math.round((masc / total) * 100);
+    const pFem = Math.round((fem / total) * 100);
+    document.getElementById('val-masc').innerText = masc;
+    document.getElementById('val-fem').innerText = fem;
+    setTimeout(() => {
+        const tMasc = document.getElementById('tower-masc');
+        const tFem = document.getElementById('tower-fem');
+        if(tMasc) tMasc.style.height = `${pMasc}%`;
+        if(tFem) tFem.style.height = `${pFem}%`;
+    }, 100);
+}
+
+function resetFormPaciente() {
+    document.getElementById('frmPaciente').reset();
+    document.getElementById('paciente_id_hidden').value = "";
+    document.getElementById('msg_cpf_paciente').innerText = '';
+    document.getElementById('opcoes-paciente-existente').classList.add('hidden');
+    document.getElementById('resto-form-paciente').classList.add('hidden');
+    document.getElementById('btn-imprimir').classList.add('hidden');
+    
+    const btnDelete = document.getElementById('btn-delete-paciente');
+    if(btnDelete) btnDelete.classList.add('hidden');
+    
+    CONFIG_SELECTS.forEach(cfg => {
+        const sel = document.getElementById(`sel_${cfg.id}`);
+        if(sel && cfg.id !== 'status_atendimento') sel.value = "";
+        cancelSelectNew(cfg.id);
+    });
+}
+
+function resetFormAtendimento() {
+    document.getElementById('frmAtendimento').reset();
+    document.getElementById('atend_id_hidden').value = "";
+    document.getElementById('titulo_form_atend').innerText = "Novo Atendimento";
+    document.getElementById('txt_btn_atend').innerText = "Salvar Todos os Atendimentos";
+    document.getElementById('resultado_busca').innerText = '';
+    document.getElementById('resto-form-atendimento').classList.add('hidden');
+    
+    const btnDelete = document.getElementById('btn-delete-atendimento');
+    if(btnDelete) btnDelete.classList.add('hidden');
+    
+    document.getElementById('data_abertura').valueAsDate = new Date();
+    
+    // Reseta lista temporária
+    listaProcedimentosTemp = [];
+    renderizarTabelaProcedimentos();
+
+    const inpConclusao = document.getElementById('field_data_conclusao');
+    if(inpConclusao) {
+        inpConclusao.onchange = checkStatusConclusao;
+    }
+    
+    CONFIG_SELECTS.forEach(cfg => {
+        const sel = document.getElementById(`sel_${cfg.id}`);
+        if(sel) sel.value = "";
+        cancelSelectNew(cfg.id);
+    });
+}
+
+function mostrarFormularioPaciente(isEdit, dados = null) {
+    document.getElementById('resto-form-paciente').classList.remove('hidden');
+    document.getElementById('opcoes-paciente-existente').classList.add('hidden');
+    
+    const btnPrint = document.getElementById('btn-imprimir');
+    const btnDelete = document.getElementById('btn-delete-paciente');
+    
+    if(isEdit) {
+        btnPrint.classList.remove('hidden');
+        if(currentUserRole === 'ADMIN') {
+            btnDelete.classList.remove('hidden');
+        } else {
+            btnDelete.classList.add('hidden');
+        }
+    } else {
+        btnPrint.classList.add('hidden');
+        btnDelete.classList.add('hidden');
+    }
+
+    if(isEdit && dados) {
+        document.getElementById('paciente_id_hidden').value = dados.id;
+        
+        const fields = [
+            'nome','apelido','familia','rg','nascimento','sexo','tel1','tel2',
+            'cep','logradouro','municipio_titulo','zona','secao','obs',
+            'sus', 'referencia', 'lideranca'
+        ];
+        
+        fields.forEach(k => { const el = document.getElementById(`field_${k}`); if(el) el.value = dados[k] || ''; });
+        
+        ['municipio','bairro','status_titulo', 'indicacao'].forEach(k => { 
+            preencherSelectInteligente(k, dados[k]); 
+        });
+        
+        const elTitulo = document.getElementById('field_titulo'); if(elTitulo) elTitulo.value = dados.titulo || '';
+    }
+}
+
+function abrirEdicaoDireta(cpf, id) {
+    switchTab('form-paciente');
+    const inputCpf = document.getElementById('paciente_cpf_check');
+    const cpfStr = cpf ? String(cpf) : '';
+    inputCpf.value = cpfStr;
+    
+    if (id) {
+        if(typeof verificarPorId === 'function') verificarPorId(id);
+    } else if (cpfStr && cpfStr.length > 4) {
+        if(typeof verificarCpfInicial === 'function') verificarCpfInicial();
+    }
+}
+
+function abrirEdicaoAtendimento(at) {
+    switchTab('form-atendimento');
+    document.getElementById('titulo_form_atend').innerText = "Editar Atendimento";
+    document.getElementById('txt_btn_atend').innerText = "Atualizar Dados";
+    document.getElementById('atend_id_hidden').value = at.id;
+    document.getElementById('busca_cpf').value = at.cpf_paciente || at.cpf;
+    document.getElementById('hidden_cpf').value = at.cpf_paciente || at.cpf;
+    document.getElementById('hidden_nome').value = at.nome_paciente || at.nome;
+    document.getElementById('resultado_busca').innerHTML = `<span class="text-blue-700 font-bold flex items-center gap-1"><i data-lucide="user" class="w-4 h-4"></i> Editando: ${at.nome_paciente || at.nome}</span>`;
+    document.getElementById('resto-form-atendimento').classList.remove('hidden');
+
+    const btnDelete = document.getElementById('btn-delete-atendimento');
+    if(currentUserRole === 'ADMIN') {
+        btnDelete.classList.remove('hidden');
+    } else {
+        btnDelete.classList.add('hidden');
+    }
+
+    document.getElementById('data_abertura').value = at.data_abertura || '';
+    document.getElementById('field_prontuario').value = at.prontuario || '';
+    document.getElementById('field_tipo').value = at.tipo || ''; 
+    document.getElementById('field_data_marcacao').value = at.data_marcacao || '';
+    document.getElementById('field_data_risco').value = at.data_risco || '';
+    document.getElementById('field_data_conclusao').value = at.data_conclusao || '';
+    document.getElementById('field_valor').value = at.valor || '';
+    document.getElementById('field_obs_atendimento').value = at.obs_atendimento || '';
+
+    ['tipo_servico','parceiro','especialidade','procedimento','local','tipo','status_atendimento'].forEach(k => {
+        const val = k === 'status_atendimento' ? at.status : at[k];
+        preencherSelectInteligente(k, val);
+    });
+    
+    const inpConclusao = document.getElementById('field_data_conclusao');
+    if(inpConclusao) inpConclusao.onchange = checkStatusConclusao;
+    
+    if(typeof lucide !== 'undefined') lucide.createIcons();
+    if(currentUserRole === 'VISITOR') aplicarPermissoes();
+}
+
+function abrirEdicaoAtendimentoId(id) {
+    const at = todosAtendimentos.find(x => x.id === id);
+    if(at) abrirEdicaoAtendimento(at);
+}
+
+function abrirAtendimentoDireto(cpf, id) {
+    if(!cpf || cpf.length < 5) { alert("Eleitor sem CPF. Edite o cadastro primeiro."); abrirEdicaoDireta(cpf, id); return; }
+    switchTab('form-atendimento');
+    document.getElementById('busca_cpf').value = cpf;
+    if(typeof buscarPacienteParaAtendimento === 'function') buscarPacienteParaAtendimento();
+}
+
+function calcularDataRisco() {
+    const dataMarcacao = document.getElementById('field_data_marcacao').value;
+    const campoEspec = document.getElementById('field_especialidade');
+    if(!dataMarcacao) return;
+    const d = new Date(dataMarcacao);
+    let meses = 3; 
+    if(campoEspec && campoEspec.value && campoEspec.value.toUpperCase().includes("OFTALMOLOGIA")) meses = 6;
+    d.setMonth(d.getMonth() + meses);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    document.getElementById('field_data_risco').value = `${yyyy}-${mm}-${dd}`;
+}
+
+// ============================================================================
+// 6. FUNÇÕES DE EXCLUSÃO (UI HANDLERS)
+// ============================================================================
+
+function confirmarExclusaoPaciente() {
+    if(!pacienteAtual) return;
+    const confirmacao = confirm(`ATENÇÃO: Você está prestes a excluir o eleitor ${pacienteAtual.nome}.\n\nISSO APAGARÁ TAMBÉM TODOS OS ATENDIMENTOS DELE.\n\nTem certeza absoluta?`);
+    if(confirmacao) {
+        if(typeof excluirPacienteAPI === 'function') excluirPacienteAPI(pacienteAtual.id, pacienteAtual.cpf);
+    }
+}
+
+function confirmarExclusaoAtendimento() {
+    const id = document.getElementById('atend_id_hidden').value;
+    if(!id) return;
+    const confirmacao = confirm("Tem certeza que deseja excluir este atendimento?");
+    if(confirmacao) {
+        if(typeof excluirAtendimentoAPI === 'function') excluirAtendimentoAPI(id);
+    }
+}
+
+// ============================================================================
+// 7. RELATÓRIO ELEITORAL (NOVO)
+// ============================================================================
 
 function abrirRelatorioEleitoral() {
     if (!dashboardRawData || !dashboardRawData.pacientes) {
@@ -372,10 +799,8 @@ function abrirRelatorioEleitoral() {
     const modal = document.getElementById('modal-relatorio-eleitoral');
     modal.classList.remove('hidden');
 
-    // Popula o select de filtro com os status existentes
     const statusSet = new Set();
     dashboardRawData.pacientes.forEach(p => {
-        // Trata vazio/null como "N/I" e garante que "N/I" sempre entre na lista
         const st = p.status_titulo ? p.status_titulo.trim().toUpperCase() : 'N/I';
         statusSet.add(st);
     });
@@ -394,7 +819,6 @@ function filtrarRelatorioEleitoral() {
     const tbody = document.getElementById('tbody-relatorio-eleitoral');
     const theadTr = document.querySelector('#modal-relatorio-eleitoral thead tr');
     
-    // Atualiza o cabeçalho para ter a coluna de Ação, caso não tenha (prevenção)
     if(theadTr && theadTr.children.length === 4) {
         const thAcao = document.createElement('th');
         thAcao.className = "px-6 py-3 text-right";
@@ -405,12 +829,8 @@ function filtrarRelatorioEleitoral() {
     tbody.innerHTML = '';
 
     const lista = dashboardRawData.pacientes.filter(p => {
-        // Normaliza o status do paciente para N/I se estiver vazio
         const st = p.status_titulo ? p.status_titulo.trim().toUpperCase() : 'N/I';
-        
-        // Se houver filtro selecionado, compara exatamente
         if (filtro && st !== filtro) return false;
-        
         return true;
     });
 
@@ -430,10 +850,8 @@ function filtrarRelatorioEleitoral() {
         else if (st.includes('CANCELADO') || st.includes('SUSPENSO')) statusColor = "bg-red-100 text-red-700";
         else if (st.includes('TRANSFERIDO')) statusColor = "bg-orange-100 text-orange-700";
 
-        // Preparar dados para o clique (visualizar histórico)
         const pStr = JSON.stringify(p).replace(/"/g, '&quot;');
 
-        // CONTROLE DO BOTÃO DE EDIÇÃO PARA VISITANTES
         const btnEditClass = currentUserRole === 'VISITOR' ? 'hidden' : '';
 
         tr.innerHTML = `
@@ -784,428 +1202,5 @@ function verHistoricoCompleto(p) {
         divDetalhes.innerHTML = '<div class="col-span-3 text-red-500">Erro ao carregar detalhes do paciente.</div>';
         timeline.innerHTML = '<p class="text-red-500 pl-4">Erro ao carregar histórico.</p>';
         console.error(e);
-    }
-}
-
-async function imprimirFicha() {
-    if(!pacienteAtual) { alert("Busque um eleitor para imprimir."); return; }
-    
-    const loading = document.getElementById('loading-paciente');
-    setLoadingText('loading-paciente', "Gerando impressão...");
-    
-    if (loading) {
-        loading.classList.remove('hidden'); loading.classList.add('flex');
-    } else {
-        document.body.style.cursor = 'wait';
-    }
-
-    try {
-        const res = await fetch(`${SCRIPT_URL}?action=getPatientHistory&cpf=${pacienteAtual.cpf || ''}&nome=${encodeURIComponent(pacienteAtual.nome)}`);
-        const json = await res.json();
-        const history = json.data || [];
-
-        let html = `
-            <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; color: #333; max-width: 100%;">
-                
-                <div style="text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end;">
-                    <div style="text-align: left;">
-                        <h1 style="margin: 0; font-size: 22px; font-weight: 700; text-transform: uppercase;">Ficha de Acompanhamento</h1>
-                        <p style="margin: 2px 0 0; color: #555; font-size: 12px;">Gabinete Família Tudo a Ver</p>
-                    </div>
-                    <div style="text-align: right; font-size: 10px; color: #777;">
-                        Emissão: ${new Date().toLocaleString('pt-BR')}
-                    </div>
-                </div>
-
-                <div style="background-color: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px; margin-bottom: 20px; font-size: 12px;">
-                    <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px; margin-bottom: 5px;">
-                        <div><strong>NOME:</strong> ${pacienteAtual.nome}</div>
-                        <div><strong>CPF:</strong> ${pacienteAtual.cpf || '-'}</div>
-                        <div><strong>RG:</strong> ${pacienteAtual.rg || '-'}</div>
-                    </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px;">
-                        <div><strong>DATA NASC.:</strong> ${pacienteAtual.nascimento ? pacienteAtual.nascimento.split('-').reverse().join('/') : '-'}</div>
-                        <div><strong>TEL:</strong> ${pacienteAtual.tel1 || '-'}</div>
-                        <div><strong>BAIRRO:</strong> ${pacienteAtual.bairro || '-'}</div>
-                        <div><strong>TÍTULO:</strong> ${pacienteAtual.titulo || '-'}</div>
-                    </div>
-                    ${pacienteAtual.obs ? `
-                    <div style="margin-top: 8px; pt: 5px; border-top: 1px dashed #cbd5e1;">
-                        <strong>OBSERVAÇÕES:</strong> <span style="font-style: italic;">${pacienteAtual.obs}</span>
-                    </div>` : ''}
-                </div>
-
-                <h3 style="font-size: 14px; margin-bottom: 8px; border-bottom: 1px solid #333; padding-bottom: 4px; text-transform: uppercase;">
-                    Histórico de Atendimentos (${history.length})
-                </h3>
-
-                <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
-                    <thead>
-                        <tr style="background-color: #e2e8f0; text-align: left;">
-                            <th style="padding: 6px; border: 1px solid #cbd5e1; width: 80px;">DATA</th>
-                            <th style="padding: 6px; border: 1px solid #cbd5e1;">TIPO / ESPECIALIDADE</th>
-                            <th style="padding: 6px; border: 1px solid #cbd5e1;">LOCAL / PROCEDIMENTO</th>
-                            <th style="padding: 6px; border: 1px solid #cbd5e1;">DETALHES / PARCEIRO</th>
-                            <th style="padding: 6px; border: 1px solid #cbd5e1; width: 80px; text-align: center;">STATUS</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-        `;
-
-        if(history.length === 0) {
-            html += `<tr><td colspan="5" style="padding: 15px; text-align: center; border: 1px solid #cbd5e1; font-style: italic; color: #666;">Nenhum atendimento registrado.</td></tr>`;
-        } else {
-            history.forEach((at, index) => {
-                const bg = index % 2 === 0 ? '#fff' : '#f8fafc';
-                let statusStyle = "font-weight: bold;";
-                if(at.status === 'PENDENTE') statusStyle += "color: #d97706;";
-                else if(at.status === 'CANCELADO') statusStyle += "color: #dc2626;";
-                else statusStyle += "color: #059669;";
-
-                html += `
-                    <tr style="background-color: ${bg};">
-                        <td style="padding: 6px; border: 1px solid #cbd5e1; vertical-align: top;">
-                            ${at.data_abertura ? at.data_abertura.split('-').reverse().join('/') : '-'}
-                        </td>
-                        <td style="padding: 6px; border: 1px solid #cbd5e1; vertical-align: top;">
-                            <strong>${at.tipo_servico || '-'}</strong><br>
-                            ${at.especialidade || ''}
-                        </td>
-                        <td style="padding: 6px; border: 1px solid #cbd5e1; vertical-align: top;">
-                            ${at.local || '-'}<br>
-                            ${at.procedimento || ''}
-                        </td>
-                        <td style="padding: 6px; border: 1px solid #cbd5e1; vertical-align: top;">
-                            ${at.parceiro ? `Parc: ${at.parceiro}<br>` : ''}
-                            ${at.obs_atendimento || ''}
-                        </td>
-                        <td style="padding: 6px; border: 1px solid #cbd5e1; text-align: center; vertical-align: top;">
-                            <span style="${statusStyle}">${at.status}</span>
-                        </td>
-                    </tr>
-                `;
-            });
-        }
-
-        html += `</tbody></table></div>`;
-
-        const printArea = document.getElementById('printable-area');
-        if (printArea) {
-            printArea.innerHTML = html;
-            window.print();
-        }
-
-        if(loading) { loading.classList.add('hidden'); loading.classList.remove('flex'); }
-        document.body.style.cursor = 'default';
-
-    } catch(e) { 
-        if(loading) { loading.classList.add('hidden'); loading.classList.remove('flex'); }
-        document.body.style.cursor = 'default';
-        alert("Erro ao gerar impressão: " + e); 
-    }
-}
-
-// ============================================================================
-// 5. FORMULÁRIOS E PREENCHIMENTO
-// ============================================================================
-
-function renderizarSelectsVazios() {
-    if(typeof CONFIG_SELECTS === 'undefined') return;
-    CONFIG_SELECTS.forEach(cfg => {
-        const el = document.getElementById(cfg.container);
-        if(el) {
-            const fieldName = cfg.nameOverride || cfg.id;
-            el.innerHTML = `
-                <label class="label-field">${cfg.label}</label>
-                <div class="relative">
-                    <select id="sel_${cfg.id}" onchange="checkSelectNew('${cfg.id}')" class="input-field bg-white uppercase">
-                        <option value="">Carregando...</option>
-                    </select>
-                    <div id="grp_new_${cfg.id}" class="hidden mt-1 flex gap-1 animate-fade-in">
-                        <input type="text" id="inp_${cfg.id}" placeholder="Digite novo..." class="switched-input flex-1 input-field uppercase">
-                        <button type="button" onclick="cancelSelectNew('${cfg.id}')" class="bg-red-100 text-red-600 px-3 rounded hover:bg-red-200">✕</button>
-                    </div>
-                    <input type="hidden" name="${fieldName}" id="field_${cfg.id}">
-                </div>`;
-        }
-    });
-}
-
-function checkSelectNew(id) {
-    const sel = document.getElementById(`sel_${id}`);
-    if (sel.value === '__NEW__') {
-        sel.classList.add('hidden');
-        document.getElementById(`grp_new_${id}`).classList.remove('hidden');
-        document.getElementById(`inp_${id}`).focus();
-        document.getElementById(`field_${id}`).value = '';
-    } else {
-        document.getElementById(`field_${id}`).value = sel.value;
-    }
-}
-
-function cancelSelectNew(id) {
-    const sel = document.getElementById(`sel_${id}`);
-    sel.value = ""; 
-    document.getElementById(`field_${id}`).value = "";
-    sel.classList.remove('hidden'); 
-    document.getElementById(`grp_new_${id}`).classList.add('hidden');
-}
-
-function preencherSelectInteligente(id, valor) {
-    if(!valor) return;
-    const sel = document.getElementById(`sel_${id}`);
-    const hidden = document.getElementById(`field_${id}`);
-    hidden.value = valor;
-    sel.classList.remove('hidden');
-    document.getElementById(`grp_new_${id}`).classList.add('hidden');
-    
-    let exists = false;
-    for(let i=0; i<sel.options.length; i++) {
-        if(sel.options[i].value.toUpperCase() === valor.toUpperCase()) {
-            sel.selectedIndex = i;
-            exists = true;
-            break;
-        }
-    }
-    if(!exists) {
-        const novaOpcao = new Option(valor, valor, true, true);
-        const lastIndex = sel.options.length - 1;
-        if (lastIndex >= 0 && sel.options[lastIndex].value === '__NEW__') {
-            sel.add(novaOpcao, sel.options[lastIndex]); 
-        } else {
-            sel.add(novaOpcao);
-        }
-        sel.value = valor;
-    }
-}
-
-function renderizarTabelaPacientes(lista) {
-    const tbody = document.getElementById('tabela-pacientes-body');
-    tbody.innerHTML = '';
-    if(lista.length === 0) { 
-        tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-slate-500">Nenhum registro encontrado.</td></tr>'; return; 
-    }
-    lista.forEach(p => {
-        const tr = document.createElement('tr');
-        tr.className = "border-b border-slate-100 hover:bg-blue-50 cursor-pointer transition-colors";
-        const pStr = JSON.stringify(p).replace(/"/g, '&quot;');
-        
-        const btnEditClass = currentUserRole === 'VISITOR' ? 'hidden' : '';
-        
-        tr.innerHTML = `
-            <td class="px-6 py-4 font-medium text-slate-800 uppercase" onclick="verHistoricoCompleto(${pStr})">${p.nome}</td>
-            <td class="px-6 py-4 text-slate-600" onclick="verHistoricoCompleto(${pStr})">${p.cpf || '<span class="text-orange-500 text-xs font-bold px-2 py-1 bg-orange-100 rounded">SEM CPF</span>'}</td>
-            <td class="px-6 py-4 hidden sm:table-cell text-slate-500" onclick="verHistoricoCompleto(${pStr})">${p.tel||'-'}</td>
-            <td class="px-6 py-4 hidden md:table-cell uppercase text-slate-500" onclick="verHistoricoCompleto(${pStr})">${p.municipio||'-'}</td>
-            <td class="px-6 py-4 text-right">
-                <button onclick="event.stopPropagation(); abrirAtendimentoDireto('${p.cpf}','${p.id}')" class="btn-action bg-emerald-100 text-emerald-700 p-2 rounded-lg mr-2 hover:bg-emerald-200 transition ${btnEditClass}" title="Novo Atendimento"><i data-lucide="plus" class="w-4 h-4"></i></button>
-                <button onclick="event.stopPropagation(); abrirEdicaoDireta('${p.cpf}','${p.id}')" class="btn-action bg-blue-100 text-blue-700 p-2 rounded-lg hover:bg-blue-200 transition ${btnEditClass}" title="Editar"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
-            </td>`;
-        tbody.appendChild(tr);
-    });
-    if(typeof lucide !== 'undefined') lucide.createIcons();
-}
-
-function renderizarTorreGenero(pacientes) {
-    let masc = 0, fem = 0;
-    pacientes.forEach(p => {
-        const s = p.sexo ? p.sexo.toUpperCase() : '';
-        if(s === 'M' || s === 'MASCULINO') masc++;
-        else if(s === 'F' || s === 'FEMININO') fem++;
-    });
-    const total = masc + fem || 1;
-    const pMasc = Math.round((masc / total) * 100);
-    const pFem = Math.round((fem / total) * 100);
-    document.getElementById('val-masc').innerText = masc;
-    document.getElementById('val-fem').innerText = fem;
-    setTimeout(() => {
-        const tMasc = document.getElementById('tower-masc');
-        const tFem = document.getElementById('tower-fem');
-        if(tMasc) tMasc.style.height = `${pMasc}%`;
-        if(tFem) tFem.style.height = `${pFem}%`;
-    }, 100);
-}
-
-function resetFormPaciente() {
-    document.getElementById('frmPaciente').reset();
-    document.getElementById('paciente_id_hidden').value = "";
-    document.getElementById('msg_cpf_paciente').innerText = '';
-    document.getElementById('opcoes-paciente-existente').classList.add('hidden');
-    document.getElementById('resto-form-paciente').classList.add('hidden');
-    document.getElementById('btn-imprimir').classList.add('hidden');
-    
-    const btnDelete = document.getElementById('btn-delete-paciente');
-    if(btnDelete) btnDelete.classList.add('hidden');
-    
-    CONFIG_SELECTS.forEach(cfg => {
-        const sel = document.getElementById(`sel_${cfg.id}`);
-        if(sel && cfg.id !== 'status_atendimento') sel.value = "";
-        cancelSelectNew(cfg.id);
-    });
-}
-
-function resetFormAtendimento() {
-    document.getElementById('frmAtendimento').reset();
-    document.getElementById('atend_id_hidden').value = "";
-    document.getElementById('titulo_form_atend').innerText = "Novo Atendimento";
-    document.getElementById('txt_btn_atend').innerText = "Salvar Todos os Atendimentos";
-    document.getElementById('resultado_busca').innerText = '';
-    document.getElementById('resto-form-atendimento').classList.add('hidden');
-    
-    const btnDelete = document.getElementById('btn-delete-atendimento');
-    if(btnDelete) btnDelete.classList.add('hidden');
-    
-    document.getElementById('data_abertura').valueAsDate = new Date();
-    
-    // Reseta lista temporária
-    listaProcedimentosTemp = [];
-    renderizarTabelaProcedimentos();
-
-    const inpConclusao = document.getElementById('field_data_conclusao');
-    if(inpConclusao) {
-        inpConclusao.onchange = checkStatusConclusao;
-    }
-    
-    CONFIG_SELECTS.forEach(cfg => {
-        const sel = document.getElementById(`sel_${cfg.id}`);
-        if(sel) sel.value = "";
-        cancelSelectNew(cfg.id);
-    });
-}
-
-function mostrarFormularioPaciente(isEdit, dados = null) {
-    document.getElementById('resto-form-paciente').classList.remove('hidden');
-    document.getElementById('opcoes-paciente-existente').classList.add('hidden');
-    
-    const btnPrint = document.getElementById('btn-imprimir');
-    const btnDelete = document.getElementById('btn-delete-paciente');
-    
-    if(isEdit) {
-        btnPrint.classList.remove('hidden');
-        if(currentUserRole === 'ADMIN') {
-            btnDelete.classList.remove('hidden');
-        } else {
-            btnDelete.classList.add('hidden');
-        }
-    } else {
-        btnPrint.classList.add('hidden');
-        btnDelete.classList.add('hidden');
-    }
-
-    if(isEdit && dados) {
-        document.getElementById('paciente_id_hidden').value = dados.id;
-        
-        const fields = [
-            'nome','apelido','familia','rg','nascimento','sexo','tel1','tel2',
-            'cep','logradouro','municipio_titulo','zona','secao','obs',
-            'sus', 'referencia', 'lideranca'
-        ];
-        
-        fields.forEach(k => { const el = document.getElementById(`field_${k}`); if(el) el.value = dados[k] || ''; });
-        
-        ['municipio','bairro','status_titulo', 'indicacao'].forEach(k => { 
-            preencherSelectInteligente(k, dados[k]); 
-        });
-        
-        const elTitulo = document.getElementById('field_titulo'); if(elTitulo) elTitulo.value = dados.titulo || '';
-    }
-}
-
-function abrirEdicaoDireta(cpf, id) {
-    switchTab('form-paciente');
-    const inputCpf = document.getElementById('paciente_cpf_check');
-    const cpfStr = cpf ? String(cpf) : '';
-    inputCpf.value = cpfStr;
-    
-    if (id) {
-        if(typeof verificarPorId === 'function') verificarPorId(id);
-    } else if (cpfStr && cpfStr.length > 4) {
-        if(typeof verificarCpfInicial === 'function') verificarCpfInicial();
-    }
-}
-
-function abrirEdicaoAtendimento(at) {
-    switchTab('form-atendimento');
-    document.getElementById('titulo_form_atend').innerText = "Editar Atendimento";
-    document.getElementById('txt_btn_atend').innerText = "Atualizar Dados";
-    document.getElementById('atend_id_hidden').value = at.id;
-    document.getElementById('busca_cpf').value = at.cpf_paciente || at.cpf;
-    document.getElementById('hidden_cpf').value = at.cpf_paciente || at.cpf;
-    document.getElementById('hidden_nome').value = at.nome_paciente || at.nome;
-    document.getElementById('resultado_busca').innerHTML = `<span class="text-blue-700 font-bold flex items-center gap-1"><i data-lucide="user" class="w-4 h-4"></i> Editando: ${at.nome_paciente || at.nome}</span>`;
-    document.getElementById('resto-form-atendimento').classList.remove('hidden');
-
-    const btnDelete = document.getElementById('btn-delete-atendimento');
-    if(currentUserRole === 'ADMIN') {
-        btnDelete.classList.remove('hidden');
-    } else {
-        btnDelete.classList.add('hidden');
-    }
-
-    document.getElementById('data_abertura').value = at.data_abertura || '';
-    document.getElementById('field_prontuario').value = at.prontuario || '';
-    document.getElementById('field_tipo').value = at.tipo || ''; 
-    document.getElementById('field_data_marcacao').value = at.data_marcacao || '';
-    document.getElementById('field_data_risco').value = at.data_risco || '';
-    document.getElementById('field_data_conclusao').value = at.data_conclusao || '';
-    document.getElementById('field_valor').value = at.valor || '';
-    document.getElementById('field_obs_atendimento').value = at.obs_atendimento || '';
-
-    ['tipo_servico','parceiro','especialidade','procedimento','local','tipo','status_atendimento'].forEach(k => {
-        const val = k === 'status_atendimento' ? at.status : at[k];
-        preencherSelectInteligente(k, val);
-    });
-    
-    const inpConclusao = document.getElementById('field_data_conclusao');
-    if(inpConclusao) inpConclusao.onchange = checkStatusConclusao;
-    
-    if(typeof lucide !== 'undefined') lucide.createIcons();
-    if(currentUserRole === 'VISITOR') aplicarPermissoes();
-}
-
-function abrirEdicaoAtendimentoId(id) {
-    const at = todosAtendimentos.find(x => x.id === id);
-    if(at) abrirEdicaoAtendimento(at);
-}
-
-function abrirAtendimentoDireto(cpf, id) {
-    if(!cpf || cpf.length < 5) { alert("Eleitor sem CPF. Edite o cadastro primeiro."); abrirEdicaoDireta(cpf, id); return; }
-    switchTab('form-atendimento');
-    document.getElementById('busca_cpf').value = cpf;
-    if(typeof buscarPacienteParaAtendimento === 'function') buscarPacienteParaAtendimento();
-}
-
-function calcularDataRisco() {
-    const dataMarcacao = document.getElementById('field_data_marcacao').value;
-    const campoEspec = document.getElementById('field_especialidade');
-    if(!dataMarcacao) return;
-    const d = new Date(dataMarcacao);
-    let meses = 3; 
-    if(campoEspec && campoEspec.value && campoEspec.value.toUpperCase().includes("OFTALMOLOGIA")) meses = 6;
-    d.setMonth(d.getMonth() + meses);
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    document.getElementById('field_data_risco').value = `${yyyy}-${mm}-${dd}`;
-}
-
-// ============================================================================
-// 6. FUNÇÕES DE EXCLUSÃO (UI HANDLERS)
-// ============================================================================
-
-function confirmarExclusaoPaciente() {
-    if(!pacienteAtual) return;
-    const confirmacao = confirm(`ATENÇÃO: Você está prestes a excluir o eleitor ${pacienteAtual.nome}.\n\nISSO APAGARÁ TAMBÉM TODOS OS ATENDIMENTOS DELE.\n\nTem certeza absoluta?`);
-    if(confirmacao) {
-        if(typeof excluirPacienteAPI === 'function') excluirPacienteAPI(pacienteAtual.id, pacienteAtual.cpf);
-    }
-}
-
-function confirmarExclusaoAtendimento() {
-    const id = document.getElementById('atend_id_hidden').value;
-    if(!id) return;
-    const confirmacao = confirm("Tem certeza que deseja excluir este atendimento?");
-    if(confirmacao) {
-        if(typeof excluirAtendimentoAPI === 'function') excluirAtendimentoAPI(id);
     }
 }
