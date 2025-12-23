@@ -12,19 +12,6 @@ let listaProcedimentosTemp = []; // Armazena os itens adicionados antes de salva
 // 1. LOGIN E PERMISSÕES
 // ============================================================================
 
-// Adiciona listener para tecla Enter no campo de senha assim que o script carrega
-document.addEventListener('DOMContentLoaded', function() {
-    const inputSenha = document.getElementById('login-senha');
-    if (inputSenha) {
-        inputSenha.addEventListener('keypress', function(event) {
-            if (event.key === 'Enter') {
-                event.preventDefault(); // Evita recarregamento padrão se houver
-                fazerLogin();
-            }
-        });
-    }
-});
-
 function fazerLogin() {
     const senha = document.getElementById('login-senha').value;
     const msg = document.getElementById('login-msg');
@@ -196,41 +183,40 @@ function abrirDetalheAtendimento(at) {
 
     document.getElementById('det-data').innerText = at.data_abertura ? at.data_abertura.split('-').reverse().join('/') : '-';
     document.getElementById('det-tipo').innerText = (at.tipo_servico || '') + (at.tipo ? ` - ${at.tipo}` : '');
-function filtrarAtendimentos() {
-    const mes = document.getElementById('filtro-mes').value;
-    const ano = document.getElementById('filtro-ano').value;
-    const status = document.getElementById('filtro-status').value;
-    const buscaTexto = document.getElementById('filtro-atendimento-input').value.toLowerCase(); // NOVO FILTRO
-    const tbody = document.getElementById('tabela-atendimentos-body');
+    document.getElementById('det-servico').innerText = at.especialidade || '-';
+    document.getElementById('det-local').innerText = at.local || '-';
+    document.getElementById('det-parceiro').innerText = at.parceiro || '-';
+    document.getElementById('det-indicacao').innerText = at.indicacao || '-';
+    
+    document.getElementById('det-marcacao').innerText = at.data_marcacao ? at.data_marcacao.split('-').reverse().join('/') : '-';
+    document.getElementById('det-risco').innerText = at.data_risco ? at.data_risco.split('-').reverse().join('/') : '-';
+    document.getElementById('det-obs').innerText = at.obs_atendimento || 'Sem observações.';
 
-    const filtrados = todosAtendimentos.filter(at => {
-        const [y, m] = at.data_abertura ? at.data_abertura.split('-') : ['',''];
-        
-        // Filtros Dropdown
-        if (mes && m !== mes) return false;
-        if (ano && y !== ano) return false;
-        if (status && at.status !== status) return false;
-        
-        // Filtro de Texto (Nome, CPF, Prontuário, Serviço)
-        if (buscaTexto) {
-            // Verifica a existência de cada propriedade antes de chamar .toLowerCase()
-            // ATUALIZAÇÃO: Busca também por nome_paciente e cpf_paciente (novos campos)
-            const nomeMatch = (at.nome || '').toLowerCase().includes(buscaTexto) || (at.nome_paciente || '').toLowerCase().includes(buscaTexto);
-            const cpfMatch = (at.cpf || '').includes(buscaTexto) || (at.cpf_paciente || '').includes(buscaTexto);
-            
-            const prontuarioMatch = (at.prontuario || '').toLowerCase().includes(buscaTexto);
-            const tipoMatch = (at.tipo_servico || '').toLowerCase().includes(buscaTexto);
-            const especMatch = (at.especialidade || '').toLowerCase().includes(buscaTexto);
-            const procMatch = (at.procedimento || '').toLowerCase().includes(buscaTexto);
+    const btnEdit = document.getElementById('btn-editar-detalhe');
+    
+    if(currentUserRole === 'VISITOR') {
+        btnEdit.classList.add('hidden');
+    } else {
+        btnEdit.classList.remove('hidden');
+        btnEdit.onclick = function() {
+            fecharDetalhe();
+            abrirEdicaoAtendimento(at);
+        };
+    }
+}
 
-            if (!nomeMatch && !cpfMatch && !prontuarioMatch && !tipoMatch && !especMatch && !procMatch) {
-                return false;
-            }
-        }
-        
-        return true;
-    });
+function fecharDetalhe() {
+    document.getElementById('modal-backdrop-detalhe').classList.add('hidden');
+}
 
+function abrirListaRelatorio(tipo, index) {
+    if(!window.dadosRelatorioCache || !window.dadosRelatorioCache[tipo]) return;
+    const dados = window.dadosRelatorioCache[tipo][index];
+    if(!dados) return;
+
+    document.getElementById('modal-lista-relatorio').classList.remove('hidden');
+    document.getElementById('titulo-modal-relatorio').innerText = `${dados.nome} (${dados.qtd})`;
+    const tbody = document.getElementById('tbody-modal-relatorio');
     tbody.innerHTML = '';
 
     dados.lista.forEach(at => {
