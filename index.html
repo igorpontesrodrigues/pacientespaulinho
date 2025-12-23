@@ -660,12 +660,12 @@
                                 <div class="md:col-span-12"><label class="label-field">Observações do Item</label><textarea id="field_obs_atendimento" rows="2" class="input-field uppercase"></textarea></div>
                             </div>
                             <div class="flex justify-end">
-                                <button type="button" onclick="adicionarProcedimentoNaLista()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg font-bold shadow-sm flex items-center gap-2"><i data-lucide="plus" class="w-4 h-4"></i> Adicionar à Lista</button>
+                                <button type="button" id="btn-add-lista" onclick="adicionarProcedimentoNaLista()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg font-bold shadow-sm flex items-center gap-2"><i data-lucide="plus" class="w-4 h-4"></i> Adicionar à Lista</button>
                             </div>
                         </div>
 
                         <!-- TABELA DE ITENS PARA SALVAR (NOVO) -->
-                        <div>
+                        <div id="container-lista-procedimentos">
                             <h3 class="form-section-title">Itens a Salvar</h3>
                             <div class="overflow-x-auto border border-slate-200 rounded-lg">
                                 <table class="w-full text-left text-sm text-slate-600">
