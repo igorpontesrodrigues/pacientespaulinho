@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestão Gabinete - Paulinho Tudo a Ver</title>
+    <title>Gestão Gabinete - Família Tudo a Ver</title>
     
     <!-- FAVICON (Local) -->
     <link rel="icon" type="image/png" href="favicon.png">
@@ -27,7 +27,7 @@
             <div class="bg-blue-600 p-8 text-center">
                 <i data-lucide="activity" class="w-16 h-16 text-white mx-auto mb-4"></i>
                 <h1 class="text-2xl font-bold text-white">Gestão Gabinete</h1>
-                <p class="text-blue-200 text-sm">Paulinho Tudo a Ver</p>
+                <p class="text-blue-200 text-sm">Família Tudo a Ver</p>
             </div>
             <div class="p-8">
                 <form onsubmit="event.preventDefault(); fazerLogin();" class="space-y-4">
@@ -59,7 +59,7 @@
             </div>
             <div class="flex justify-between items-end">
                 <div>
-                    <p class="text-xs text-slate-400 mt-1 uppercase tracking-wider font-semibold">Paulinho Tudo a Ver</p>
+                    <p class="text-xs text-slate-400 mt-1 uppercase tracking-wider font-semibold">Família Tudo a Ver</p>
                     <p class="text-[10px] text-slate-500" id="user-role-display">Carregando...</p>
                 </div>
                 <button onclick="logout()" class="text-xs text-red-400 hover:text-red-300 border border-red-900 bg-red-900/20 px-2 py-1 rounded">Sair</button>
@@ -71,7 +71,7 @@
                 <i data-lucide="layout-dashboard" class="w-5 h-5 group-hover:text-blue-400"></i> Dashboard
             </button>
             <button onclick="switchTab('lista-pacientes')" class="w-full text-left px-4 py-3 rounded-lg hover:bg-slate-800 transition flex items-center gap-3 text-slate-300 hover:text-white group">
-                <i data-lucide="users" class="w-5 h-5 group-hover:text-blue-400"></i> Pacientes
+                <i data-lucide="users" class="w-5 h-5 group-hover:text-blue-400"></i> Eleitores
             </button>
             <button onclick="switchTab('lista-atendimentos')" class="w-full text-left px-4 py-3 rounded-lg hover:bg-slate-800 transition flex items-center gap-3 text-slate-300 hover:text-white group">
                 <i data-lucide="list" class="w-5 h-5 group-hover:text-blue-400"></i> Atendimentos
@@ -91,7 +91,7 @@
             </button>
 
             <button onclick="switchTab('form-paciente')" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-bold shadow-lg mb-2 flex items-center justify-center gap-2">
-                <i data-lucide="plus"></i> Paciente
+                <i data-lucide="plus"></i> Novo Eleitor
             </button>
             <button onclick="switchTab('form-atendimento')" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded-lg font-bold shadow-lg flex items-center justify-center gap-2">
                 <i data-lucide="plus"></i> Atendimento
@@ -143,7 +143,7 @@
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
                     <div class="flex justify-between items-start">
-                        <div><p class="text-xs font-bold text-slate-500 uppercase tracking-wide">Total Pacientes</p><h3 class="text-3xl font-bold text-slate-800 mt-1" id="dash-pacientes">-</h3></div>
+                        <div><p class="text-xs font-bold text-slate-500 uppercase tracking-wide">Total Eleitores</p><h3 class="text-3xl font-bold text-slate-800 mt-1" id="dash-pacientes">-</h3></div>
                         <div class="p-2 bg-blue-50 rounded-lg text-blue-600"><i data-lucide="users" class="w-6 h-6"></i></div>
                     </div>
                 </div>
@@ -191,9 +191,11 @@
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
                     <div class="flex justify-between items-center mb-4 border-b pb-2">
                         <h3 class="text-sm font-bold text-slate-600 uppercase">Situação Eleitoral</h3>
-                        <button onclick="abrirRelatorioEleitoral()" class="text-xs bg-blue-50 text-blue-600 border border-blue-100 px-3 py-1 rounded hover:bg-blue-100 transition font-bold flex items-center gap-1">
-                            <i data-lucide="list" class="w-3 h-3"></i> Ver Relatório
-                        </button>
+                        <div class="flex gap-1">
+                            <button onclick="abrirRelatorioEleitoral()" class="text-xs bg-blue-50 text-blue-600 border border-blue-100 px-3 py-1 rounded hover:bg-blue-100 transition font-bold flex items-center gap-1">
+                                <i data-lucide="list" class="w-3 h-3"></i> Ver Relatório
+                            </button>
+                        </div>
                     </div>
                     <div class="h-64 relative">
                         <canvas id="chartTitulo"></canvas>
@@ -237,11 +239,11 @@
             </div>
         </div>
 
-        <!-- LISTA PACIENTES -->
+        <!-- LISTA PACIENTES (ELEITORES) -->
         <div id="view-lista-pacientes" class="hidden fade-in">
             <div class="flex flex-col md:flex-row justify-between items-end mb-6 gap-4 border-b border-slate-200 pb-4">
                 <div>
-                    <h2 class="text-2xl font-bold text-slate-800">Pacientes</h2>
+                    <h2 class="text-2xl font-bold text-slate-800">Eleitores</h2>
                     <div class="flex gap-6 mt-2 text-sm font-medium">
                         <button id="tab-btn-lista" onclick="alternarSubAbaPacientes('lista')" class="text-blue-600 border-b-2 border-blue-600 pb-2 transition-all">Lista Geral</button>
                         <button id="tab-btn-niver" onclick="alternarSubAbaPacientes('niver')" class="text-slate-500 hover:text-blue-500 pb-2 transition-all flex items-center gap-1"><i data-lucide="cake" class="w-3 h-3"></i> Aniversariantes</button>
@@ -294,18 +296,25 @@
         <div id="view-lista-atendimentos" class="hidden fade-in">
             <div class="flex flex-col md:flex-row justify-between items-end mb-6 gap-4">
                 <div><h2 class="text-2xl font-bold text-slate-800">Atendimentos</h2><p class="text-slate-500 text-sm">Histórico</p></div>
-                <div class="flex flex-wrap gap-2 items-center bg-white p-2 rounded-lg border shadow-sm w-full md:w-auto">
-                    <select id="filtro-status" onchange="filtrarAtendimentos()" class="text-sm border-slate-300 rounded-md border p-1.5 font-medium bg-slate-50"><option value="">Status</option><option value="PENDENTE">Pendente</option><option value="CONCLUIDO">Concluído</option></select>
-                    <select id="filtro-mes" onchange="filtrarAtendimentos()" class="text-sm border-slate-300 rounded-md border p-1.5 bg-slate-50"><option value="">Mês</option></select>
-                    <select id="filtro-ano" onchange="filtrarAtendimentos()" class="text-sm border-slate-300 rounded-md border p-1.5 bg-slate-50"><option value="">Ano</option></select>
-                    <button onclick="carregarListaAtendimentos()" class="text-blue-600 hover:bg-blue-50 p-2 rounded border border-transparent hover:border-blue-100"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>
+                <!-- NOVO: CAMPO DE BUSCA EM ATENDIMENTOS -->
+                <div class="flex flex-wrap gap-2 items-center w-full md:w-auto">
+                    <div class="relative flex-1 md:w-48">
+                        <input type="text" id="filtro-atendimento-input" onkeyup="filtrarAtendimentos()" placeholder="Buscar..." class="w-full pl-8 pr-2 py-1.5 rounded-lg border border-slate-300 focus:border-blue-500 text-sm">
+                        <i data-lucide="search" class="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400"></i>
+                    </div>
+                    <div class="flex gap-2 items-center bg-white p-1 rounded-lg border shadow-sm">
+                        <select id="filtro-status" onchange="filtrarAtendimentos()" class="text-sm border-slate-300 rounded-md border p-1.5 font-medium bg-slate-50"><option value="">Status</option><option value="PENDENTE">Pendente</option><option value="CONCLUIDO">Concluído</option></select>
+                        <select id="filtro-mes" onchange="filtrarAtendimentos()" class="text-sm border-slate-300 rounded-md border p-1.5 bg-slate-50"><option value="">Mês</option></select>
+                        <select id="filtro-ano" onchange="filtrarAtendimentos()" class="text-sm border-slate-300 rounded-md border p-1.5 bg-slate-50"><option value="">Ano</option></select>
+                        <button onclick="carregarListaAtendimentos()" class="text-blue-600 hover:bg-blue-50 p-2 rounded border border-transparent hover:border-blue-100"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>
+                    </div>
                 </div>
             </div>
             <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                 <div class="overflow-x-auto">
                     <table class="w-full text-left text-sm text-slate-600">
                         <thead class="bg-slate-50 text-slate-700 uppercase font-bold text-xs border-b border-slate-200">
-                            <tr><th class="px-6 py-4">Data</th><th class="px-6 py-4">Paciente</th><th class="px-6 py-4">Serviço</th><th class="px-6 py-4">Status</th><th class="px-6 py-4 text-right">Ação</th></tr>
+                            <tr><th class="px-6 py-4">Data</th><th class="px-6 py-4">Eleitor</th><th class="px-6 py-4">Serviço</th><th class="px-6 py-4">Status</th><th class="px-6 py-4 text-right">Ação</th></tr>
                         </thead>
                         <tbody id="tabela-atendimentos-body" class="divide-y divide-slate-100"><tr><td colspan="5" class="px-6 py-8 text-center text-slate-400">Carregando...</td></tr></tbody>
                     </table>
@@ -325,7 +334,7 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
                         <div class="md:col-span-2 bg-blue-50 p-4 rounded-lg border border-blue-100 flex justify-between items-center">
                             <div>
-                                <span class="block text-xs font-bold text-blue-500 uppercase tracking-wide">Paciente</span>
+                                <span class="block text-xs font-bold text-blue-500 uppercase tracking-wide">Eleitor</span>
                                 <span class="text-lg font-bold text-slate-800" id="det-paciente">-</span>
                                 <span class="text-slate-500 text-xs ml-2" id="det-cpf">CPF: -</span>
                             </div>
@@ -342,7 +351,7 @@
                         <div><span class="block text-xs font-bold text-slate-400 uppercase">Local</span><span class="text-slate-800 font-medium" id="det-local">-</span></div>
                         
                         <div><span class="block text-xs font-bold text-slate-400 uppercase">Parceiro</span><span class="text-slate-800 font-medium" id="det-parceiro">-</span></div>
-                        <div><span class="block text-xs font-bold text-slate-400 uppercase">Indicação</span><span class="text-slate-800 font-medium" id="det-indicacao">-</span></div>
+                        <!-- Indicação Removida daqui (Visualização) -->
                         
                         <div><span class="block text-xs font-bold text-slate-400 uppercase">Data Marcação</span><span class="text-slate-800 font-medium" id="det-marcacao">-</span></div>
                         <div><span class="block text-xs font-bold text-slate-400 uppercase">Data Risco</span><span class="text-red-600 font-bold" id="det-risco">-</span></div>
@@ -364,121 +373,10 @@
             </div>
         </div>
 
-        <div id="view-parceiros" class="hidden fade-in">
-             <!-- (Conteúdo Parceiros) -->
-             <div class="flex flex-col md:flex-row justify-between items-end mb-6 gap-4 border-b border-slate-200 pb-6">
-                <div>
-                    <h2 class="text-2xl font-bold text-slate-800 flex items-center gap-2"><i data-lucide="handshake" class="text-emerald-600"></i> Central de Parceiros & Liderança</h2>
-                    <p class="text-slate-500 text-sm">Gestão de produtividade e apoio político</p>
-                </div>
-                <div class="flex flex-wrap gap-2 items-center bg-white p-2 rounded-lg border shadow-sm w-full md:w-auto">
-                    <select id="parc-filter-status" onchange="initParceiros()" class="text-sm border-slate-300 rounded-md border p-1.5 font-medium bg-slate-50">
-                        <option value="">Status: Todos</option>
-                        <option value="PENDENTE">Pendentes</option>
-                        <option value="CONCLUIDO">Concluídos</option>
-                        <option value="CANCELADO">Cancelados</option>
-                    </select>
-                    <select id="parc-filter-mes" onchange="initParceiros()" class="text-sm border-slate-300 rounded-md border p-1.5 bg-slate-50">
-                        <option value="">Mês: Todos</option>
-                        <option value="01">Janeiro</option><option value="02">Fevereiro</option><option value="03">Março</option>
-                        <option value="04">Abril</option><option value="05">Maio</option><option value="06">Junho</option>
-                        <option value="07">Julho</option><option value="08">Agosto</option><option value="09">Setembro</option>
-                        <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
-                    </select>
-                    <select id="parc-filter-ano" onchange="initParceiros()" class="text-sm border-slate-300 rounded-md border p-1.5 bg-slate-50">
-                        <option value="">Ano: Todos</option>
-                    </select>
-                    <button onclick="initParceiros()" class="text-emerald-600 hover:bg-emerald-50 p-2 rounded border border-transparent hover:border-emerald-100"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                    <h3 class="text-sm font-bold text-slate-600 uppercase mb-4">Volume por Parceiro (Execução)</h3>
-                    <div class="h-80"><canvas id="chartParceirosRanking"></canvas></div>
-                </div>
-                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex flex-col">
-                    <h3 class="text-sm font-bold text-slate-600 uppercase mb-4 flex justify-between items-center">
-                        <span>Desempenho Lideranças</span>
-                        <span class="text-xs bg-slate-100 px-2 py-1 rounded text-slate-500 normal-case">Ordenado por Total Indicado</span>
-                    </h3>
-                    <div class="overflow-y-auto h-80 pr-2">
-                        <table class="w-full text-left text-sm text-slate-600">
-                            <thead class="bg-slate-50 text-slate-700 uppercase font-bold text-[10px] sticky top-0">
-                                <tr>
-                                    <th class="px-2 py-2">Liderança</th>
-                                    <th class="px-2 py-2 text-center">Total</th>
-                                    <th class="px-2 py-2 text-center text-emerald-600">Atend.</th>
-                                    <th class="px-2 py-2 text-center text-orange-600">Falta</th>
-                                    <th class="px-2 py-2 text-right">%</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tabela-lideranca-body" class="divide-y divide-slate-100"></tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 mb-8">
-                <h3 class="text-sm font-bold text-slate-600 uppercase mb-4">Procedimentos (Filtro Atual)</h3>
-                <div class="h-64"><canvas id="chartProcedimentosGeral"></canvas></div>
-            </div>
-        </div>
-
-        <div id="view-relatorios" class="hidden fade-in">
-            <!-- (Conteúdo Relatórios) -->
-            <div class="flex flex-col md:flex-row justify-between items-end mb-6 gap-4 border-b border-slate-200 pb-6">
-                <div>
-                    <h2 class="text-2xl font-bold text-slate-800 flex items-center gap-2"><i data-lucide="bar-chart-2" class="text-indigo-600"></i> Relatórios de Espera</h2>
-                    <p class="text-slate-500 text-sm">Análise de tempo médio de atendimento (em dias)</p>
-                </div>
-                <div class="flex flex-wrap gap-2 items-center bg-white p-2 rounded-lg border shadow-sm w-full md:w-auto">
-                    <select id="rel-filter-status" onchange="atualizarGraficosRelatorios()" class="text-sm border-slate-300 rounded-md border p-1.5 font-medium bg-slate-50">
-                        <option value="">Status: Todos</option>
-                        <option value="PENDENTE">Pendente (Espera Atual)</option>
-                        <option value="CONCLUIDO">Concluído (Tempo Real)</option>
-                    </select>
-                    <select id="rel-filter-mes" onchange="atualizarGraficosRelatorios()" class="text-sm border-slate-300 rounded-md border p-1.5 bg-slate-50">
-                        <option value="">Mês: Todos</option>
-                        <option value="01">Janeiro</option><option value="02">Fevereiro</option><option value="03">Março</option>
-                        <option value="04">Abril</option><option value="05">Maio</option><option value="06">Junho</option>
-                        <option value="07">Julho</option><option value="08">Agosto</option><option value="09">Setembro</option>
-                        <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
-                    </select>
-                    <select id="rel-filter-ano" onchange="atualizarGraficosRelatorios()" class="text-sm border-slate-300 rounded-md border p-1.5 bg-slate-50">
-                        <option value="">Ano: Todos</option>
-                    </select>
-                    <button onclick="initRelatorios()" class="text-indigo-600 hover:bg-indigo-50 p-2 rounded border border-transparent hover:border-indigo-100"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>
-                </div>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                    <h3 class="text-sm font-bold text-slate-600 uppercase mb-4 border-b pb-2 flex justify-between">
-                        <span>Especialidade</span>
-                        <span class="text-xs font-normal normal-case text-slate-400">Qtd. / Tempo Médio</span>
-                    </h3>
-                    <div id="listaRelEspecialidade" class="flex flex-col gap-3 min-h-[200px]"></div>
-                </div>
-                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                    <h3 class="text-sm font-bold text-slate-600 uppercase mb-4 border-b pb-2 flex justify-between">
-                        <span>Procedimento</span>
-                        <span class="text-xs font-normal normal-case text-slate-400">Qtd. / Tempo Médio</span>
-                    </h3>
-                    <div id="listaRelProcedimento" class="flex flex-col gap-3 min-h-[200px]"></div>
-                </div>
-            </div>
-            <div class="flex justify-between items-center mb-4 mt-8">
-                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2"><i data-lucide="alert-triangle" class="text-red-500"></i> Alertas de Risco Próximo</h3>
-            </div>
-            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                <div class="overflow-x-auto"><table class="w-full text-left text-sm text-slate-600"><thead class="bg-red-50 text-red-900 uppercase font-bold text-xs border-b border-red-100"><tr><th class="px-6 py-4">Data Risco</th><th class="px-6 py-4">Paciente</th><th class="px-6 py-4">Procedimento/Local</th><th class="px-6 py-4">Status</th><th class="px-6 py-4 text-right">Ação</th></tr></thead><tbody id="tabela-risco-body" class="divide-y divide-slate-100"><tr><td colspan="5" class="px-6 py-8 text-center text-slate-400">Carregando análise de risco...</td></tr></tbody></table></div>
-            </div>
-        </div>
-
         <!-- VIEW HISTÓRICO PACIENTE -->
         <div id="view-historico-paciente" class="hidden bg-white rounded-xl shadow-lg border border-slate-200 relative fade-in overflow-hidden flex flex-col h-full md:h-auto max-h-screen md:max-h-[90vh]">
             <div class="bg-slate-900 text-white px-6 py-4 border-b border-slate-800 flex justify-between items-center shrink-0">
-                <h2 class="text-lg font-bold flex items-center gap-2"><i data-lucide="history" class="text-blue-400 w-5 h-5"></i> Histórico do Paciente</h2>
+                <h2 class="text-lg font-bold flex items-center gap-2"><i data-lucide="history" class="text-blue-400 w-5 h-5"></i> Histórico do Eleitor</h2>
                 <div class="flex gap-2">
                     <button onclick="imprimirFicha()" class="text-white hover:text-blue-400 bg-slate-800 border border-slate-700 px-3 py-1 rounded text-sm flex items-center gap-2"><i data-lucide="printer" class="w-4 h-4"></i> Imprimir</button>
                     <!-- BOTÃO EXCLUIR NO HISTÓRICO -->
@@ -489,7 +387,7 @@
             <div class="p-6 md:p-8 overflow-y-auto">
                 <div id="hist-header" class="mb-6 p-4 bg-slate-50 rounded-lg border border-slate-200 flex flex-col md:flex-row gap-4 justify-between items-center">
                     <div>
-                        <h3 class="text-xl font-bold text-slate-800" id="hist-nome">Nome do Paciente</h3>
+                        <h3 class="text-xl font-bold text-slate-800" id="hist-nome">Nome do Eleitor</h3>
                         <div class="flex gap-4 text-sm text-slate-500 mt-1"><span id="hist-cpf">CPF: ...</span><span id="hist-tel">Tel: ...</span></div>
                     </div>
                     <div class="flex gap-2">
@@ -509,10 +407,10 @@
             </div>
         </div>
 
-        <!-- FORM PACIENTE -->
+        <!-- FORM PACIENTE (ELEITOR) -->
         <div id="view-form-paciente" class="hidden bg-white rounded-xl shadow-lg border border-slate-200 relative fade-in overflow-hidden">
             <div class="bg-slate-50 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
-                <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2"><i data-lucide="user-plus" class="text-blue-600 w-5 h-5"></i> Ficha de Paciente</h2>
+                <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2"><i data-lucide="user-plus" class="text-blue-600 w-5 h-5"></i> Ficha de Eleitor</h2>
                 <div class="flex gap-2">
                     <button id="btn-imprimir" onclick="imprimirFicha()" class="hidden text-slate-500 hover:text-blue-600 text-sm border border-slate-300 px-3 py-1 rounded bg-white hover:bg-blue-50 transition items-center gap-1"><i data-lucide="printer" class="w-4 h-4"></i> Imprimir</button>
                     <!-- BOTÃO DE EXCLUIR PACIENTE (NOVO) -->
@@ -533,13 +431,13 @@
                     </div>
                     <!-- ADICIONADO BOTÃO DE EXCLUIR AQUI TAMBÉM (NO CARD DE ENCONTRADO) -->
                     <div id="opcoes-paciente-existente" class="hidden text-center p-8 border-2 border-dashed border-blue-200 rounded-xl bg-slate-50 mb-6 fade-in">
-                        <div class="text-xl text-blue-900 font-bold mb-6">Paciente já cadastrado!</div>
+                        <div class="text-xl text-blue-900 font-bold mb-6">Eleitor já cadastrado!</div>
                         <div class="flex flex-col sm:flex-row gap-4 justify-center max-w-md mx-auto mb-4">
                             <button type="button" onclick="editarPaciente()" class="btn-action flex-1 bg-white border border-slate-300 text-slate-700 py-3 px-4 rounded-lg hover:bg-slate-50 font-medium transition shadow-sm flex items-center justify-center gap-2"><i data-lucide="edit-3" class="w-4 h-4"></i> Editar Dados</button>
                             <button type="button" onclick="irParaAtendimento()" class="btn-action flex-1 bg-emerald-600 text-white py-3 px-4 rounded-lg hover:bg-emerald-700 font-bold shadow-md transition flex items-center justify-center gap-2"><i data-lucide="plus-circle" class="w-4 h-4"></i> Criar Atendimento</button>
                         </div>
                         <!-- Botão de Excluir Extra -->
-                        <button type="button" onclick="confirmarExclusaoPaciente()" class="btn-delete text-red-500 hover:underline text-sm flex items-center justify-center gap-1 mx-auto"><i data-lucide="trash-2" class="w-3 h-3"></i> Excluir este paciente</button>
+                        <button type="button" onclick="confirmarExclusaoPaciente()" class="btn-delete text-red-500 hover:underline text-sm flex items-center justify-center gap-1 mx-auto"><i data-lucide="trash-2" class="w-3 h-3"></i> Excluir este eleitor</button>
                     </div>
                     <div id="resto-form-paciente" class="hidden fade-in space-y-8">
                         <div>
@@ -547,9 +445,12 @@
                             <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
                                 <div class="md:col-span-8"><label class="label-field">Nome Completo *</label><input type="text" name="nome" id="field_nome" required class="input-field uppercase"></div>
                                 <div class="md:col-span-4"><label class="label-field">Apelido</label><input type="text" name="apelido" id="field_apelido" class="input-field uppercase"></div>
-                                <div class="md:col-span-4"><label class="label-field">Família</label><input type="text" name="familia" id="field_familia" class="input-field uppercase"></div>
+                                
+                                <!-- MUDANÇA: RG ANTES DE FAMÍLIA -->
                                 <div class="md:col-span-4"><label class="label-field">RG</label><input type="text" name="rg" id="field_rg" class="input-field"></div>
+                                <div class="md:col-span-4"><label class="label-field">Família</label><input type="text" name="familia" id="field_familia" class="input-field uppercase"></div>
                                 <div class="md:col-span-4"><label class="label-field">Data de Nascimento</label><input type="date" name="nascimento" id="field_nascimento" class="input-field"></div>
+                                
                                 <div class="md:col-span-4"><label class="label-field">Sexo</label><select name="sexo" id="field_sexo" class="input-field bg-white"><option value="">Selecione...</option><option value="MASCULINO">Masculino</option><option value="FEMININO">Feminino</option><option value="OUTRO">Outro</option></select></div>
                                 <div class="md:col-span-4"><label class="label-field">WhatsApp *</label><input type="text" name="tel1" id="field_tel1" required class="input-field"></div>
                                 <div class="md:col-span-4"><label class="label-field">Telefone 2</label><input type="text" name="tel2" id="field_tel2" class="input-field"></div>
@@ -561,18 +462,26 @@
                                 <div class="md:col-span-3"><label class="label-field">CEP</label><input type="text" name="cep" id="field_cep" class="input-field"></div>
                                 <div class="md:col-span-5" id="container_municipio"></div>
                                 <div class="md:col-span-4" id="container_bairro"></div>
-                                <div class="md:col-span-12"><label class="label-field">Logradouro</label><input type="text" name="logradouro" id="field_logradouro" class="input-field uppercase"></div>
+                                <div class="md:col-span-8"><label class="label-field">Logradouro</label><input type="text" name="logradouro" id="field_logradouro" class="input-field uppercase"></div>
+                                <!-- NOVO: PONTO DE REFERÊNCIA -->
+                                <div class="md:col-span-4"><label class="label-field">Ponto de Referência</label><input type="text" name="referencia" id="field_referencia" class="input-field uppercase"></div>
                             </div>
                         </div>
                         <div>
                             <h3 class="form-section-title">Dados Eleitorais & Extras</h3>
                             <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
-                                <div class="md:col-span-3"><label class="label-field">Possui SUS?</label><select name="sus" id="field_sus" class="input-field bg-white"><option value="SIM">Sim</option><option value="NAO">Não</option></select></div>
-                                <div class="md:col-span-5"><label class="label-field">Título de Eleitor</label><input type="text" name="titulo" id="field_titulo" class="input-field"></div>
+                                <!-- MUDANÇA: SUS AGORA É CAMPO DE TEXTO -->
+                                <div class="md:col-span-4"><label class="label-field">Número Cartão do SUS</label><input type="text" name="sus" id="field_sus" class="input-field" placeholder="000 0000 0000 0000"></div>
+                                <div class="md:col-span-4"><label class="label-field">Título de Eleitor</label><input type="text" name="titulo" id="field_titulo" class="input-field"></div>
                                 <div class="md:col-span-4" id="container_status_titulo"></div>
                                 <div class="md:col-span-6"><label class="label-field">Vota no Município?</label><select name="municipio_titulo" id="field_municipio_titulo" class="input-field bg-white uppercase"><option value="">Selecione...</option><option value="SIM">SIM</option><option value="NAO">NÃO</option></select></div>
                                 <div class="md:col-span-3"><label class="label-field">Zona</label><input type="text" name="zona" id="field_zona" class="input-field"></div>
                                 <div class="md:col-span-3"><label class="label-field">Seção</label><input type="text" name="secao" id="field_secao" class="input-field"></div>
+                                
+                                <!-- MUDANÇA: CAMPOS VINDOS DO ATENDIMENTO -->
+                                <div class="md:col-span-6" id="container_indicacao"></div>
+                                <div class="md:col-span-6"><label class="label-field">Liderança?</label><select name="lideranca" id="field_lideranca" class="input-field bg-white uppercase"><option value="">Selecione...</option><option value="SIM">SIM</option><option value="NAO">NÃO</option></select></div>
+
                                 <div class="md:col-span-12"><label class="label-field">Observações Gerais</label><textarea name="obs" id="field_obs" rows="3" class="input-field uppercase"></textarea></div>
                             </div>
                         </div>
@@ -589,7 +498,7 @@
             </div>
         </div>
 
-        <!-- FORM ATENDIMENTO -->
+        <!-- FORM ATENDIMENTO (ATUALIZADO) -->
         <div id="view-form-atendimento" class="hidden bg-white rounded-xl shadow-lg border border-slate-200 relative fade-in overflow-hidden">
             <div class="bg-slate-50 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
                 <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2"><i data-lucide="clipboard-list" class="text-emerald-600 w-5 h-5"></i> <span id="titulo_form_atend">Novo Atendimento</span></h2>
@@ -602,7 +511,7 @@
                 <form id="frmAtendimento" onsubmit="submitAtendimento(event)">
                     <input type="hidden" name="id" id="atend_id_hidden">
                     <div class="mb-8 p-6 bg-slate-50 rounded-xl border border-slate-200">
-                        <label class="block text-sm font-bold text-slate-700 mb-2">Buscar Paciente</label>
+                        <label class="block text-sm font-bold text-slate-700 mb-2">Buscar Eleitor</label>
                         <div class="flex gap-3">
                             <input type="text" id="busca_cpf" placeholder="Digite o CPF ou Nome..." class="flex-1 rounded-lg border-slate-300 border p-3 shadow-sm focus:border-emerald-500 outline-none text-lg" onkeydown="if(event.key === 'Enter'){event.preventDefault(); buscarPacienteParaAtendimento();}">
                             <button type="button" onclick="buscarPacienteParaAtendimento()" class="bg-slate-600 text-white px-6 py-2 rounded-lg hover:bg-slate-700 shadow-sm transition"><i data-lucide="search" class="w-5 h-5"></i></button>
@@ -612,32 +521,60 @@
                         <input type="hidden" name="nome_paciente" id="hidden_nome">
                     </div>
                     <div id="resto-form-atendimento" class="hidden fade-in space-y-8">
-                        <div>
-                            <h3 class="form-section-title">Detalhes do Serviço</h3>
-                            <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
-                                <div class="md:col-span-3"><label class="label-field">Data Abertura</label><input type="date" name="data_abertura" id="data_abertura" required class="input-field"></div>
-                                <div class="md:col-span-5" id="container_indicacao"></div>
-                                <div class="md:col-span-4"><label class="label-field">Liderança?</label><select name="lideranca" id="field_lideranca" class="input-field bg-white uppercase"><option value="">Selecione...</option><option value="SIM">SIM</option><option value="NAO">NÃO</option></select></div>
-                                <div class="md:col-span-4" id="container_tipo_servico"></div>
+                        
+                        <!-- CARD DE PROCEDIMENTOS (NOVO - LÓGICA MÚLTIPLA) -->
+                        <div class="p-6 bg-emerald-50 rounded-xl border border-emerald-100 shadow-sm">
+                            <h3 class="form-section-title text-emerald-700 border-emerald-200">Adicionar Procedimentos</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-12 gap-4 mb-4">
+                                <div class="md:col-span-3"><label class="label-field">Data Abertura</label><input type="date" id="data_abertura" class="input-field"></div>
+                                <!-- Prontuário Adicionado -->
+                                <div class="md:col-span-3"><label class="label-field">Nº Prontuário</label><input type="text" id="field_prontuario" class="input-field"></div>
+                                <div class="md:col-span-6" id="container_tipo_servico"></div>
+                                
                                 <div class="md:col-span-4" id="container_parceiro"></div>
                                 <div class="md:col-span-4" id="container_especialidade"></div>
-                                <div class="md:col-span-6" id="container_procedimento"></div>
-                                <div class="md:col-span-6" id="container_local"></div>
-                                <div class="md:col-span-12" id="container_tipo"></div>
-                            </div>
-                        </div>
-                        <div>
-                            <h3 class="form-section-title">Agendamento & Status</h3>
-                            <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
-                                <div class="md:col-span-3"><label class="label-field">Data Marcação</label><input type="date" name="data_marcacao" id="field_data_marcacao" onchange="calcularDataRisco()" class="input-field"></div>
-                                <div class="md:col-span-3"><label class="label-field">Data Risco (Auto)</label><input type="date" name="data_risco" id="field_data_risco" class="input-field bg-slate-50"></div>
-                                <div class="md:col-span-3"><label class="label-field">Valor (R$)</label><input type="number" step="0.01" name="valor" id="field_valor" class="input-field" placeholder="0,00"></div>
+                                <div class="md:col-span-4" id="container_procedimento"></div>
+                                
+                                <div class="md:col-span-4" id="container_local"></div>
+                                <div class="md:col-span-4" id="container_tipo"></div>
+                                <div class="md:col-span-4"><label class="label-field">Valor (R$)</label><input type="number" step="0.01" id="field_valor" class="input-field" placeholder="0,00"></div>
+                                
+                                <div class="md:col-span-3"><label class="label-field">Data Marcação</label><input type="date" id="field_data_marcacao" onchange="calcularDataRisco()" class="input-field"></div>
+                                <div class="md:col-span-3"><label class="label-field">Data Risco (Auto)</label><input type="date" id="field_data_risco" class="input-field bg-slate-50"></div>
+                                <!-- Data Conclusão Adicionada -->
+                                <div class="md:col-span-3"><label class="label-field">Data Conclusão</label><input type="date" id="field_data_conclusao" class="input-field"></div>
                                 <div class="md:col-span-3" id="container_status_atendimento"></div>
-                                <div class="md:col-span-12"><label class="label-field">Observações do Atendimento</label><textarea name="obs_atendimento" id="field_obs_atendimento" rows="3" class="input-field uppercase"></textarea></div>
+                                
+                                <div class="md:col-span-12"><label class="label-field">Observações do Item</label><textarea id="field_obs_atendimento" rows="2" class="input-field uppercase"></textarea></div>
+                            </div>
+                            <div class="flex justify-end">
+                                <button type="button" onclick="adicionarProcedimentoNaLista()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg font-bold shadow-sm flex items-center gap-2"><i data-lucide="plus" class="w-4 h-4"></i> Adicionar à Lista</button>
                             </div>
                         </div>
+
+                        <!-- TABELA DE ITENS PARA SALVAR (NOVO) -->
+                        <div>
+                            <h3 class="form-section-title">Itens a Salvar</h3>
+                            <div class="overflow-x-auto border border-slate-200 rounded-lg">
+                                <table class="w-full text-left text-sm text-slate-600">
+                                    <thead class="bg-slate-50 text-slate-700 uppercase font-bold text-xs border-b border-slate-200">
+                                        <tr>
+                                            <th class="px-4 py-2">Data</th>
+                                            <th class="px-4 py-2">Serviço/Proc.</th>
+                                            <th class="px-4 py-2">Local</th>
+                                            <th class="px-4 py-2">Status</th>
+                                            <th class="px-4 py-2 text-right">Ação</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="lista-procedimentos-temp" class="divide-y divide-slate-100 bg-white">
+                                        <tr><td colspan="5" class="px-4 py-4 text-center text-slate-400 italic">Nenhum item adicionado.</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
                         <div class="pt-6 border-t border-slate-100">
-                            <button type="submit" id="btn-save-atendimento" class="btn-action w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all flex justify-center items-center gap-2 transform active:scale-[0.99]"><i data-lucide="check-circle" class="w-5 h-5"></i> <span id="txt_btn_atend">Confirmar Atendimento</span></button>
+                            <button type="submit" id="btn-save-atendimento" class="btn-action w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all flex justify-center items-center gap-2 transform active:scale-[0.99]"><i data-lucide="check-circle" class="w-5 h-5"></i> <span id="txt_btn_atend">Salvar Todos os Atendimentos</span></button>
                         </div>
                     </div>
                 </form>
@@ -665,7 +602,7 @@
                         <thead class="bg-slate-50 text-slate-700 uppercase font-bold text-xs sticky top-0 shadow-sm">
                             <tr>
                                 <th id="th-col1" class="px-6 py-3">Data Abertura</th>
-                                <th id="th-col2" class="px-6 py-3">Paciente</th>
+                                <th id="th-col2" class="px-6 py-3">Eleitor</th>
                                 <th id="th-col3" class="px-6 py-3 text-right">Espera</th>
                             </tr>
                         </thead>
@@ -681,7 +618,7 @@
                 <div class="bg-slate-50 px-6 py-4 border-b border-slate-200 flex flex-col md:flex-row justify-between items-center shrink-0 gap-4">
                     <div>
                         <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2"><i data-lucide="flag" class="text-blue-600 w-5 h-5"></i> Relatório Eleitoral</h2>
-                        <p class="text-xs text-slate-500">Listagem completa de pacientes</p>
+                        <p class="text-xs text-slate-500">Listagem completa da Família</p>
                     </div>
                     <div class="flex items-center gap-3">
                         <select id="filtro-modal-eleitoral" onchange="filtrarRelatorioEleitoral()" class="text-sm border border-slate-300 rounded-lg px-3 py-1.5 focus:border-blue-500 outline-none">
