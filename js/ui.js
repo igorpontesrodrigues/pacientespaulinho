@@ -259,8 +259,29 @@ function abrirListaRelatorio(tipo, index) {
 }
 
 // ============================================================================
-// 4. LOGICA DE PROCEDIMENTOS MÚLTIPLOS & SALVAMENTO
+// 4. LOGICA DE PROCEDIMENTOS MÚLTIPLOS & CONTROLE DE UI
 // ============================================================================
+
+function toggleModoEdicao(isEdicao) {
+    const btnAdd = document.getElementById('btn-add-lista');
+    const containerLista = document.getElementById('container-lista-procedimentos');
+    const tituloForm = document.getElementById('titulo_form_atend');
+    const btnSave = document.getElementById('btn-save-atendimento');
+    
+    if (isEdicao) {
+        if(btnAdd) btnAdd.classList.add('hidden');
+        if(containerLista) containerLista.classList.add('hidden');
+        if(tituloForm) tituloForm.innerText = "Editar Atendimento";
+        // No modo edição, o texto deve refletir atualização única
+        if(btnSave) btnSave.innerHTML = `<i data-lucide="check-circle" class="w-5 h-5"></i> Atualizar Dados`;
+    } else {
+        if(btnAdd) btnAdd.classList.remove('hidden');
+        if(containerLista) containerLista.classList.remove('hidden');
+        if(tituloForm) tituloForm.innerText = "Novo Atendimento";
+        if(btnSave) btnSave.innerHTML = `<i data-lucide="check-circle" class="w-5 h-5"></i> Salvar Todos os Atendimentos`;
+    }
+    if(typeof lucide !== 'undefined') lucide.createIcons();
+}
 
 function adicionarProcedimentoNaLista() {
     const dataAbertura = document.getElementById('data_abertura').value;
@@ -321,6 +342,7 @@ function adicionarProcedimentoNaLista() {
 
 function renderizarTabelaProcedimentos() {
     const tbody = document.getElementById('lista-procedimentos-temp');
+    if(!tbody) return; // Proteção se o elemento não existir
     tbody.innerHTML = '';
 
     if (listaProcedimentosTemp.length === 0) {
@@ -623,8 +645,6 @@ function resetFormPaciente() {
 function resetFormAtendimento() {
     document.getElementById('frmAtendimento').reset();
     document.getElementById('atend_id_hidden').value = "";
-    document.getElementById('titulo_form_atend').innerText = "Novo Atendimento";
-    document.getElementById('txt_btn_atend').innerText = "Salvar Todos os Atendimentos";
     document.getElementById('resultado_busca').innerText = '';
     document.getElementById('resto-form-atendimento').classList.add('hidden');
     
@@ -636,6 +656,9 @@ function resetFormAtendimento() {
     // Reseta lista temporária
     listaProcedimentosTemp = [];
     renderizarTabelaProcedimentos();
+
+    // RESTAURA MODO PADRÃO (NOVO)
+    toggleModoEdicao(false);
 
     const inpConclusao = document.getElementById('field_data_conclusao');
     if(inpConclusao) {
@@ -702,8 +725,10 @@ function abrirEdicaoDireta(cpf, id) {
 
 function abrirEdicaoAtendimento(at) {
     switchTab('form-atendimento');
-    document.getElementById('titulo_form_atend').innerText = "Editar Atendimento";
-    document.getElementById('txt_btn_atend').innerText = "Atualizar Dados";
+    
+    // ATIVA MODO DE EDIÇÃO (Esconde lista e botões de lote)
+    toggleModoEdicao(true);
+
     document.getElementById('atend_id_hidden').value = at.id;
     document.getElementById('busca_cpf').value = at.cpf_paciente || at.cpf;
     document.getElementById('hidden_cpf').value = at.cpf_paciente || at.cpf;
