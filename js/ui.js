@@ -1,27 +1,68 @@
-/**
- * js/ui.js
- * Funções de manipulação da interface (DOM) e lógica de visualização.
- */
+function filtrarAtendimentos() {
+    const mes = document.getElementById('filtro-mes').value;
+    const ano = document.getElementById('filtro-ano').value;
+    const status = document.getElementById('filtro-status').value;
+    const buscaTexto = document.getElementById('filtro-atendimento-input').value.toLowerCase(); // NOVO FILTRO
+    const tbody = document.getElementById('tabela-atendimentos-body');
 
-// ============================================================================
-// VARIÁVEIS GLOBAIS DE UI
-// ============================================================================
-let listaProcedimentosTemp = []; // Armazena os itens adicionados antes de salvar
+    const filtrados = todosAtendimentos.filter(at => {
+        const [y, m] = at.data_abertura ? at.data_abertura.split('-') : ['',''];
+        
+        // Filtros Dropdown
+        if (mes && m !== mes) return false;
+        if (ano && y !== ano) return false;
+        if (status && at.status !== status) return false;
+        
+        // Filtro de Texto (Nome, CPF, Prontuário, Serviço)
+        if (buscaTexto) {
+            // Verifica a existência de cada propriedade antes de chamar .toLowerCase()
+            const nomeMatch = (at.nome_paciente || at.nome || '').toLowerCase().includes(buscaTexto);
+            const cpfMatch = (at.cpf_paciente || at.cpf || '').includes(buscaTexto);
+            const prontuarioMatch = (at.prontuario || '').toLowerCase().includes(buscaTexto);
+            const tipoMatch = (at.tipo_servico || '').toLowerCase().includes(buscaTexto);
+            const especMatch = (at.especialidade || '').toLowerCase().includes(buscaTexto);
+            const procMatch = (at.procedimento || '').toLowerCase().includes(buscaTexto);
 
-// ============================================================================
-// 1. LOGIN E PERMISSÕES
-// ============================================================================
+            if (!nomeMatch && !cpfMatch && !prontuarioMatch && !tipoMatch && !especMatch && !procMatch) {
+                return false;
+            }
+        }
+        
+        return true;
+    });
 
-function fazerLogin() {
-    const senha = document.getElementById('login-senha').value;
-    const msg = document.getElementById('login-msg');
+    tbody.innerHTML = '';
+    if(filtrados.length === 0) { tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-slate-500">Nenhum registro encontrado.</td></tr>'; return; }
+    
+    filtrados.forEach(at => {
+        let color = at.status === 'CONCLUIDO' ? 'bg-emerald-100 text-emerald-700' : (at.status === 'PENDENTE' ? 'bg-amber-100 text-amber-700' : (at.status === 'CANCELADO' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600'));
+        
+        const tempId = 'at_' + Math.random().toString(36).substr(2, 9);
+        window[tempId] = at;
 
-    if (senha === 'simone123') {
-        currentUserRole = 'ADMIN';
-        iniciarSistema('Administrador');
-    } else {
-        msg.innerText = "Senha incorreta.";
-    }
+        // Usa os campos corretos para exibição (com fallback para compatibilidade)
+        const nomeExibir = at.nome_paciente || at.nome || 'NOME N/D';
+        const cpfExibir = at.cpf_paciente || at.cpf || '';
+        const servicoExibir = at.tipo_servico || '-';
+        const detalheExibir = at.local || at.especialidade || '';
+
+        const tr = document.createElement('tr');
+        tr.className = "border-b border-slate-100 hover:bg-blue-50 transition-colors cursor-pointer";
+        tr.innerHTML = `
+            <td class="px-6 py-4 font-mono text-slate-600 text-xs">${at.data_abertura ? at.data_abertura.split('-').reverse().join('/') : '-'}</td>
+            <td class="px-6 py-4 font-medium text-slate-800 uppercase text-sm">${nomeExibir}<br><span class="text-slate-400 font-normal text-xs">${cpfExibir}</span></td>
+            <td class="px-6 py-4 text-slate-600 uppercase text-xs"><span class="font-bold text-slate-700">${servicoExibir}</span><br>${detalheExibir}</td>
+            <td class="px-6 py-4"><span class="${color} px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-black/5">${at.status}</span></td>
+            <td class="px-6 py-4 text-right"><button onclick="event.stopPropagation(); abrirEdicaoAtendimentoId('${at.id}')" class="btn-action bg-blue-100 text-blue-700 p-2 rounded-lg hover:bg-blue-200 transition" title="Editar"><i data-lucide="edit-2" class="w-4 h-4"></i></button></td>
+        `;
+        tr.onclick = () => abrirDetalheAtendimento(window[tempId]);
+        tbody.appendChild(tr);
+    });
+    document.getElementById('contador-atendimentos').innerText = `Exibindo ${filtrados.length} registros`;
+    if(typeof lucide !== 'undefined') lucide.createIcons();
+    
+    if(typeof aplicarPermissoes === 'function' && typeof currentUserRole !== 'undefined') aplicarPermissoes();
+}
 }
 
 function loginVisitante() {
