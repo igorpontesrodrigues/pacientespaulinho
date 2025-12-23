@@ -131,37 +131,62 @@ function switchTab(tabId) {
 function voltarInicio() { 
     switchTab('lista-pacientes'); 
 }
+async function submitAtendimento(e) {
+    if(e) e.preventDefault(); // Garante que o evento previne o reload
+    const id = document.getElementById('atend_id_hidden').value;
 
-function alternarSubAbaPacientes(aba) {
-    const listaDiv = document.getElementById('subview-pacientes-lista');
-    const niverDiv = document.getElementById('subview-pacientes-niver');
-    const btnLista = document.getElementById('tab-btn-lista');
-    const btnNiver = document.getElementById('tab-btn-niver');
-    const buscaContainer = document.getElementById('container-busca-pacientes');
-    const filtroNiver = document.getElementById('container-filtro-niver');
+    // --- MODO EDIÇÃO (Single) ---
+    if (id) {
+        // CORRIGIDO: Pega os valores explicitamente pelos IDs dos campos
+        const data = {
+            id: id,
+            cpf_paciente: document.getElementById('hidden_cpf').value,
+            nome_paciente: document.getElementById('hidden_nome').value,
+            data_abertura: document.getElementById('data_abertura').value,
+            prontuario: document.getElementById('field_prontuario').value,
+            // Campos que usam o sistema de select/input híbrido
+            tipo_servico: document.getElementById('field_tipo_servico').value,
+            parceiro: document.getElementById('field_parceiro').value,
+            especialidade: document.getElementById('field_especialidade').value,
+            procedimento: document.getElementById('field_procedimento').value,
+            local: document.getElementById('field_local').value,
+            tipo: document.getElementById('field_tipo').value,
+            valor: document.getElementById('field_valor').value,
+            data_marcacao: document.getElementById('field_data_marcacao').value,
+            data_risco: document.getElementById('field_data_risco').value,
+            data_conclusao: document.getElementById('field_data_conclusao').value,
+            status: document.getElementById('field_status_atendimento').value,
+            obs_atendimento: document.getElementById('field_obs_atendimento').value
+        };
 
-    if (aba === 'lista') {
-        listaDiv.classList.remove('hidden');
-        niverDiv.classList.add('hidden');
-        buscaContainer.classList.remove('hidden');
-        filtroNiver.classList.add('hidden');
-        filtroNiver.style.display = 'none'; 
+        if(await sendData('registerService', data, 'loading-atendimento')) { 
+            if(typeof resetFormAtendimento === 'function') resetFormAtendimento(); 
+            // Não chama voltarInicio() aqui se quiser manter na mesma tela ou use switchTab('lista-atendimentos')
+            switchTab('lista-atendimentos'); 
+        }
+        return;
+    }
 
-        btnLista.className = "text-blue-600 border-b-2 border-blue-600 pb-2 transition-all";
-        btnNiver.className = "text-slate-500 hover:text-blue-500 pb-2 transition-all flex items-center gap-1";
-        
-        if(typeof carregarListaPacientes === 'function') carregarListaPacientes();
-    } else {
-        listaDiv.classList.add('hidden');
-        niverDiv.classList.remove('hidden');
-        buscaContainer.classList.add('hidden');
-        filtroNiver.classList.remove('hidden');
-        filtroNiver.style.display = 'flex';
+    // --- MODO CRIAÇÃO (Lote/Batch) ---
+    if (typeof listaProcedimentosTemp === 'undefined' || listaProcedimentosTemp.length === 0) {
+        alert("Adicione pelo menos um procedimento à lista antes de salvar.");
+        return;
+    }
 
-        btnNiver.className = "text-pink-600 border-b-2 border-pink-600 pb-2 transition-all flex items-center gap-1";
-        btnLista.className = "text-slate-500 hover:text-blue-500 pb-2 transition-all";
+    const cpf = document.getElementById('hidden_cpf').value;
+    const nome = document.getElementById('hidden_nome').value;
 
-        if(typeof carregarAniversarios === 'function') carregarAniversarios();
+    if(!cpf && !nome) { alert("Busque o munícipe."); return; }
+
+    const batch = listaProcedimentosTemp.map(item => ({
+        ...item,
+        cpf_paciente: cpf,
+        nome_paciente: nome
+    }));
+
+    if(await sendData('registerServiceBatch', batch, 'loading-atendimento')) { 
+        if(typeof resetFormAtendimento === 'function') resetFormAtendimento(); 
+        switchTab('lista-atendimentos');
     }
 }
 
