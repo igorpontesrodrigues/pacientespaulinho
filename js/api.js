@@ -8,7 +8,6 @@
 // ============================================================================
 
 function setLoadingText(loadingId, text) {
-    // O ID do texto é sempre "lbl-" + o ID da div de loading
     const label = document.getElementById('lbl-' + loadingId);
     if (label) label.innerText = text;
 }
@@ -19,16 +18,23 @@ function setLoadingText(loadingId, text) {
 
 async function sendData(action, data, loadingId) {
     const loading = document.getElementById(loadingId);
-    
-    // Define texto para "Salvando..." pois é um envio de dados
     setLoadingText(loadingId, "Salvando...");
     
     if(loading) { loading.classList.remove('hidden'); loading.classList.add('flex'); }
     
-    for(let k in data) {
-        if(typeof data[k] === 'string' && !['cpf','id'].includes(k) && !k.includes('data')) {
-            data[k] = data[k].toUpperCase();
+    // Normalização para maiúsculas (exceto IDs e datas)
+    const normalize = (obj) => {
+        for(let k in obj) {
+            if(typeof obj[k] === 'string' && !['cpf','id'].includes(k) && !k.includes('data')) {
+                obj[k] = obj[k].toUpperCase();
+            }
         }
+    };
+
+    if (Array.isArray(data)) {
+        data.forEach(normalize);
+    } else {
+        normalize(data);
     }
 
     try {
@@ -55,7 +61,7 @@ async function sendData(action, data, loadingId) {
 }
 
 async function carregarFiltros() {
-    // Carregamento silencioso, sem overlay
+    // Carregamento silencioso
     const safety = setTimeout(() => {
         if(typeof CONFIG_SELECTS !== 'undefined') {
             CONFIG_SELECTS.forEach(cfg => {
@@ -108,7 +114,7 @@ async function carregarFiltros() {
 }
 
 // ============================================================================
-// 2. PACIENTES E HISTÓRICO COMPLETO
+// 2. ELEITORES (PACIENTES) E HISTÓRICO
 // ============================================================================
 
 async function carregarListaPacientes() {
@@ -218,236 +224,11 @@ async function carregarAniversarios() {
     } catch(e) { tbody.innerHTML = '<tr><td colspan="5" class="text-center text-red-500 py-4">Erro ao carregar.</td></tr>'; }
 }
 
-// FUNÇÃO ATUALIZADA: Busca todos os dados e histórico
-async function verHistoricoCompleto(p) {
-    if(typeof switchTab === 'function') switchTab('historico-paciente');
-    
-    // Atualiza interface básica enquanto carrega
-    document.getElementById('hist-nome').innerText = p.nome;
-    document.getElementById('hist-cpf').innerText = p.cpf ? `CPF: ${p.cpf}` : 'SEM CPF REGISTRADO';
-    document.getElementById('hist-tel').innerText = `Tel: ${p.tel || '-'}`;
-    
-    // Mostra loading nos detalhes
-    const divDetalhes = document.getElementById('hist-detalhes');
-    divDetalhes.innerHTML = '<div class="col-span-3 text-center text-blue-500"><i class="animate-spin inline-block mr-2" data-lucide="loader-2"></i> Carregando dados completos...</div>';
-    
-    const timeline = document.getElementById('hist-timeline');
-    timeline.innerHTML = '<p class="text-slate-400 text-sm italic pl-4">Buscando histórico completo...</p>';
-
-    // Se for Admin, garante que botão excluir está visível
-    const btnHistDelete = document.getElementById('btn-hist-delete');
-    if(btnHistDelete && typeof currentUserRole !== 'undefined') {
-        btnHistDelete.classList.toggle('hidden', currentUserRole !== 'ADMIN');
-    }
-
-    try {
-        // 1. Busca DADOS COMPLETOS do paciente (para preencher o cabeçalho do histórico)
-        // Usa o ID se disponível, senão CPF
-        let buscaParam = p.id ? `&busca=${p.id}&tipo=id` : `&busca=${p.cpf}&tipo=cpf`;
-        const resPac = await fetch(`${SCRIPT_URL}?action=findPatient${buscaParam}`);
-        const jsonPac = await resPac.json();
-        
-        let pacienteCompleto = p;
-        if(jsonPac.found) {
-            pacienteCompleto = jsonPac;
-            pacienteAtual = jsonPac; // Atualiza global para edição/exclusão/impressão funcionar com dados frescos
-            histPacienteAtual = jsonPac;
-        } else {
-            pacienteAtual = p;
-            histPacienteAtual = p;
-        }
-
-        // Renderiza os detalhes completos no topo do histórico
-        divDetalhes.innerHTML = `
-            <div><span class="block text-xs font-bold text-slate-400 uppercase">Data Nasc.</span> <span class="font-medium text-slate-800">${pacienteCompleto.nascimento ? pacienteCompleto.nascimento.split('-').reverse().join('/') : '-'}</span></div>
-            <div><span class="block text-xs font-bold text-slate-400 uppercase">RG</span> <span class="font-medium text-slate-800">${pacienteCompleto.rg || '-'}</span></div>
-            <div><span class="block text-xs font-bold text-slate-400 uppercase">Município</span> <span class="font-medium text-slate-800">${pacienteCompleto.municipio || '-'}</span></div>
-            
-            <div><span class="block text-xs font-bold text-slate-400 uppercase">Bairro</span> <span class="font-medium text-slate-800">${pacienteCompleto.bairro || '-'}</span></div>
-            <div class="md:col-span-2"><span class="block text-xs font-bold text-slate-400 uppercase">Endereço</span> <span class="font-medium text-slate-800">${pacienteCompleto.logradouro || '-'}</span></div>
-            
-            <div><span class="block text-xs font-bold text-slate-400 uppercase">Título Eleitor</span> <span class="font-medium text-slate-800">${pacienteCompleto.titulo || '-'}</span></div>
-            <div><span class="block text-xs font-bold text-slate-400 uppercase">Zona/Seção</span> <span class="font-medium text-slate-800">${pacienteCompleto.zona || '-'}/${pacienteCompleto.secao || '-'}</span></div>
-            <div><span class="block text-xs font-bold text-slate-400 uppercase">Família</span> <span class="font-medium text-slate-800">${pacienteCompleto.familia || '-'}</span></div>
-            
-            ${pacienteCompleto.obs ? `<div class="md:col-span-3 mt-2 pt-2 border-t border-slate-100"><span class="block text-xs font-bold text-slate-400 uppercase">Observações</span> <p class="italic text-slate-600">${pacienteCompleto.obs}</p></div>` : ''}
-        `;
-
-        // 2. Busca HISTÓRICO DE ATENDIMENTOS
-        const resHist = await fetch(`${SCRIPT_URL}?action=getPatientHistory&cpf=${pacienteCompleto.cpf || ''}&nome=${encodeURIComponent(pacienteCompleto.nome)}`);
-        const jsonHist = await resHist.json();
-        const history = jsonHist.data || [];
-
-        if(history.length === 0) {
-            timeline.innerHTML = '<p class="text-slate-400 pl-4">Nenhum atendimento registrado.</p>';
-        } else {
-            const itemsHtml = history.map(at => {
-                const dataFmt = at.data_abertura.split('-').reverse().join('/');
-                let statusColor = "bg-slate-100 text-slate-600";
-                if(at.status === 'CONCLUIDO') statusColor = "bg-emerald-100 text-emerald-700";
-                if(at.status === 'PENDENTE') statusColor = "bg-amber-100 text-amber-700";
-                if(at.status === 'CANCELADO') statusColor = "bg-red-100 text-red-700";
-
-                const tempId = 'hist_' + Math.random().toString(36).substr(2, 9);
-                window[tempId] = at;
-
-                return `
-                    <div class="relative pl-4 pb-6 cursor-pointer hover:opacity-80 transition" onclick="abrirDetalheAtendimento(window['${tempId}'])">
-                        <div class="absolute -left-[9px] top-0 w-4 h-4 bg-blue-500 rounded-full border-4 border-slate-100"></div>
-                        <div class="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
-                            <div class="flex justify-between items-start mb-2">
-                                <span class="font-bold text-slate-800">${dataFmt}</span>
-                                <span class="${statusColor} text-[10px] px-2 py-0.5 rounded font-bold uppercase">${at.status}</span>
-                            </div>
-                            <div class="text-sm text-slate-700">
-                                <span class="font-bold">${at.tipo_servico || 'SERVIÇO'}</span> 
-                                <span class="text-slate-400 mx-1">•</span> 
-                                ${at.especialidade || at.local || 'Geral'}
-                            </div>
-                            <div class="text-xs text-slate-500 mt-2 flex justify-between items-center">
-                                <span>Clique para ver detalhes</span>
-                                <i data-lucide="chevron-right" class="w-4 h-4"></i>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-            timeline.innerHTML = itemsHtml;
-        }
-        
-        if(typeof lucide !== 'undefined') lucide.createIcons();
-
-    } catch(e) {
-        divDetalhes.innerHTML = '<div class="col-span-3 text-red-500">Erro ao carregar detalhes do paciente.</div>';
-        timeline.innerHTML = '<p class="text-red-500 pl-4">Erro ao carregar histórico.</p>';
-        console.error(e);
-    }
-}
-
-async function imprimirFicha() {
-    if(!pacienteAtual) { alert("Busque um paciente para imprimir."); return; }
-    
-    const loading = document.getElementById('loading-paciente');
-    setLoadingText('loading-paciente', "Gerando impressão...");
-    
-    if (loading) {
-        loading.classList.remove('hidden'); loading.classList.add('flex');
-    } else {
-        document.body.style.cursor = 'wait';
-    }
-
-    try {
-        const res = await fetch(`${SCRIPT_URL}?action=getPatientHistory&cpf=${pacienteAtual.cpf || ''}&nome=${encodeURIComponent(pacienteAtual.nome)}`);
-        const json = await res.json();
-        const history = json.data || [];
-
-        let html = `
-            <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; color: #333; max-width: 100%;">
-                
-                <div style="text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end;">
-                    <div style="text-align: left;">
-                        <h1 style="margin: 0; font-size: 22px; font-weight: 700; text-transform: uppercase;">Ficha de Acompanhamento</h1>
-                        <p style="margin: 2px 0 0; color: #555; font-size: 12px;">Gabinete Paulinho Tudo a Ver</p>
-                    </div>
-                    <div style="text-align: right; font-size: 10px; color: #777;">
-                        Emissão: ${new Date().toLocaleString('pt-BR')}
-                    </div>
-                </div>
-
-                <div style="background-color: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px; margin-bottom: 20px; font-size: 12px;">
-                    <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px; margin-bottom: 5px;">
-                        <div><strong>NOME:</strong> ${pacienteAtual.nome}</div>
-                        <div><strong>CPF:</strong> ${pacienteAtual.cpf || '-'}</div>
-                        <div><strong>RG:</strong> ${pacienteAtual.rg || '-'}</div>
-                    </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px;">
-                        <div><strong>DATA NASC.:</strong> ${pacienteAtual.nascimento ? pacienteAtual.nascimento.split('-').reverse().join('/') : '-'}</div>
-                        <div><strong>TEL:</strong> ${pacienteAtual.tel1 || '-'}</div>
-                        <div><strong>BAIRRO:</strong> ${pacienteAtual.bairro || '-'}</div>
-                        <div><strong>TÍTULO:</strong> ${pacienteAtual.titulo || '-'}</div>
-                    </div>
-                    ${pacienteAtual.obs ? `
-                    <div style="margin-top: 8px; pt: 5px; border-top: 1px dashed #cbd5e1;">
-                        <strong>OBSERVAÇÕES:</strong> <span style="font-style: italic;">${pacienteAtual.obs}</span>
-                    </div>` : ''}
-                </div>
-
-                <h3 style="font-size: 14px; margin-bottom: 8px; border-bottom: 1px solid #333; padding-bottom: 4px; text-transform: uppercase;">
-                    Histórico de Atendimentos (${history.length})
-                </h3>
-
-                <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
-                    <thead>
-                        <tr style="background-color: #e2e8f0; text-align: left;">
-                            <th style="padding: 6px; border: 1px solid #cbd5e1; width: 80px;">DATA</th>
-                            <th style="padding: 6px; border: 1px solid #cbd5e1;">TIPO / ESPECIALIDADE</th>
-                            <th style="padding: 6px; border: 1px solid #cbd5e1;">LOCAL / PROCEDIMENTO</th>
-                            <th style="padding: 6px; border: 1px solid #cbd5e1;">DETALHES / PARCEIRO</th>
-                            <th style="padding: 6px; border: 1px solid #cbd5e1; width: 80px; text-align: center;">STATUS</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-        `;
-
-        if(history.length === 0) {
-            html += `<tr><td colspan="5" style="padding: 15px; text-align: center; border: 1px solid #cbd5e1; font-style: italic; color: #666;">Nenhum atendimento registrado.</td></tr>`;
-        } else {
-            history.forEach((at, index) => {
-                const bg = index % 2 === 0 ? '#fff' : '#f8fafc';
-                let statusStyle = "font-weight: bold;";
-                if(at.status === 'PENDENTE') statusStyle += "color: #d97706;";
-                else if(at.status === 'CANCELADO') statusStyle += "color: #dc2626;";
-                else statusStyle += "color: #059669;";
-
-                html += `
-                    <tr style="background-color: ${bg};">
-                        <td style="padding: 6px; border: 1px solid #cbd5e1; vertical-align: top;">
-                            ${at.data_abertura ? at.data_abertura.split('-').reverse().join('/') : '-'}
-                        </td>
-                        <td style="padding: 6px; border: 1px solid #cbd5e1; vertical-align: top;">
-                            <strong>${at.tipo_servico || '-'}</strong><br>
-                            ${at.especialidade || ''}
-                        </td>
-                        <td style="padding: 6px; border: 1px solid #cbd5e1; vertical-align: top;">
-                            ${at.local || '-'}<br>
-                            ${at.procedimento || ''}
-                        </td>
-                        <td style="padding: 6px; border: 1px solid #cbd5e1; vertical-align: top;">
-                            ${at.parceiro ? `Parc: ${at.parceiro}<br>` : ''}
-                            ${at.obs_atendimento || ''}
-                        </td>
-                        <td style="padding: 6px; border: 1px solid #cbd5e1; text-align: center; vertical-align: top;">
-                            <span style="${statusStyle}">${at.status}</span>
-                        </td>
-                    </tr>
-                `;
-            });
-        }
-
-        html += `</tbody></table></div>`;
-
-        const printArea = document.getElementById('printable-area');
-        if (printArea) {
-            printArea.innerHTML = html;
-            window.print();
-        }
-
-        if(loading) { loading.classList.add('hidden'); loading.classList.remove('flex'); }
-        document.body.style.cursor = 'default';
-
-    } catch(e) { 
-        if(loading) { loading.classList.add('hidden'); loading.classList.remove('flex'); }
-        document.body.style.cursor = 'default';
-        alert("Erro ao gerar impressão: " + e); 
-    }
-}
-
 async function verificarCpfInicial() {
     const cpf = document.getElementById('paciente_cpf_check').value;
     const msg = document.getElementById('msg_cpf_paciente');
     const loading = document.getElementById('loading-paciente');
     
-    // Texto de Loading customizado
     setLoadingText('loading-paciente', "Buscando...");
 
     if(cpf.length < 5) { msg.innerHTML = "<span class='text-red-600 font-bold'>CPF Inválido.</span>"; return; }
@@ -488,7 +269,7 @@ async function verificarPorId(id) {
             const cpfStr = json.cpf ? String(json.cpf) : '';
 
             if (cpfStr.length > 4) {
-                msgElement.innerHTML = `<span class="text-blue-700 font-bold flex items-center gap-1"><i data-lucide="check" class="w-4 h-4"></i> Paciente Encontrado: ${json.nome}</span>`;
+                msgElement.innerHTML = `<span class="text-blue-700 font-bold flex items-center gap-1"><i data-lucide="check" class="w-4 h-4"></i> Eleitor Encontrado: ${json.nome}</span>`;
             } else {
                 msgElement.innerHTML = `<span class="text-orange-600 font-bold flex items-center gap-1"><i data-lucide="alert-circle" class="w-4 h-4"></i> Editando cadastro sem CPF (ID: ${id})</span>`;
             }
@@ -510,7 +291,6 @@ async function submitPaciente(e) {
     data.cpf = document.getElementById('paciente_cpf_check').value;
     if(!data.cpf || data.cpf.length < 5) { alert("CPF obrigatório."); return; }
     
-    // Texto de Loading para Salvar
     if(await sendData('registerPatient', data, 'loading-paciente')) { 
         if(typeof resetFormPaciente === 'function') resetFormPaciente(); 
         if(typeof voltarInicio === 'function') voltarInicio(); 
@@ -521,77 +301,70 @@ async function submitPaciente(e) {
 // 3. ATENDIMENTOS E DASHBOARD
 // ============================================================================
 
-async function carregarListaAtendimentos() {
-    const tbody = document.getElementById('tabela-atendimentos-body');
-    if(tbody) tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-slate-400">Buscando...</td></tr>';
+async function buscarPacienteParaAtendimento() {
+    const termo = document.getElementById('busca_cpf').value;
+    const resDiv = document.getElementById('resultado_busca');
+    if(termo.length < 3) return; 
+    
+    resDiv.innerText = "Buscando..."; 
+    document.getElementById('resto-form-atendimento').classList.add('hidden');
+    
     try {
-        const res = await fetch(`${SCRIPT_URL}?action=getServicesList`);
+        const res = await fetch(`${SCRIPT_URL}?action=findPatient&busca=${encodeURIComponent(termo)}&tipo=cpf`);
         const json = await res.json();
-        todosAtendimentos = json.data; // Cache global
-        if(typeof atualizarFiltrosData === 'function') atualizarFiltrosData();
-        if(typeof filtrarAtendimentos === 'function') filtrarAtendimentos();
-    } catch(e) { if(tbody) tbody.innerHTML = '<tr><td colspan="5" class="text-center text-red-500 py-4">Erro.</td></tr>'; }
+        if(json.found) {
+            resDiv.innerHTML = `<span class="text-emerald-600 font-bold flex items-center gap-1"><i data-lucide="check" class="w-4 h-4"></i> ${json.nome}</span>`;
+            document.getElementById('hidden_cpf').value = json.cpf || '';
+            document.getElementById('hidden_nome').value = json.nome;
+            document.getElementById('resto-form-atendimento').classList.remove('hidden');
+        } else resDiv.innerHTML = `<span class="text-red-500 font-medium">Eleitor não encontrado.</span>`;
+        if(typeof lucide !== 'undefined') lucide.createIcons();
+    } catch(e) { resDiv.innerText = "Erro na busca."; }
 }
 
-function atualizarFiltrosData() {
-    const anos = new Set();
-    const meses = new Set();
-    todosAtendimentos.forEach(at => {
-        if(at.data_abertura) {
-            const [y, m] = at.data_abertura.split('-');
-            if(y) anos.add(y); if(m) meses.add(m);
-        }
-    });
-    let htmlAno = '<option value="">Todos Anos</option>';
-    Array.from(anos).sort().reverse().forEach(a => htmlAno += `<option value="${a}">${a}</option>`);
-    document.getElementById('filtro-ano').innerHTML = htmlAno;
+async function submitAtendimento(e) {
+    e.preventDefault();
+    const id = document.getElementById('atend_id_hidden').value;
 
-    const nomesMeses = {"01":"Janeiro","02":"Fevereiro","03":"Março","04":"Abril","05":"Maio","06":"Junho","07":"Julho","08":"Agosto","09":"Setembro","10":"Outubro","11":"Novembro","12":"Dezembro"};
-    let htmlMes = '<option value="">Todos Meses</option>';
-    Array.from(meses).sort().forEach(m => { if(nomesMeses[m]) htmlMes += `<option value="${m}">${m} - ${nomesMeses[m]}</option>`; });
-    document.getElementById('filtro-mes').innerHTML = htmlMes;
-}
-
-function filtrarAtendimentos() {
-    const mes = document.getElementById('filtro-mes').value;
-    const ano = document.getElementById('filtro-ano').value;
-    const status = document.getElementById('filtro-status').value;
-    const tbody = document.getElementById('tabela-atendimentos-body');
-
-    const filtrados = todosAtendimentos.filter(at => {
-        const [y, m] = at.data_abertura ? at.data_abertura.split('-') : ['',''];
-        if (mes && m !== mes) return false;
-        if (ano && y !== ano) return false;
-        if (status && at.status !== status) return false;
-        return true;
-    });
-
-    tbody.innerHTML = '';
-    if(filtrados.length === 0) { tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-slate-500">Nenhum registro.</td></tr>'; return; }
-    
-    filtrados.forEach(at => {
-        let color = at.status === 'CONCLUIDO' ? 'bg-emerald-100 text-emerald-700' : (at.status === 'PENDENTE' ? 'bg-amber-100 text-amber-700' : (at.status === 'CANCELADO' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600'));
+    // --- MODO EDIÇÃO (Single) ---
+    if (id) {
+        // Coleta dados do formulário único (campos do card)
+        const data = Object.fromEntries(new FormData(e.target).entries());
         
-        const tempId = 'at_' + Math.random().toString(36).substr(2, 9);
-        window[tempId] = at;
+        // Garante que campos desabilitados ou fora do fluxo padrão sejam pegos
+        data.data_conclusao = document.getElementById('field_data_conclusao').value;
+        data.prontuario = document.getElementById('field_prontuario').value;
+        data.status = document.getElementById('field_status_atendimento').value;
 
-        const tr = document.createElement('tr');
-        tr.className = "border-b border-slate-100 hover:bg-blue-50 transition-colors cursor-pointer";
-        tr.innerHTML = `
-            <td class="px-6 py-4 font-mono text-slate-600 text-xs">${at.data_abertura.split('-').reverse().join('/')}</td>
-            <td class="px-6 py-4 font-medium text-slate-800 uppercase text-sm">${at.nome}<br><span class="text-slate-400 font-normal text-xs">${at.cpf}</span></td>
-            <td class="px-6 py-4 text-slate-600 uppercase text-xs"><span class="font-bold text-slate-700">${at.tipo_servico || '-'}</span><br>${at.local||at.especialidade}</td>
-            <td class="px-6 py-4"><span class="${color} px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-black/5">${at.status}</span></td>
-            <td class="px-6 py-4 text-right"><button onclick="event.stopPropagation(); abrirEdicaoAtendimentoId('${at.id}')" class="btn-action bg-blue-100 text-blue-700 p-2 rounded-lg hover:bg-blue-200 transition" title="Editar"><i data-lucide="edit-2" class="w-4 h-4"></i></button></td>
-        `;
-        tr.onclick = () => abrirDetalheAtendimento(window[tempId]);
-        tbody.appendChild(tr);
-    });
-    document.getElementById('contador-atendimentos').innerText = `Exibindo ${filtrados.length} registros`;
-    if(typeof lucide !== 'undefined') lucide.createIcons();
-    
-    // Reaplica permissões (esconde botões para visitante)
-    if(typeof aplicarPermissoes === 'function' && typeof currentUserRole !== 'undefined') aplicarPermissoes();
+        if(await sendData('registerService', data, 'loading-atendimento')) { 
+            if(typeof resetFormAtendimento === 'function') resetFormAtendimento(); 
+            if(typeof voltarInicio === 'function') voltarInicio(); 
+        }
+        return;
+    }
+
+    // --- MODO CRIAÇÃO (Lote/Batch) ---
+    if (typeof listaProcedimentosTemp === 'undefined' || listaProcedimentosTemp.length === 0) {
+        alert("Adicione pelo menos um procedimento à lista antes de salvar.");
+        return;
+    }
+
+    const cpf = document.getElementById('hidden_cpf').value;
+    const nome = document.getElementById('hidden_nome').value;
+
+    if(!cpf && !nome) { alert("Busque o eleitor."); return; }
+
+    // Cria o lote enriquecendo os itens com os dados do paciente
+    const batch = listaProcedimentosTemp.map(item => ({
+        ...item,
+        cpf_paciente: cpf,
+        nome_paciente: nome
+    }));
+
+    if(await sendData('registerServiceBatch', batch, 'loading-atendimento')) { 
+        if(typeof resetFormAtendimento === 'function') resetFormAtendimento(); 
+        if(typeof voltarInicio === 'function') voltarInicio(); 
+    }
 }
 
 async function loadDashboard() {
@@ -746,6 +519,10 @@ async function initParceiros() {
         );
     }
 
+    // JOIN no Frontend:
+    const mapPacientes = {};
+    dashboardRawData.pacientes.forEach(p => mapPacientes[p.cpf] = p);
+
     const liderancaStats = {};
     const calcularDiasLocal = (at) => {
         if(!at.data_abertura) return 0;
@@ -757,7 +534,9 @@ async function initParceiros() {
     };
 
     filtrados.forEach(at => {
-        const lider = at.indicacao ? at.indicacao.trim().toUpperCase() : 'SEM INDICAÇÃO';
+        let lider = at.indicacao;
+        lider = lider ? lider.trim().toUpperCase() : 'SEM INDICAÇÃO';
+        
         if(!liderancaStats[lider]) {
             liderancaStats[lider] = { nome: lider, total: 0, concluido: 0, pendente: 0, qtd: 0, lista: [] };
         }
@@ -992,49 +771,12 @@ function renderizarTabelaGrafica(containerId, dados, corBarra, tipo) {
     if(typeof lucide !== 'undefined') lucide.createIcons();
 }
 
-async function buscarPacienteParaAtendimento() {
-    const termo = document.getElementById('busca_cpf').value;
-    const resDiv = document.getElementById('resultado_busca');
-    if(termo.length < 3) return; 
-    
-    resDiv.innerText = "Buscando..."; 
-    document.getElementById('resto-form-atendimento').classList.add('hidden');
-    
-    // Texto de Loading customizado (caso tenhamos loading aqui) - neste caso, é inline
-    
-    try {
-        const res = await fetch(`${SCRIPT_URL}?action=findPatient&busca=${encodeURIComponent(termo)}&tipo=cpf`);
-        const json = await res.json();
-        if(json.found) {
-            resDiv.innerHTML = `<span class="text-emerald-600 font-bold flex items-center gap-1"><i data-lucide="check" class="w-4 h-4"></i> ${json.nome}</span>`;
-            document.getElementById('hidden_cpf').value = json.cpf || '';
-            document.getElementById('hidden_nome').value = json.nome;
-            document.getElementById('resto-form-atendimento').classList.remove('hidden');
-        } else resDiv.innerHTML = `<span class="text-red-500 font-medium">Paciente não encontrado.</span>`;
-        if(typeof lucide !== 'undefined') lucide.createIcons();
-    } catch(e) { resDiv.innerText = "Erro na busca."; }
-}
-
-async function submitAtendimento(e) {
-    e.preventDefault();
-    const data = Object.fromEntries(new FormData(e.target).entries());
-    
-    if(!data.cpf_paciente && !data.nome_paciente) { alert("Busque o paciente."); return; }
-    
-    if(await sendData('registerService', data, 'loading-atendimento')) { 
-        if(typeof resetFormAtendimento === 'function') resetFormAtendimento(); 
-        if(typeof voltarInicio === 'function') voltarInicio(); 
-    }
-}
-
 // ============================================================================
 // 6. FUNÇÕES DE EXCLUSÃO (API)
 // ============================================================================
 
 async function excluirPacienteAPI(id, cpf) {
     const loading = document.getElementById('loading-paciente');
-    
-    // Define texto para "Excluindo..."
     setLoadingText('loading-paciente', "Excluindo...");
     
     if(loading) { loading.classList.remove('hidden'); loading.classList.add('flex'); }
@@ -1063,8 +805,6 @@ async function excluirPacienteAPI(id, cpf) {
 
 async function excluirAtendimentoAPI(id) {
     const loading = document.getElementById('loading-atendimento');
-    
-    // Define texto para "Excluindo..."
     setLoadingText('loading-atendimento', "Excluindo...");
     
     if(loading) { loading.classList.remove('hidden'); loading.classList.add('flex'); }
