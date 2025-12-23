@@ -71,7 +71,7 @@
                 <i data-lucide="layout-dashboard" class="w-5 h-5 group-hover:text-blue-400"></i> Dashboard
             </button>
             <button onclick="switchTab('lista-pacientes')" class="w-full text-left px-4 py-3 rounded-lg hover:bg-slate-800 transition flex items-center gap-3 text-slate-300 hover:text-white group">
-                <i data-lucide="users" class="w-5 h-5 group-hover:text-blue-400"></i> Eleitores
+                <i data-lucide="users" class="w-5 h-5 group-hover:text-blue-400"></i> Munícipes
             </button>
             <button onclick="switchTab('lista-atendimentos')" class="w-full text-left px-4 py-3 rounded-lg hover:bg-slate-800 transition flex items-center gap-3 text-slate-300 hover:text-white group">
                 <i data-lucide="list" class="w-5 h-5 group-hover:text-blue-400"></i> Atendimentos
@@ -85,13 +85,9 @@
         </nav>
 
         <div id="sidebar-actions" class="p-4 border-t border-slate-800">
-            <!-- BOTÃO GERAR FICHA -->
-            <button onclick="imprimirFichaEmBranco()" class="w-full bg-slate-700 hover:bg-slate-600 text-white py-2 rounded-lg font-bold shadow-md mb-3 flex items-center justify-center gap-2 transition border border-slate-600">
-                <i data-lucide="file-text"></i> Gerar Ficha
-            </button>
-
+            <!-- BOTÃO GERAR FICHA REMOVIDO -->
             <button onclick="switchTab('form-paciente')" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-bold shadow-lg mb-2 flex items-center justify-center gap-2">
-                <i data-lucide="plus"></i> Novo Eleitor
+                <i data-lucide="plus"></i> Novo Munícipe
             </button>
             <button onclick="switchTab('form-atendimento')" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded-lg font-bold shadow-lg flex items-center justify-center gap-2">
                 <i data-lucide="plus"></i> Atendimento
@@ -143,7 +139,7 @@
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
                     <div class="flex justify-between items-start">
-                        <div><p class="text-xs font-bold text-slate-500 uppercase tracking-wide">Total Eleitores</p><h3 class="text-3xl font-bold text-slate-800 mt-1" id="dash-pacientes">-</h3></div>
+                        <div><p class="text-xs font-bold text-slate-500 uppercase tracking-wide">Total Munícipes</p><h3 class="text-3xl font-bold text-slate-800 mt-1" id="dash-pacientes">-</h3></div>
                         <div class="p-2 bg-blue-50 rounded-lg text-blue-600"><i data-lucide="users" class="w-6 h-6"></i></div>
                     </div>
                 </div>
@@ -190,7 +186,7 @@
 
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
                     <div class="flex justify-between items-center mb-4 border-b pb-2">
-                        <h3 class="text-sm font-bold text-slate-600 uppercase">Situação Eleitoral</h3>
+                        <h3 class="text-sm font-bold text-slate-600 uppercase">Situação do Título</h3>
                         <div class="flex gap-1">
                             <button onclick="abrirRelatorioEleitoral()" class="text-xs bg-blue-50 text-blue-600 border border-blue-100 px-3 py-1 rounded hover:bg-blue-100 transition font-bold flex items-center gap-1">
                                 <i data-lucide="list" class="w-3 h-3"></i> Ver Relatório
@@ -239,11 +235,11 @@
             </div>
         </div>
 
-        <!-- LISTA PACIENTES (ELEITORES) -->
+        <!-- LISTA PACIENTES (MUNÍCIPES) -->
         <div id="view-lista-pacientes" class="hidden fade-in">
             <div class="flex flex-col md:flex-row justify-between items-end mb-6 gap-4 border-b border-slate-200 pb-4">
                 <div>
-                    <h2 class="text-2xl font-bold text-slate-800">Eleitores</h2>
+                    <h2 class="text-2xl font-bold text-slate-800">Munícipes</h2>
                     <div class="flex gap-6 mt-2 text-sm font-medium">
                         <button id="tab-btn-lista" onclick="alternarSubAbaPacientes('lista')" class="text-blue-600 border-b-2 border-blue-600 pb-2 transition-all">Lista Geral</button>
                         <button id="tab-btn-niver" onclick="alternarSubAbaPacientes('niver')" class="text-slate-500 hover:text-blue-500 pb-2 transition-all flex items-center gap-1"><i data-lucide="cake" class="w-3 h-3"></i> Aniversariantes</button>
@@ -317,7 +313,7 @@
                         <thead class="bg-slate-50 text-slate-700 uppercase font-bold text-xs border-b border-slate-200">
                             <tr>
                                 <th class="px-4 py-4">Data</th>
-                                <th class="px-4 py-4">Eleitor</th>
+                                <th class="px-4 py-4">Munícipe</th>
                                 <th class="px-4 py-4">Serviço</th>
                                 <th class="px-4 py-4">Especialidade</th>
                                 <th class="px-4 py-4">Procedimento</th>
@@ -343,7 +339,7 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
                         <div class="md:col-span-2 bg-blue-50 p-4 rounded-lg border border-blue-100 flex justify-between items-center">
                             <div>
-                                <span class="block text-xs font-bold text-blue-500 uppercase tracking-wide">Eleitor</span>
+                                <span class="block text-xs font-bold text-blue-500 uppercase tracking-wide">Munícipe</span>
                                 <span class="text-lg font-bold text-slate-800" id="det-paciente">-</span>
                                 <span class="text-slate-500 text-xs ml-2" id="det-cpf">CPF: -</span>
                             </div>
@@ -488,14 +484,14 @@
                 <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2"><i data-lucide="alert-triangle" class="text-red-500"></i> Alertas de Risco Próximo</h3>
             </div>
             <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                <div class="overflow-x-auto"><table class="w-full text-left text-sm text-slate-600"><thead class="bg-red-50 text-red-900 uppercase font-bold text-xs border-b border-red-100"><tr><th class="px-6 py-4">Data Risco</th><th class="px-6 py-4">Eleitor</th><th class="px-6 py-4">Procedimento/Local</th><th class="px-6 py-4">Status</th><th class="px-6 py-4 text-right">Ação</th></tr></thead><tbody id="tabela-risco-body" class="divide-y divide-slate-100"><tr><td colspan="5" class="px-6 py-8 text-center text-slate-400">Carregando análise de risco...</td></tr></tbody></table></div>
+                <div class="overflow-x-auto"><table class="w-full text-left text-sm text-slate-600"><thead class="bg-red-50 text-red-900 uppercase font-bold text-xs border-b border-red-100"><tr><th class="px-6 py-4">Data Risco</th><th class="px-6 py-4">Munícipe</th><th class="px-6 py-4">Procedimento/Local</th><th class="px-6 py-4">Status</th><th class="px-6 py-4 text-right">Ação</th></tr></thead><tbody id="tabela-risco-body" class="divide-y divide-slate-100"><tr><td colspan="5" class="px-6 py-8 text-center text-slate-400">Carregando análise de risco...</td></tr></tbody></table></div>
             </div>
         </div>
 
         <!-- VIEW HISTÓRICO PACIENTE -->
         <div id="view-historico-paciente" class="hidden bg-white rounded-xl shadow-lg border border-slate-200 relative fade-in overflow-hidden flex flex-col h-full md:h-auto max-h-screen md:max-h-[90vh]">
             <div class="bg-slate-900 text-white px-6 py-4 border-b border-slate-800 flex justify-between items-center shrink-0">
-                <h2 class="text-lg font-bold flex items-center gap-2"><i data-lucide="history" class="text-blue-400 w-5 h-5"></i> Histórico do Eleitor</h2>
+                <h2 class="text-lg font-bold flex items-center gap-2"><i data-lucide="history" class="text-blue-400 w-5 h-5"></i> Histórico do Munícipe</h2>
                 <div class="flex gap-2">
                     <button onclick="imprimirFicha()" class="text-white hover:text-blue-400 bg-slate-800 border border-slate-700 px-3 py-1 rounded text-sm flex items-center gap-2"><i data-lucide="printer" class="w-4 h-4"></i> Imprimir</button>
                     <!-- BOTÃO EXCLUIR NO HISTÓRICO -->
@@ -506,7 +502,7 @@
             <div class="p-6 md:p-8 overflow-y-auto">
                 <div id="hist-header" class="mb-6 p-4 bg-slate-50 rounded-lg border border-slate-200 flex flex-col md:flex-row gap-4 justify-between items-center">
                     <div>
-                        <h3 class="text-xl font-bold text-slate-800" id="hist-nome">Nome do Eleitor</h3>
+                        <h3 class="text-xl font-bold text-slate-800" id="hist-nome">Nome do Munícipe</h3>
                         <div class="flex gap-4 text-sm text-slate-500 mt-1"><span id="hist-cpf">CPF: ...</span><span id="hist-tel">Tel: ...</span></div>
                     </div>
                     <div class="flex gap-2">
@@ -526,10 +522,10 @@
             </div>
         </div>
 
-        <!-- FORM PACIENTE (ELEITOR) -->
+        <!-- FORM PACIENTE (MUNÍCIPE) -->
         <div id="view-form-paciente" class="hidden bg-white rounded-xl shadow-lg border border-slate-200 relative fade-in overflow-hidden">
             <div class="bg-slate-50 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
-                <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2"><i data-lucide="user-plus" class="text-blue-600 w-5 h-5"></i> Ficha de Eleitor</h2>
+                <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2"><i data-lucide="user-plus" class="text-blue-600 w-5 h-5"></i> Ficha de Munícipe</h2>
                 <div class="flex gap-2">
                     <button id="btn-imprimir" onclick="imprimirFicha()" class="hidden text-slate-500 hover:text-blue-600 text-sm border border-slate-300 px-3 py-1 rounded bg-white hover:bg-blue-50 transition items-center gap-1"><i data-lucide="printer" class="w-4 h-4"></i> Imprimir</button>
                     <!-- BOTÃO DE EXCLUIR PACIENTE (NOVO) -->
@@ -550,13 +546,13 @@
                     </div>
                     <!-- ADICIONADO BOTÃO DE EXCLUIR AQUI TAMBÉM (NO CARD DE ENCONTRADO) -->
                     <div id="opcoes-paciente-existente" class="hidden text-center p-8 border-2 border-dashed border-blue-200 rounded-xl bg-slate-50 mb-6 fade-in">
-                        <div class="text-xl text-blue-900 font-bold mb-6">Eleitor já cadastrado!</div>
+                        <div class="text-xl text-blue-900 font-bold mb-6">Munícipe já cadastrado!</div>
                         <div class="flex flex-col sm:flex-row gap-4 justify-center max-w-md mx-auto mb-4">
                             <button type="button" onclick="editarPaciente()" class="btn-action flex-1 bg-white border border-slate-300 text-slate-700 py-3 px-4 rounded-lg hover:bg-slate-50 font-medium transition shadow-sm flex items-center justify-center gap-2"><i data-lucide="edit-3" class="w-4 h-4"></i> Editar Dados</button>
                             <button type="button" onclick="irParaAtendimento()" class="btn-action flex-1 bg-emerald-600 text-white py-3 px-4 rounded-lg hover:bg-emerald-700 font-bold shadow-md transition flex items-center justify-center gap-2"><i data-lucide="plus-circle" class="w-4 h-4"></i> Criar Atendimento</button>
                         </div>
                         <!-- Botão de Excluir Extra -->
-                        <button type="button" onclick="confirmarExclusaoPaciente()" class="btn-delete text-red-500 hover:underline text-sm flex items-center justify-center gap-1 mx-auto"><i data-lucide="trash-2" class="w-3 h-3"></i> Excluir este eleitor</button>
+                        <button type="button" onclick="confirmarExclusaoPaciente()" class="btn-delete text-red-500 hover:underline text-sm flex items-center justify-center gap-1 mx-auto"><i data-lucide="trash-2" class="w-3 h-3"></i> Excluir este munícipe</button>
                     </div>
                     <div id="resto-form-paciente" class="hidden fade-in space-y-8">
                         <div>
@@ -627,7 +623,7 @@
                 <form id="frmAtendimento" onsubmit="submitAtendimento(event)">
                     <input type="hidden" name="id" id="atend_id_hidden">
                     <div class="mb-8 p-6 bg-slate-50 rounded-xl border border-slate-200">
-                        <label class="block text-sm font-bold text-slate-700 mb-2">Buscar Eleitor</label>
+                        <label class="block text-sm font-bold text-slate-700 mb-2">Buscar Munícipe</label>
                         <div class="flex gap-3">
                             <input type="text" id="busca_cpf" placeholder="Digite o CPF ou Nome..." class="flex-1 rounded-lg border-slate-300 border p-3 shadow-sm focus:border-emerald-500 outline-none text-lg" onkeydown="if(event.key === 'Enter'){event.preventDefault(); buscarPacienteParaAtendimento();}">
                             <button type="button" onclick="buscarPacienteParaAtendimento()" class="bg-slate-600 text-white px-6 py-2 rounded-lg hover:bg-slate-700 shadow-sm transition"><i data-lucide="search" class="w-5 h-5"></i></button>
@@ -718,7 +714,7 @@
                         <thead class="bg-slate-50 text-slate-700 uppercase font-bold text-xs sticky top-0 shadow-sm">
                             <tr>
                                 <th id="th-col1" class="px-6 py-3">Data Abertura</th>
-                                <th id="th-col2" class="px-6 py-3">Eleitor</th>
+                                <th id="th-col2" class="px-6 py-3">Munícipe</th>
                                 <th id="th-col3" class="px-6 py-3 text-right">Espera</th>
                             </tr>
                         </thead>
@@ -733,7 +729,7 @@
             <div class="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-4xl overflow-hidden max-h-[90vh] flex flex-col animate-fade-in">
                 <div class="bg-slate-50 px-6 py-4 border-b border-slate-200 flex flex-col md:flex-row justify-between items-center shrink-0 gap-4">
                     <div>
-                        <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2"><i data-lucide="flag" class="text-blue-600 w-5 h-5"></i> Relatório Eleitoral</h2>
+                        <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2"><i data-lucide="flag" class="text-blue-600 w-5 h-5"></i> Relatório de Munícipes</h2>
                         <p class="text-xs text-slate-500">Listagem completa da Família</p>
                     </div>
                     <div class="flex items-center gap-3">
