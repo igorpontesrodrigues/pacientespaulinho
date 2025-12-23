@@ -1,6 +1,7 @@
 /**
  * js/api.js
  * Funções de comunicação com o backend (Apps Script) e lógica de negócios.
+ * (Versão Limpa: Funções de UI removidas para evitar duplicidade com js/ui.js)
  */
 
 // ============================================================================
@@ -61,7 +62,7 @@ async function sendData(action, data, loadingId) {
 }
 
 async function carregarFiltros() {
-    // Carregamento silencioso
+    // Carregamento silencioso dos selects
     const safety = setTimeout(() => {
         if(typeof CONFIG_SELECTS !== 'undefined') {
             CONFIG_SELECTS.forEach(cfg => {
@@ -125,6 +126,7 @@ async function carregarListaPacientes() {
         const res = await fetch(`${SCRIPT_URL}?action=getPatientsList`);
         const json = await res.json();
         todosPacientes = json.data;
+        // Chama a função de renderização que agora está no ui.js
         if(typeof renderizarTabelaPacientes === 'function') renderizarTabelaPacientes(todosPacientes);
     } catch(e) { 
         if(tbody) tbody.innerHTML = '<tr><td colspan="5" class="text-center text-red-500 py-4">Erro de conexão.</td></tr>'; 
@@ -328,10 +330,7 @@ async function submitAtendimento(e) {
 
     // --- MODO EDIÇÃO (Single) ---
     if (id) {
-        // Coleta dados do formulário único (campos do card)
         const data = Object.fromEntries(new FormData(e.target).entries());
-        
-        // Garante que campos desabilitados ou fora do fluxo padrão sejam pegos
         data.data_conclusao = document.getElementById('field_data_conclusao').value;
         data.prontuario = document.getElementById('field_prontuario').value;
         data.status = document.getElementById('field_status_atendimento').value;
@@ -344,7 +343,6 @@ async function submitAtendimento(e) {
     }
 
     // --- MODO CRIAÇÃO (Lote/Batch) ---
-    // listaProcedimentosTemp está definida no global do js/ui.js, mas acessível aqui
     if (typeof listaProcedimentosTemp === 'undefined' || listaProcedimentosTemp.length === 0) {
         alert("Adicione pelo menos um procedimento à lista antes de salvar.");
         return;
@@ -355,7 +353,6 @@ async function submitAtendimento(e) {
 
     if(!cpf && !nome) { alert("Busque o eleitor."); return; }
 
-    // Cria o lote enriquecendo os itens com os dados do paciente
     const batch = listaProcedimentosTemp.map(item => ({
         ...item,
         cpf_paciente: cpf,
@@ -367,10 +364,6 @@ async function submitAtendimento(e) {
         if(typeof voltarInicio === 'function') voltarInicio(); 
     }
 }
-
-// REMOVIDO: carregarListaAtendimentos (Duplicado no ui.js)
-// REMOVIDO: atualizarFiltrosData (Duplicado no ui.js)
-// REMOVIDO: filtrarAtendimentos (Duplicado no ui.js e causava o bug)
 
 async function loadDashboard() {
     try {
@@ -623,17 +616,13 @@ function carregarRelatorioRisco() {
     const tbody = document.getElementById('tabela-risco-body');
     if(tbody) tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-slate-400">Calculando...</td></tr>';
     
-    // Se não houver atendimentos carregados, carrega primeiro
     if(todosAtendimentos.length === 0) {
-        if(typeof carregarListaAtendimentos === 'function') {
-            carregarListaAtendimentos().then(() => renderizarRelatorioRisco());
-        } else {
-            // Fallback se a função não estiver disponível (não deve acontecer com ui.js carregado)
-            renderizarRelatorioRisco();
-        }
-    } else {
-        renderizarRelatorioRisco();
+        // Fallback simples se a lista ainda não existir, embora o ui.js cuide disso
+        const resDiv = document.getElementById('contador-atendimentos');
+        if(resDiv && resDiv.innerText.includes('Carregando')) return; 
     }
+    
+    renderizarRelatorioRisco();
 }
 
 function renderizarRelatorioRisco() {
@@ -673,6 +662,7 @@ function renderizarRelatorioRisco() {
         const tempId = 'risco_' + Math.random().toString(36).substr(2, 9);
         window[tempId] = at;
 
+        // Note: A função abrirDetalheAtendimento deve estar disponível globalmente via ui.js
         const tr = document.createElement('tr');
         tr.className = "border-b border-slate-100 hover:bg-red-50 transition-colors cursor-pointer";
         tr.innerHTML = `
@@ -684,14 +674,13 @@ function renderizarRelatorioRisco() {
             <td class="px-6 py-4 text-slate-600 text-xs uppercase">${at.procedimento || at.tipo_servico}<br>${at.local || ''}</td>
             <td class="px-6 py-4 text-xs font-bold text-slate-500">${at.status}</td>
             <td class="px-6 py-4 text-right">
-                <button onclick="event.stopPropagation(); abrirEdicaoAtendimentoId('${at.id}')" class="btn-action bg-blue-100 text-blue-700 p-2 rounded-lg hover:bg-blue-200 transition" title="Editar"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
+                <button onclick="event.stopPropagation(); if(typeof abrirEdicaoAtendimentoId === 'function') abrirEdicaoAtendimentoId('${at.id}')" class="btn-action bg-blue-100 text-blue-700 p-2 rounded-lg hover:bg-blue-200 transition" title="Editar"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
             </td>
         `;
-        tr.onclick = () => abrirDetalheAtendimento(window[tempId]);
+        tr.onclick = () => { if(typeof abrirDetalheAtendimento === 'function') abrirDetalheAtendimento(window[tempId]); };
         tbody.appendChild(tr);
     });
     if(typeof lucide !== 'undefined') lucide.createIcons();
-    if(typeof aplicarPermissoes === 'function' && typeof currentUserRole !== 'undefined') aplicarPermissoes();
 }
 
 function atualizarGraficosRelatorios() {
@@ -811,7 +800,6 @@ async function excluirPacienteAPI(id, cpf) {
         
         if(json.status === 'success') {
             showMessage(json.message, 'success');
-            // resetFormPaciente está no UI.js
             if(typeof resetFormPaciente === 'function') resetFormPaciente();
             if(typeof voltarInicio === 'function') voltarInicio();
         } else {
@@ -840,7 +828,6 @@ async function excluirAtendimentoAPI(id) {
         
         if(json.status === 'success') {
             showMessage(json.message, 'success');
-            // resetFormAtendimento está no UI.js
             if(typeof resetFormAtendimento === 'function') resetFormAtendimento();
             if(typeof voltarInicio === 'function') voltarInicio();
         } else {
@@ -851,6 +838,3 @@ async function excluirAtendimentoAPI(id) {
         alert("Erro ao excluir: " + e);
     }
 }
-
-// REMOVIDO: Funções de UI duplicadas (renderizarTabelaPacientes, resets, etc.)
-// Agora o sistema usará as versões corretas definidas no js/ui.js
