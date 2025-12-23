@@ -344,6 +344,7 @@ async function submitAtendimento(e) {
     }
 
     // --- MODO CRIAÇÃO (Lote/Batch) ---
+    // listaProcedimentosTemp está definida no global do js/ui.js, mas acessível aqui
     if (typeof listaProcedimentosTemp === 'undefined' || listaProcedimentosTemp.length === 0) {
         alert("Adicione pelo menos um procedimento à lista antes de salvar.");
         return;
@@ -402,7 +403,7 @@ function filtrarAtendimentos() {
     const mes = document.getElementById('filtro-mes').value;
     const ano = document.getElementById('filtro-ano').value;
     const status = document.getElementById('filtro-status').value;
-    const buscaTexto = document.getElementById('filtro-atendimento-input').value.toLowerCase(); // NOVO FILTRO
+    const buscaTexto = document.getElementById('filtro-atendimento-input').value.toLowerCase();
     const tbody = document.getElementById('tabela-atendimentos-body');
 
     const filtrados = todosAtendimentos.filter(at => {
@@ -417,7 +418,7 @@ function filtrarAtendimentos() {
         if (buscaTexto) {
             const match = (at.nome || '').toLowerCase().includes(buscaTexto) ||
                           (at.cpf || '').includes(buscaTexto) ||
-                          (at.prontuario || '').toLowerCase().includes(buscaTexto) || // Se houver
+                          (at.prontuario || '').toLowerCase().includes(buscaTexto) || 
                           (at.tipo_servico || '').toLowerCase().includes(buscaTexto) ||
                           (at.especialidade || '').toLowerCase().includes(buscaTexto) ||
                           (at.procedimento || '').toLowerCase().includes(buscaTexto);
@@ -924,4 +925,97 @@ async function excluirAtendimentoAPI(id) {
         if(loading) { loading.classList.add('hidden'); loading.classList.remove('flex'); }
         alert("Erro ao excluir: " + e);
     }
+}
+
+function renderizarTabelaPacientes(lista) {
+    const tbody = document.getElementById('tabela-pacientes-body');
+    tbody.innerHTML = '';
+    if(lista.length === 0) { 
+        tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-slate-500">Nenhum registro encontrado.</td></tr>'; return; 
+    }
+    lista.forEach(p => {
+        const tr = document.createElement('tr');
+        tr.className = "border-b border-slate-100 hover:bg-blue-50 cursor-pointer transition-colors";
+        const pStr = JSON.stringify(p).replace(/"/g, '&quot;');
+        
+        const btnEditClass = currentUserRole === 'VISITOR' ? 'hidden' : '';
+        
+        tr.innerHTML = `
+            <td class="px-6 py-4 font-medium text-slate-800 uppercase" onclick="verHistoricoCompleto(${pStr})">${p.nome}</td>
+            <td class="px-6 py-4 text-slate-600" onclick="verHistoricoCompleto(${pStr})">${p.cpf || '<span class="text-orange-500 text-xs font-bold px-2 py-1 bg-orange-100 rounded">SEM CPF</span>'}</td>
+            <td class="px-6 py-4 hidden sm:table-cell text-slate-500" onclick="verHistoricoCompleto(${pStr})">${p.tel||'-'}</td>
+            <td class="px-6 py-4 hidden md:table-cell uppercase text-slate-500" onclick="verHistoricoCompleto(${pStr})">${p.municipio||'-'}</td>
+            <td class="px-6 py-4 text-right">
+                <button onclick="event.stopPropagation(); abrirAtendimentoDireto('${p.cpf}','${p.id}')" class="btn-action bg-emerald-100 text-emerald-700 p-2 rounded-lg mr-2 hover:bg-emerald-200 transition ${btnEditClass}" title="Novo Atendimento"><i data-lucide="plus" class="w-4 h-4"></i></button>
+                <button onclick="event.stopPropagation(); abrirEdicaoDireta('${p.cpf}','${p.id}')" class="btn-action bg-blue-100 text-blue-700 p-2 rounded-lg hover:bg-blue-200 transition ${btnEditClass}" title="Editar"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
+            </td>`;
+        tbody.appendChild(tr);
+    });
+    if(typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+function resetFormPaciente() {
+    document.getElementById('frmPaciente').reset();
+    document.getElementById('paciente_id_hidden').value = "";
+    document.getElementById('msg_cpf_paciente').innerText = '';
+    document.getElementById('opcoes-paciente-existente').classList.add('hidden');
+    document.getElementById('resto-form-paciente').classList.add('hidden');
+    document.getElementById('btn-imprimir').classList.add('hidden');
+    
+    const btnDelete = document.getElementById('btn-delete-paciente');
+    if(btnDelete) btnDelete.classList.add('hidden');
+    
+    CONFIG_SELECTS.forEach(cfg => {
+        const sel = document.getElementById(`sel_${cfg.id}`);
+        if(sel && cfg.id !== 'status_atendimento') sel.value = "";
+        cancelSelectNew(cfg.id);
+    });
+}
+
+function resetFormAtendimento() {
+    document.getElementById('frmAtendimento').reset();
+    document.getElementById('atend_id_hidden').value = "";
+    document.getElementById('titulo_form_atend').innerText = "Novo Atendimento";
+    document.getElementById('txt_btn_atend').innerText = "Salvar Todos os Atendimentos";
+    document.getElementById('resultado_busca').innerText = '';
+    document.getElementById('resto-form-atendimento').classList.add('hidden');
+    
+    const btnDelete = document.getElementById('btn-delete-atendimento');
+    if(btnDelete) btnDelete.classList.add('hidden');
+    
+    document.getElementById('data_abertura').valueAsDate = new Date();
+    
+    // Reseta lista temporária
+    listaProcedimentosTemp = [];
+    renderizarTabelaProcedimentos();
+
+    // Adiciona listener para automação de data conclusão (garantia)
+    const inpConclusao = document.getElementById('field_data_conclusao');
+    if(inpConclusao) {
+        inpConclusao.onchange = checkStatusConclusao;
+    }
+    
+    CONFIG_SELECTS.forEach(cfg => {
+        const sel = document.getElementById(`sel_${cfg.id}`);
+        if(sel) sel.value = "";
+        cancelSelectNew(cfg.id);
+    });
+}
+
+function abrirEdicaoDireta(cpf, id) {
+    switchTab('form-paciente');
+    const inputCpf = document.getElementById('paciente_cpf_check');
+    const cpfStr = cpf ? String(cpf) : '';
+    inputCpf.value = cpfStr;
+    
+    if (id) {
+        if(typeof verificarPorId === 'function') verificarPorId(id);
+    } else if (cpfStr && cpfStr.length > 4) {
+        if(typeof verificarCpfInicial === 'function') verificarCpfInicial();
+    }
+}
+
+function abrirEdicaoAtendimentoId(id) {
+    const at = todosAtendimentos.find(x => x.id === id);
+    if(at) abrirEdicaoAtendimento(at);
 }
