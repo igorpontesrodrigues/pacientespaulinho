@@ -368,92 +368,9 @@ async function submitAtendimento(e) {
     }
 }
 
-async function carregarListaAtendimentos() {
-    const tbody = document.getElementById('tabela-atendimentos-body');
-    if(tbody) tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-slate-400">Buscando...</td></tr>';
-    try {
-        const res = await fetch(`${SCRIPT_URL}?action=getServicesList`);
-        const json = await res.json();
-        todosAtendimentos = json.data; // Cache global
-        if(typeof atualizarFiltrosData === 'function') atualizarFiltrosData();
-        if(typeof filtrarAtendimentos === 'function') filtrarAtendimentos();
-    } catch(e) { if(tbody) tbody.innerHTML = '<tr><td colspan="5" class="text-center text-red-500 py-4">Erro.</td></tr>'; }
-}
-
-function atualizarFiltrosData() {
-    const anos = new Set();
-    const meses = new Set();
-    todosAtendimentos.forEach(at => {
-        if(at.data_abertura) {
-            const [y, m] = at.data_abertura.split('-');
-            if(y) anos.add(y); if(m) meses.add(m);
-        }
-    });
-    let htmlAno = '<option value="">Todos Anos</option>';
-    Array.from(anos).sort().reverse().forEach(a => htmlAno += `<option value="${a}">${a}</option>`);
-    document.getElementById('filtro-ano').innerHTML = htmlAno;
-
-    const nomesMeses = {"01":"Janeiro","02":"Fevereiro","03":"Março","04":"Abril","05":"Maio","06":"Junho","07":"Julho","08":"Agosto","09":"Setembro","10":"Outubro","11":"Novembro","12":"Dezembro"};
-    let htmlMes = '<option value="">Todos Meses</option>';
-    Array.from(meses).sort().forEach(m => { if(nomesMeses[m]) htmlMes += `<option value="${m}">${m} - ${nomesMeses[m]}</option>`; });
-    document.getElementById('filtro-mes').innerHTML = htmlMes;
-}
-
-function filtrarAtendimentos() {
-    const mes = document.getElementById('filtro-mes').value;
-    const ano = document.getElementById('filtro-ano').value;
-    const status = document.getElementById('filtro-status').value;
-    const buscaTexto = document.getElementById('filtro-atendimento-input').value.toLowerCase();
-    const tbody = document.getElementById('tabela-atendimentos-body');
-
-    const filtrados = todosAtendimentos.filter(at => {
-        const [y, m] = at.data_abertura ? at.data_abertura.split('-') : ['',''];
-        
-        // Filtros Dropdown
-        if (mes && m !== mes) return false;
-        if (ano && y !== ano) return false;
-        if (status && at.status !== status) return false;
-        
-        // Filtro de Texto (Nome, CPF, Prontuário, Serviço)
-        if (buscaTexto) {
-            const match = (at.nome || '').toLowerCase().includes(buscaTexto) ||
-                          (at.cpf || '').includes(buscaTexto) ||
-                          (at.prontuario || '').toLowerCase().includes(buscaTexto) || 
-                          (at.tipo_servico || '').toLowerCase().includes(buscaTexto) ||
-                          (at.especialidade || '').toLowerCase().includes(buscaTexto) ||
-                          (at.procedimento || '').toLowerCase().includes(buscaTexto);
-            if (!match) return false;
-        }
-        
-        return true;
-    });
-
-    tbody.innerHTML = '';
-    if(filtrados.length === 0) { tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-slate-500">Nenhum registro.</td></tr>'; return; }
-    
-    filtrados.forEach(at => {
-        let color = at.status === 'CONCLUIDO' ? 'bg-emerald-100 text-emerald-700' : (at.status === 'PENDENTE' ? 'bg-amber-100 text-amber-700' : (at.status === 'CANCELADO' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600'));
-        
-        const tempId = 'at_' + Math.random().toString(36).substr(2, 9);
-        window[tempId] = at;
-
-        const tr = document.createElement('tr');
-        tr.className = "border-b border-slate-100 hover:bg-blue-50 transition-colors cursor-pointer";
-        tr.innerHTML = `
-            <td class="px-6 py-4 font-mono text-slate-600 text-xs">${at.data_abertura.split('-').reverse().join('/')}</td>
-            <td class="px-6 py-4 font-medium text-slate-800 uppercase text-sm">${at.nome}<br><span class="text-slate-400 font-normal text-xs">${at.cpf}</span></td>
-            <td class="px-6 py-4 text-slate-600 uppercase text-xs"><span class="font-bold text-slate-700">${at.tipo_servico || '-'}</span><br>${at.local||at.especialidade}</td>
-            <td class="px-6 py-4"><span class="${color} px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-black/5">${at.status}</span></td>
-            <td class="px-6 py-4 text-right"><button onclick="event.stopPropagation(); abrirEdicaoAtendimentoId('${at.id}')" class="btn-action bg-blue-100 text-blue-700 p-2 rounded-lg hover:bg-blue-200 transition" title="Editar"><i data-lucide="edit-2" class="w-4 h-4"></i></button></td>
-        `;
-        tr.onclick = () => abrirDetalheAtendimento(window[tempId]);
-        tbody.appendChild(tr);
-    });
-    document.getElementById('contador-atendimentos').innerText = `Exibindo ${filtrados.length} registros`;
-    if(typeof lucide !== 'undefined') lucide.createIcons();
-    
-    if(typeof aplicarPermissoes === 'function' && typeof currentUserRole !== 'undefined') aplicarPermissoes();
-}
+// REMOVIDO: carregarListaAtendimentos (Duplicado no ui.js)
+// REMOVIDO: atualizarFiltrosData (Duplicado no ui.js)
+// REMOVIDO: filtrarAtendimentos (Duplicado no ui.js e causava o bug)
 
 async function loadDashboard() {
     try {
@@ -706,8 +623,14 @@ function carregarRelatorioRisco() {
     const tbody = document.getElementById('tabela-risco-body');
     if(tbody) tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-slate-400">Calculando...</td></tr>';
     
+    // Se não houver atendimentos carregados, carrega primeiro
     if(todosAtendimentos.length === 0) {
-        carregarListaAtendimentos().then(() => renderizarRelatorioRisco());
+        if(typeof carregarListaAtendimentos === 'function') {
+            carregarListaAtendimentos().then(() => renderizarRelatorioRisco());
+        } else {
+            // Fallback se a função não estiver disponível (não deve acontecer com ui.js carregado)
+            renderizarRelatorioRisco();
+        }
     } else {
         renderizarRelatorioRisco();
     }
@@ -888,6 +811,7 @@ async function excluirPacienteAPI(id, cpf) {
         
         if(json.status === 'success') {
             showMessage(json.message, 'success');
+            // resetFormPaciente está no UI.js
             if(typeof resetFormPaciente === 'function') resetFormPaciente();
             if(typeof voltarInicio === 'function') voltarInicio();
         } else {
@@ -916,6 +840,7 @@ async function excluirAtendimentoAPI(id) {
         
         if(json.status === 'success') {
             showMessage(json.message, 'success');
+            // resetFormAtendimento está no UI.js
             if(typeof resetFormAtendimento === 'function') resetFormAtendimento();
             if(typeof voltarInicio === 'function') voltarInicio();
         } else {
@@ -927,95 +852,5 @@ async function excluirAtendimentoAPI(id) {
     }
 }
 
-function renderizarTabelaPacientes(lista) {
-    const tbody = document.getElementById('tabela-pacientes-body');
-    tbody.innerHTML = '';
-    if(lista.length === 0) { 
-        tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-slate-500">Nenhum registro encontrado.</td></tr>'; return; 
-    }
-    lista.forEach(p => {
-        const tr = document.createElement('tr');
-        tr.className = "border-b border-slate-100 hover:bg-blue-50 cursor-pointer transition-colors";
-        const pStr = JSON.stringify(p).replace(/"/g, '&quot;');
-        
-        const btnEditClass = currentUserRole === 'VISITOR' ? 'hidden' : '';
-        
-        tr.innerHTML = `
-            <td class="px-6 py-4 font-medium text-slate-800 uppercase" onclick="verHistoricoCompleto(${pStr})">${p.nome}</td>
-            <td class="px-6 py-4 text-slate-600" onclick="verHistoricoCompleto(${pStr})">${p.cpf || '<span class="text-orange-500 text-xs font-bold px-2 py-1 bg-orange-100 rounded">SEM CPF</span>'}</td>
-            <td class="px-6 py-4 hidden sm:table-cell text-slate-500" onclick="verHistoricoCompleto(${pStr})">${p.tel||'-'}</td>
-            <td class="px-6 py-4 hidden md:table-cell uppercase text-slate-500" onclick="verHistoricoCompleto(${pStr})">${p.municipio||'-'}</td>
-            <td class="px-6 py-4 text-right">
-                <button onclick="event.stopPropagation(); abrirAtendimentoDireto('${p.cpf}','${p.id}')" class="btn-action bg-emerald-100 text-emerald-700 p-2 rounded-lg mr-2 hover:bg-emerald-200 transition ${btnEditClass}" title="Novo Atendimento"><i data-lucide="plus" class="w-4 h-4"></i></button>
-                <button onclick="event.stopPropagation(); abrirEdicaoDireta('${p.cpf}','${p.id}')" class="btn-action bg-blue-100 text-blue-700 p-2 rounded-lg hover:bg-blue-200 transition ${btnEditClass}" title="Editar"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
-            </td>`;
-        tbody.appendChild(tr);
-    });
-    if(typeof lucide !== 'undefined') lucide.createIcons();
-}
-
-function resetFormPaciente() {
-    document.getElementById('frmPaciente').reset();
-    document.getElementById('paciente_id_hidden').value = "";
-    document.getElementById('msg_cpf_paciente').innerText = '';
-    document.getElementById('opcoes-paciente-existente').classList.add('hidden');
-    document.getElementById('resto-form-paciente').classList.add('hidden');
-    document.getElementById('btn-imprimir').classList.add('hidden');
-    
-    const btnDelete = document.getElementById('btn-delete-paciente');
-    if(btnDelete) btnDelete.classList.add('hidden');
-    
-    CONFIG_SELECTS.forEach(cfg => {
-        const sel = document.getElementById(`sel_${cfg.id}`);
-        if(sel && cfg.id !== 'status_atendimento') sel.value = "";
-        cancelSelectNew(cfg.id);
-    });
-}
-
-function resetFormAtendimento() {
-    document.getElementById('frmAtendimento').reset();
-    document.getElementById('atend_id_hidden').value = "";
-    document.getElementById('titulo_form_atend').innerText = "Novo Atendimento";
-    document.getElementById('txt_btn_atend').innerText = "Salvar Todos os Atendimentos";
-    document.getElementById('resultado_busca').innerText = '';
-    document.getElementById('resto-form-atendimento').classList.add('hidden');
-    
-    const btnDelete = document.getElementById('btn-delete-atendimento');
-    if(btnDelete) btnDelete.classList.add('hidden');
-    
-    document.getElementById('data_abertura').valueAsDate = new Date();
-    
-    // Reseta lista temporária
-    listaProcedimentosTemp = [];
-    renderizarTabelaProcedimentos();
-
-    // Adiciona listener para automação de data conclusão (garantia)
-    const inpConclusao = document.getElementById('field_data_conclusao');
-    if(inpConclusao) {
-        inpConclusao.onchange = checkStatusConclusao;
-    }
-    
-    CONFIG_SELECTS.forEach(cfg => {
-        const sel = document.getElementById(`sel_${cfg.id}`);
-        if(sel) sel.value = "";
-        cancelSelectNew(cfg.id);
-    });
-}
-
-function abrirEdicaoDireta(cpf, id) {
-    switchTab('form-paciente');
-    const inputCpf = document.getElementById('paciente_cpf_check');
-    const cpfStr = cpf ? String(cpf) : '';
-    inputCpf.value = cpfStr;
-    
-    if (id) {
-        if(typeof verificarPorId === 'function') verificarPorId(id);
-    } else if (cpfStr && cpfStr.length > 4) {
-        if(typeof verificarCpfInicial === 'function') verificarCpfInicial();
-    }
-}
-
-function abrirEdicaoAtendimentoId(id) {
-    const at = todosAtendimentos.find(x => x.id === id);
-    if(at) abrirEdicaoAtendimento(at);
-}
+// REMOVIDO: Funções de UI duplicadas (renderizarTabelaPacientes, resets, etc.)
+// Agora o sistema usará as versões corretas definidas no js/ui.js
