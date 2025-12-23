@@ -7,6 +7,7 @@
 // VARIÁVEIS GLOBAIS DE UI
 // ============================================================================
 let listaProcedimentosTemp = []; // Armazena os itens adicionados antes de salvar
+window.historicoAtualCache = []; // Armazena o histórico do paciente atual para impressão
 
 // ============================================================================
 // 1. LOGIN E PERMISSÕES
@@ -200,7 +201,6 @@ function abrirDetalheAtendimento(at) {
     document.getElementById('det-servico').innerText = at.especialidade || '-';
     document.getElementById('det-local').innerText = at.local || '-';
     document.getElementById('det-parceiro').innerText = at.parceiro || '-';
-    // document.getElementById('det-indicacao').innerText = at.indicacao || '-'; // Removido
     
     document.getElementById('det-marcacao').innerText = at.data_marcacao ? at.data_marcacao.split('-').reverse().join('/') : '-';
     document.getElementById('det-risco').innerText = at.data_risco ? at.data_risco.split('-').reverse().join('/') : '-';
@@ -309,12 +309,9 @@ function filtrarAtendimentos() {
         if (ano && y !== ano) return false;
         if (status && at.status !== status) return false;
         
-        // Filtro de Texto (Nome, CPF, Prontuário, Serviço) - BUSCA ABRANGENTE
+        // Filtro de Texto
         if (buscaTexto) {
-            // Helper function para verificar se contém o texto de forma segura
             const check = (val) => (val ? String(val).toLowerCase() : '').includes(buscaTexto);
-
-            // Verifica em múltiplos campos para garantir que encontre
             const match = check(at.nome) || 
                           check(at.nome_paciente) || 
                           check(at.cpf) || 
@@ -324,15 +321,13 @@ function filtrarAtendimentos() {
                           check(at.especialidade) || 
                           check(at.procedimento) ||
                           check(at.local);
-
             if (!match) return false;
         }
-        
         return true;
     });
 
     tbody.innerHTML = '';
-    if(filtrados.length === 0) { tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-slate-500">Nenhum registro.</td></tr>'; return; }
+    if(filtrados.length === 0) { tbody.innerHTML = '<tr><td colspan="7" class="px-6 py-8 text-center text-slate-500">Nenhum registro.</td></tr>'; return; }
     
     filtrados.forEach(at => {
         let color = at.status === 'CONCLUIDO' ? 'bg-emerald-100 text-emerald-700' : (at.status === 'PENDENTE' ? 'bg-amber-100 text-amber-700' : (at.status === 'CANCELADO' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600'));
@@ -340,20 +335,20 @@ function filtrarAtendimentos() {
         const tempId = 'at_' + Math.random().toString(36).substr(2, 9);
         window[tempId] = at;
 
-        // Usa os campos corretos para exibição (com fallback para compatibilidade)
         const nomeExibir = at.nome_paciente || at.nome || 'NOME N/D';
         const cpfExibir = at.cpf_paciente || at.cpf || '';
-        const servicoExibir = at.tipo_servico || '-';
-        const detalheExibir = at.local || at.especialidade || '';
-
+        
+        // MUDANÇA: Estrutura da linha alterada para incluir novas colunas
         const tr = document.createElement('tr');
         tr.className = "border-b border-slate-100 hover:bg-blue-50 transition-colors cursor-pointer";
         tr.innerHTML = `
-            <td class="px-6 py-4 font-mono text-slate-600 text-xs">${at.data_abertura ? at.data_abertura.split('-').reverse().join('/') : '-'}</td>
-            <td class="px-6 py-4 font-medium text-slate-800 uppercase text-sm">${nomeExibir}<br><span class="text-slate-400 font-normal text-xs">${cpfExibir}</span></td>
-            <td class="px-6 py-4 text-slate-600 uppercase text-xs"><span class="font-bold text-slate-700">${servicoExibir}</span><br>${detalheExibir}</td>
-            <td class="px-6 py-4"><span class="${color} px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-black/5">${at.status}</span></td>
-            <td class="px-6 py-4 text-right"><button onclick="event.stopPropagation(); abrirEdicaoAtendimentoId('${at.id}')" class="btn-action bg-blue-100 text-blue-700 p-2 rounded-lg hover:bg-blue-200 transition" title="Editar"><i data-lucide="edit-2" class="w-4 h-4"></i></button></td>
+            <td class="px-4 py-4 font-mono text-slate-600 text-xs">${at.data_abertura ? at.data_abertura.split('-').reverse().join('/') : '-'}</td>
+            <td class="px-4 py-4 font-medium text-slate-800 uppercase text-sm">${nomeExibir}<br><span class="text-slate-400 font-normal text-xs">${cpfExibir}</span></td>
+            <td class="px-4 py-4 text-slate-600 uppercase text-xs font-bold">${at.tipo_servico || '-'}</td>
+            <td class="px-4 py-4 text-slate-600 uppercase text-xs">${at.especialidade || '-'}</td>
+            <td class="px-4 py-4 text-slate-600 uppercase text-xs">${at.procedimento || '-'}</td>
+            <td class="px-4 py-4"><span class="${color} px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-black/5">${at.status}</span></td>
+            <td class="px-4 py-4 text-right"><button onclick="event.stopPropagation(); abrirEdicaoAtendimentoId('${at.id}')" class="btn-action bg-blue-100 text-blue-700 p-2 rounded-lg hover:bg-blue-200 transition" title="Editar"><i data-lucide="edit-2" class="w-4 h-4"></i></button></td>
         `;
         tr.onclick = () => abrirDetalheAtendimento(window[tempId]);
         tbody.appendChild(tr);
@@ -1113,6 +1108,9 @@ function verHistoricoCompleto(p) {
         btnHistDelete.classList.toggle('hidden', currentUserRole !== 'ADMIN');
     }
 
+    // Limpa cache anterior
+    window.historicoAtualCache = [];
+
     try {
         let buscaParam = p.id ? `&busca=${p.id}&tipo=id` : `&busca=${p.cpf}&tipo=cpf`;
         fetch(`${SCRIPT_URL}?action=findPatient${buscaParam}`)
@@ -1147,6 +1145,7 @@ function verHistoricoCompleto(p) {
                     .then(res => res.json())
                     .then(jsonHist => {
                         const history = jsonHist.data || [];
+                        window.historicoAtualCache = history; // Salva para impressão
 
                         if(history.length === 0) {
                             timeline.innerHTML = '<p class="text-slate-400 pl-4">Nenhum atendimento registrado.</p>';
@@ -1237,7 +1236,7 @@ function verHistoricoCompleto(p) {
 }
 
 // ============================================================================
-// FUNÇÃO IMPRIMIR FICHA (NOVA)
+// FUNÇÃO IMPRIMIR FICHA (NOVA - HISTÓRICO COMPLETO)
 // ============================================================================
 
 function imprimirFicha() {
@@ -1250,34 +1249,125 @@ function imprimirFicha() {
     if(!printArea) return;
 
     const p = pacienteAtual;
+    const historico = window.historicoAtualCache || [];
+
+    // Estilos de impressão
     const styleLabel = "display: block; font-size: 10px; color: #64748b; font-weight: bold; text-transform: uppercase; margin-bottom: 2px;";
-    const styleInput = "border-bottom: 1px solid #333; min-height: 20px; width: 100%; margin-bottom: 10px; font-family: 'Courier New', monospace; font-weight: bold; font-size: 14px; text-transform: uppercase; color: #000;";
+    const styleInput = "border-bottom: 1px solid #333; min-height: 20px; width: 100%; margin-bottom: 10px; font-family: 'Courier New', monospace; font-weight: bold; font-size: 13px; text-transform: uppercase; color: #000;";
     const styleSection = "margin-bottom: 15px; border: 1px solid #cbd5e1; border-radius: 4px; padding: 15px;";
     const styleTitle = "margin-top: 0; font-size: 14px; font-weight: bold; color: #334155; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px; margin-bottom: 10px;";
     const val = (v) => v || '';
 
+    // Gera linhas da tabela de histórico
+    let tableRows = '';
+    if (historico.length === 0) {
+        tableRows = '<tr><td colspan="5" style="padding: 15px; text-align: center; color: #666; font-style: italic;">Nenhum histórico de atendimento registrado.</td></tr>';
+    } else {
+        historico.forEach(at => {
+            const dataFmt = at.data_abertura ? at.data_abertura.split('-').reverse().join('/') : '-';
+            const detalhe = `${at.especialidade || ''} ${at.procedimento || ''}`.trim();
+            tableRows += `
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 8px 4px; font-size: 11px;">${dataFmt}</td>
+                    <td style="padding: 8px 4px; font-size: 11px; font-weight: bold;">${at.tipo_servico || '-'}</td>
+                    <td style="padding: 8px 4px; font-size: 11px;">${detalhe || '-'}</td>
+                    <td style="padding: 8px 4px; font-size: 11px;">${at.local || '-'}</td>
+                    <td style="padding: 8px 4px; font-size: 11px; text-align: right; font-weight: bold;">${at.status}</td>
+                </tr>
+            `;
+        });
+    }
+
     const html = `
         <div style="font-family: 'Segoe UI', sans-serif; padding: 20px; color: #333; max-width: 100%;">
             <div style="text-align: center; border-bottom: 2px solid #333; padding-bottom: 15px; margin-bottom: 20px;">
-                <h1 style="margin: 0; font-size: 20px; font-weight: 800; text-transform: uppercase;">Ficha de Eleitor</h1>
+                <h1 style="margin: 0; font-size: 20px; font-weight: 800; text-transform: uppercase;">Histórico do Eleitor</h1>
                 <p style="margin: 2px 0 0; color: #555; font-size: 12px;">Gabinete Família Tudo a Ver</p>
             </div>
+
+            <!-- DADOS DO ELEITOR -->
             <div style="${styleSection}">
-                <h2 style="${styleTitle}">1. DADOS DO ELEITOR</h2>
-                <div style="display: flex; gap: 15px;"><div style="flex: 3;"><span style="${styleLabel}">Nome Completo</span><div style="${styleInput}">${val(p.nome)}</div></div><div style="flex: 1;"><span style="${styleLabel}">CPF</span><div style="${styleInput}">${val(p.cpf)}</div></div></div>
-                <div style="display: flex; gap: 15px;"><div style="flex: 1;"><span style="${styleLabel}">Data Nasc.</span><div style="${styleInput}">${p.nascimento ? p.nascimento.split('-').reverse().join('/') : ''}</div></div><div style="flex: 1;"><span style="${styleLabel}">RG</span><div style="${styleInput}">${val(p.rg)}</div></div><div style="flex: 1;"><span style="${styleLabel}">Telefone 1</span><div style="${styleInput}">${val(p.tel1)}</div></div><div style="flex: 1;"><span style="${styleLabel}">Telefone 2</span><div style="${styleInput}">${val(p.tel2)}</div></div></div>
-                <div style="display: flex; gap: 15px;"><div style="flex: 1;"><span style="${styleLabel}">CEP</span><div style="${styleInput}">${val(p.cep)}</div></div><div style="flex: 3;"><span style="${styleLabel}">Endereço</span><div style="${styleInput}">${val(p.logradouro)}</div></div></div>
-                <div style="display: flex; gap: 15px;"><div style="flex: 1;"><span style="${styleLabel}">Bairro</span><div style="${styleInput}">${val(p.bairro)}</div></div><div style="flex: 1;"><span style="${styleLabel}">Município</span><div style="${styleInput}">${val(p.municipio)}</div></div><div style="flex: 1;"><span style="${styleLabel}">Ponto Referência</span><div style="${styleInput}">${val(p.referencia)}</div></div></div>
-                <div style="display: flex; gap: 15px;"><div style="flex: 1;"><span style="${styleLabel}">Título Eleitor</span><div style="${styleInput}">${val(p.titulo)}</div></div><div style="flex: 1;"><span style="${styleLabel}">Zona / Seção</span><div style="${styleInput}">${val(p.zona)} / ${val(p.secao)}</div></div><div style="flex: 2;"><span style="${styleLabel}">Liderança / Indicação</span><div style="${styleInput}">${val(p.lideranca)} / ${val(p.indicacao)}</div></div></div>
-                ${p.obs ? `<div style="margin-top: 10px;"><span style="${styleLabel}">Observações Cadastrais</span><div style="${styleInput} font-style: italic; font-weight: normal;">${p.obs}</div></div>` : ''}
+                <h2 style="${styleTitle}">1. DADOS CADASTRAIS</h2>
+                
+                <div style="display: flex; gap: 15px;">
+                    <div style="flex: 3;">
+                        <span style="${styleLabel}">Nome Completo</span>
+                        <div style="${styleInput}">${val(p.nome)}</div>
+                    </div>
+                    <div style="flex: 1;">
+                        <span style="${styleLabel}">CPF</span>
+                        <div style="${styleInput}">${val(p.cpf)}</div>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 15px;">
+                    <div style="flex: 1;">
+                        <span style="${styleLabel}">Data Nasc.</span>
+                        <div style="${styleInput}">${p.nascimento ? p.nascimento.split('-').reverse().join('/') : ''}</div>
+                    </div>
+                    <div style="flex: 1;">
+                        <span style="${styleLabel}">RG</span>
+                        <div style="${styleInput}">${val(p.rg)}</div>
+                    </div>
+                    <div style="flex: 1;">
+                        <span style="${styleLabel}">Telefone 1</span>
+                        <div style="${styleInput}">${val(p.tel1)}</div>
+                    </div>
+                    <div style="flex: 1;">
+                        <span style="${styleLabel}">Telefone 2</span>
+                        <div style="${styleInput}">${val(p.tel2)}</div>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 15px;">
+                    <div style="flex: 1;">
+                        <span style="${styleLabel}">CEP</span>
+                        <div style="${styleInput}">${val(p.cep)}</div>
+                    </div>
+                    <div style="flex: 3;">
+                        <span style="${styleLabel}">Endereço</span>
+                        <div style="${styleInput}">${val(p.logradouro)}</div>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 15px;">
+                    <div style="flex: 1;">
+                        <span style="${styleLabel}">Bairro</span>
+                        <div style="${styleInput}">${val(p.bairro)}</div>
+                    </div>
+                    <div style="flex: 1;">
+                        <span style="${styleLabel}">Município</span>
+                        <div style="${styleInput}">${val(p.municipio)}</div>
+                    </div>
+                    <div style="flex: 1;">
+                        <span style="${styleLabel}">Título Eleitor</span>
+                        <div style="${styleInput}">${val(p.titulo)}</div>
+                    </div>
+                </div>
             </div>
+
+            <!-- TABELA DE HISTÓRICO -->
             <div style="${styleSection}">
-                <h2 style="${styleTitle}">2. REGISTRO DE ATENDIMENTO (USO INTERNO)</h2>
-                <div style="display: flex; gap: 15px;"><div style="flex: 1;"><span style="${styleLabel}">Data Abertura</span><div style="${styleInput} height: 30px;"></div></div><div style="flex: 2;"><span style="${styleLabel}">Tipo de Serviço / Demanda</span><div style="${styleInput} height: 30px;"></div></div></div>
-                <div style="display: flex; gap: 15px; margin-top: 10px;"><div style="flex: 2;"><span style="${styleLabel}">Especialidade / Procedimento</span><div style="${styleInput} height: 30px;"></div></div><div style="flex: 2;"><span style="${styleLabel}">Local de Encaminhamento</span><div style="${styleInput} height: 30px;"></div></div></div>
-                <div style="margin-top: 15px;"><span style="${styleLabel}">Observações e Detalhes do Pedido</span><div style="${styleInput} height: 80px; border: 1px solid #333;"></div></div>
+                <h2 style="${styleTitle}">2. HISTÓRICO DE ATENDIMENTOS</h2>
+                <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+                    <thead>
+                        <tr style="background-color: #f1f5f9; text-align: left;">
+                            <th style="padding: 8px 4px; font-size: 10px; text-transform: uppercase; color: #64748b;">Data</th>
+                            <th style="padding: 8px 4px; font-size: 10px; text-transform: uppercase; color: #64748b;">Tipo Serviço</th>
+                            <th style="padding: 8px 4px; font-size: 10px; text-transform: uppercase; color: #64748b;">Detalhe</th>
+                            <th style="padding: 8px 4px; font-size: 10px; text-transform: uppercase; color: #64748b;">Local</th>
+                            <th style="padding: 8px 4px; font-size: 10px; text-transform: uppercase; color: #64748b; text-align: right;">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${tableRows}
+                    </tbody>
+                </table>
             </div>
-            <div style="text-align: center; font-size: 10px; color: #888; margin-top: 20px;">Documento emitido em ${new Date().toLocaleString('pt-BR')}</div>
+
+            <div style="text-align: center; font-size: 10px; color: #888; margin-top: 20px;">
+                Relatório emitido em ${new Date().toLocaleString('pt-BR')}
+            </div>
         </div>
     `;
 
