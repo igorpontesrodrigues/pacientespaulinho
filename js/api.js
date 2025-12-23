@@ -320,46 +320,8 @@ async function buscarPacienteParaAtendimento() {
     } catch(e) { resDiv.innerText = "Erro na busca."; }
 }
 
-async function submitAtendimento(e) {
-    e.preventDefault();
-    const id = document.getElementById('atend_id_hidden').value;
-
-    // --- MODO EDIÇÃO (Single) ---
-    if (id) {
-        const data = Object.fromEntries(new FormData(e.target).entries());
-        data.data_conclusao = document.getElementById('field_data_conclusao').value;
-        data.prontuario = document.getElementById('field_prontuario').value;
-        data.status = document.getElementById('field_status_atendimento').value;
-
-        if(await sendData('registerService', data, 'loading-atendimento')) { 
-            if(typeof resetFormAtendimento === 'function') resetFormAtendimento(); 
-            if(typeof voltarInicio === 'function') voltarInicio(); 
-        }
-        return;
-    }
-
-    // --- MODO CRIAÇÃO (Lote/Batch) ---
-    if (typeof listaProcedimentosTemp === 'undefined' || listaProcedimentosTemp.length === 0) {
-        alert("Adicione pelo menos um procedimento à lista antes de salvar.");
-        return;
-    }
-
-    const cpf = document.getElementById('hidden_cpf').value;
-    const nome = document.getElementById('hidden_nome').value;
-
-    if(!cpf && !nome) { alert("Busque o munícipe."); return; }
-
-    const batch = listaProcedimentosTemp.map(item => ({
-        ...item,
-        cpf_paciente: cpf,
-        nome_paciente: nome
-    }));
-
-    if(await sendData('registerServiceBatch', batch, 'loading-atendimento')) { 
-        if(typeof resetFormAtendimento === 'function') resetFormAtendimento(); 
-        if(typeof voltarInicio === 'function') voltarInicio(); 
-    }
-}
+// A função submitAtendimento foi movida para js/ui.js para garantir que
+// capture os campos corretamente pelo ID. Não está mais duplicada aqui.
 
 // --------------------------------------------------------
 // FUNÇÕES DE LISTAGEM DE ATENDIMENTOS (RESTAURADAS)
