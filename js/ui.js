@@ -7,7 +7,7 @@
 // VARIÁVEIS GLOBAIS DE UI
 // ============================================================================
 let listaProcedimentosTemp = []; // Armazena os itens adicionados antes de salvar
-window.historicoAtualCache = []; // Armazena o histórico do paciente atual para impressão
+window.historicoAtualCache = []; // Armazena o histórico do munícipe atual para impressão
 
 // ============================================================================
 // 1. LOGIN E PERMISSÕES
@@ -467,7 +467,6 @@ function renderizarTabelaPacientes(lista) {
     if(typeof lucide !== 'undefined') lucide.createIcons();
 }
 
-// ADICIONADO: FUNÇÃO DE RENDERIZAR TABELA DE ATENDIMENTOS (CORREÇÃO DO BUG)
 function renderizarTabelaAtendimentos(lista) {
     const tbody = document.getElementById('tabela-atendimentos-body');
     const contador = document.getElementById('contador-atendimentos');
@@ -485,16 +484,13 @@ function renderizarTabelaAtendimentos(lista) {
         const tr = document.createElement('tr');
         tr.className = "border-b border-slate-100 hover:bg-blue-50 transition-colors cursor-pointer group";
         
-        // Formata data
         const dataFmt = at.data_abertura ? at.data_abertura.split('-').reverse().join('/') : '-';
         
-        // Cores do status
         let statusClass = "bg-slate-100 text-slate-600";
         if(at.status === 'CONCLUIDO') statusClass = "bg-emerald-100 text-emerald-700";
         if(at.status === 'PENDENTE') statusClass = "bg-amber-100 text-amber-700";
         if(at.status === 'CANCELADO') statusClass = "bg-red-100 text-red-700";
 
-        // JSON para passar no clique (salva em window para evitar bugs de aspas)
         const tempId = 'at_' + Math.random().toString(36).substr(2, 9);
         window[tempId] = at; 
 
@@ -688,7 +684,7 @@ function abrirEdicaoAtendimentoId(id) {
 }
 
 function abrirAtendimentoDireto(cpf, id) {
-    if(!cpf || cpf.length < 5) { alert("Eleitor sem CPF. Edite o cadastro primeiro."); abrirEdicaoDireta(cpf, id); return; }
+    if(!cpf || cpf.length < 5) { alert("Munícipe sem CPF. Edite o cadastro primeiro."); abrirEdicaoDireta(cpf, id); return; }
     switchTab('form-atendimento');
     document.getElementById('busca_cpf').value = cpf;
     if(typeof buscarPacienteParaAtendimento === 'function') buscarPacienteParaAtendimento();
@@ -714,7 +710,7 @@ function calcularDataRisco() {
 
 function confirmarExclusaoPaciente() {
     if(!pacienteAtual) return;
-    const confirmacao = confirm(`ATENÇÃO: Você está prestes a excluir o eleitor ${pacienteAtual.nome}.\n\nISSO APAGARÁ TAMBÉM TODOS OS ATENDIMENTOS DELE.\n\nTem certeza absoluta?`);
+    const confirmacao = confirm(`ATENÇÃO: Você está prestes a excluir o munícipe ${pacienteAtual.nome}.\n\nISSO APAGARÁ TAMBÉM TODOS OS ATENDIMENTOS DELE.\n\nTem certeza absoluta?`);
     if(confirmacao) {
         if(typeof excluirPacienteAPI === 'function') excluirPacienteAPI(pacienteAtual.id, pacienteAtual.cpf);
     }
@@ -912,7 +908,7 @@ function imprimirFichaEmBranco() {
 
             <!-- DADOS PESSOAIS -->
             <div style="${styleSection}">
-                <h2 style="${styleTitle}">1. DADOS DO ELEITOR</h2>
+                <h2 style="${styleTitle}">1. DADOS DO MUNÍCIPE</h2>
                 
                 <div style="display: flex; gap: 15px;">
                     <div style="flex: 3;">
@@ -968,7 +964,7 @@ function imprimirFichaEmBranco() {
 
                 <div style="display: flex; gap: 15px;">
                     <div style="flex: 1;">
-                        <span style="${styleLabel}">Título Eleitor</span>
+                        <span style="${styleLabel}">Situação Eleitoral</span>
                         <div style="${styleInput}"></div>
                     </div>
                     <div style="flex: 1;">
@@ -1083,15 +1079,19 @@ function verHistoricoCompleto(p) {
                     histPacienteAtual = p;
                 }
 
+                // Data de criação (se disponível no objeto retornado)
+                const dataCriacao = pacienteCompleto.data_criacao ? pacienteCompleto.data_criacao : 'N/I';
+
                 divDetalhes.innerHTML = `
+                    <div><span class="block text-xs font-bold text-slate-400 uppercase">Cadastrado em</span> <span class="font-medium text-slate-800 text-xs">${dataCriacao}</span></div>
                     <div><span class="block text-xs font-bold text-slate-400 uppercase">Data Nasc.</span> <span class="font-medium text-slate-800">${pacienteCompleto.nascimento ? pacienteCompleto.nascimento.split('-').reverse().join('/') : '-'}</span></div>
                     <div><span class="block text-xs font-bold text-slate-400 uppercase">RG</span> <span class="font-medium text-slate-800">${pacienteCompleto.rg || '-'}</span></div>
-                    <div><span class="block text-xs font-bold text-slate-400 uppercase">Município</span> <span class="font-medium text-slate-800">${pacienteCompleto.municipio || '-'}</span></div>
                     
+                    <div><span class="block text-xs font-bold text-slate-400 uppercase">Município</span> <span class="font-medium text-slate-800">${pacienteCompleto.municipio || '-'}</span></div>
                     <div><span class="block text-xs font-bold text-slate-400 uppercase">Bairro</span> <span class="font-medium text-slate-800">${pacienteCompleto.bairro || '-'}</span></div>
                     <div class="md:col-span-2"><span class="block text-xs font-bold text-slate-400 uppercase">Endereço</span> <span class="font-medium text-slate-800">${pacienteCompleto.logradouro || '-'}</span></div>
                     
-                    <div><span class="block text-xs font-bold text-slate-400 uppercase">Título Eleitor</span> <span class="font-medium text-slate-800">${pacienteCompleto.titulo || '-'}</span></div>
+                    <div><span class="block text-xs font-bold text-slate-400 uppercase">Situação Eleitoral</span> <span class="font-medium text-slate-800">${pacienteCompleto.status_titulo || '-'}</span></div>
                     <div><span class="block text-xs font-bold text-slate-400 uppercase">Zona/Seção</span> <span class="font-medium text-slate-800">${pacienteCompleto.zona || '-'}/${pacienteCompleto.secao || '-'}</span></div>
                     <div><span class="block text-xs font-bold text-slate-400 uppercase">Família</span> <span class="font-medium text-slate-800">${pacienteCompleto.familia || '-'}</span></div>
                     
@@ -1186,7 +1186,7 @@ function verHistoricoCompleto(p) {
             });
 
     } catch(e) {
-        divDetalhes.innerHTML = '<div class="col-span-3 text-red-500">Erro ao carregar detalhes do paciente.</div>';
+        divDetalhes.innerHTML = '<div class="col-span-3 text-red-500">Erro ao carregar detalhes do munícipe.</div>';
         timeline.innerHTML = '<p class="text-red-500 pl-4">Erro ao carregar histórico.</p>';
         console.error(e);
     }
@@ -1198,7 +1198,7 @@ function verHistoricoCompleto(p) {
 
 function imprimirFicha() {
     if (!pacienteAtual) {
-        alert("Nenhum eleitor selecionado para impressão.");
+        alert("Nenhum munícipe selecionado para impressão.");
         return;
     }
 
@@ -1255,11 +1255,12 @@ function imprimirFicha() {
     const html = `
         <div style="font-family: 'Segoe UI', sans-serif; padding: 20px; color: #333; max-width: 100%;">
             <div style="text-align: center; border-bottom: 2px solid #333; padding-bottom: 15px; margin-bottom: 20px;">
-                <h1 style="margin: 0; font-size: 20px; font-weight: 800; text-transform: uppercase;">Histórico do Eleitor</h1>
+                <h1 style="margin: 0; font-size: 20px; font-weight: 800; text-transform: uppercase;">Histórico do Munícipe</h1>
                 <p style="margin: 2px 0 0; color: #555; font-size: 12px;">Gabinete Família Tudo a Ver</p>
+                <p style="margin: 2px 0 0; color: #888; font-size: 10px;">Cadastrado em: ${p.data_criacao || 'N/I'}</p>
             </div>
 
-            <!-- DADOS DO ELEITOR -->
+            <!-- DADOS DO MUNÍCIPE -->
             <div style="${styleSection}">
                 <h2 style="${styleTitle}">1. DADOS CADASTRAIS</h2>
                 
@@ -1302,8 +1303,12 @@ function imprimirFicha() {
 
                 <div style="display: flex; gap: 15px;">
                     <div style="flex: 1;">
-                        <span style="${styleLabel}">Título / Zona / Seção</span>
-                        <div style="${styleInput}">${val(p.titulo)} / ${val(p.zona)} / ${val(p.secao)}</div>
+                        <span style="${styleLabel}">Situação Eleitoral</span>
+                        <div style="${styleInput}">${val(p.status_titulo)}</div>
+                    </div>
+                    <div style="flex: 1;">
+                        <span style="${styleLabel}">Zona / Seção</span>
+                        <div style="${styleInput}">${val(p.zona)} / ${val(p.secao)}</div>
                     </div>
                     <div style="flex: 1;">
                         <span style="${styleLabel}">Liderança / Indicação</span>
