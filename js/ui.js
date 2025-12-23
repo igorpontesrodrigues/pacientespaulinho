@@ -131,62 +131,37 @@ function switchTab(tabId) {
 function voltarInicio() { 
     switchTab('lista-pacientes'); 
 }
-async function submitAtendimento(e) {
-    if(e) e.preventDefault(); // Garante que o evento previne o reload
-    const id = document.getElementById('atend_id_hidden').value;
 
-    // --- MODO EDIÇÃO (Single) ---
-    if (id) {
-        // CORRIGIDO: Pega os valores explicitamente pelos IDs dos campos
-        const data = {
-            id: id,
-            cpf_paciente: document.getElementById('hidden_cpf').value,
-            nome_paciente: document.getElementById('hidden_nome').value,
-            data_abertura: document.getElementById('data_abertura').value,
-            prontuario: document.getElementById('field_prontuario').value,
-            // Campos que usam o sistema de select/input híbrido
-            tipo_servico: document.getElementById('field_tipo_servico').value,
-            parceiro: document.getElementById('field_parceiro').value,
-            especialidade: document.getElementById('field_especialidade').value,
-            procedimento: document.getElementById('field_procedimento').value,
-            local: document.getElementById('field_local').value,
-            tipo: document.getElementById('field_tipo').value,
-            valor: document.getElementById('field_valor').value,
-            data_marcacao: document.getElementById('field_data_marcacao').value,
-            data_risco: document.getElementById('field_data_risco').value,
-            data_conclusao: document.getElementById('field_data_conclusao').value,
-            status: document.getElementById('field_status_atendimento').value,
-            obs_atendimento: document.getElementById('field_obs_atendimento').value
-        };
+function alternarSubAbaPacientes(aba) {
+    const listaDiv = document.getElementById('subview-pacientes-lista');
+    const niverDiv = document.getElementById('subview-pacientes-niver');
+    const btnLista = document.getElementById('tab-btn-lista');
+    const btnNiver = document.getElementById('tab-btn-niver');
+    const buscaContainer = document.getElementById('container-busca-pacientes');
+    const filtroNiver = document.getElementById('container-filtro-niver');
 
-        if(await sendData('registerService', data, 'loading-atendimento')) { 
-            if(typeof resetFormAtendimento === 'function') resetFormAtendimento(); 
-            // Não chama voltarInicio() aqui se quiser manter na mesma tela ou use switchTab('lista-atendimentos')
-            switchTab('lista-atendimentos'); 
-        }
-        return;
-    }
+    if (aba === 'lista') {
+        listaDiv.classList.remove('hidden');
+        niverDiv.classList.add('hidden');
+        buscaContainer.classList.remove('hidden');
+        filtroNiver.classList.add('hidden');
+        filtroNiver.style.display = 'none'; 
 
-    // --- MODO CRIAÇÃO (Lote/Batch) ---
-    if (typeof listaProcedimentosTemp === 'undefined' || listaProcedimentosTemp.length === 0) {
-        alert("Adicione pelo menos um procedimento à lista antes de salvar.");
-        return;
-    }
+        btnLista.className = "text-blue-600 border-b-2 border-blue-600 pb-2 transition-all";
+        btnNiver.className = "text-slate-500 hover:text-blue-500 pb-2 transition-all flex items-center gap-1";
+        
+        if(typeof carregarListaPacientes === 'function') carregarListaPacientes();
+    } else {
+        listaDiv.classList.add('hidden');
+        niverDiv.classList.remove('hidden');
+        buscaContainer.classList.add('hidden');
+        filtroNiver.classList.remove('hidden');
+        filtroNiver.style.display = 'flex';
 
-    const cpf = document.getElementById('hidden_cpf').value;
-    const nome = document.getElementById('hidden_nome').value;
+        btnNiver.className = "text-pink-600 border-b-2 border-pink-600 pb-2 transition-all flex items-center gap-1";
+        btnLista.className = "text-slate-500 hover:text-blue-500 pb-2 transition-all";
 
-    if(!cpf && !nome) { alert("Busque o munícipe."); return; }
-
-    const batch = listaProcedimentosTemp.map(item => ({
-        ...item,
-        cpf_paciente: cpf,
-        nome_paciente: nome
-    }));
-
-    if(await sendData('registerServiceBatch', batch, 'loading-atendimento')) { 
-        if(typeof resetFormAtendimento === 'function') resetFormAtendimento(); 
-        switchTab('lista-atendimentos');
+        if(typeof carregarAniversarios === 'function') carregarAniversarios();
     }
 }
 
@@ -284,7 +259,7 @@ function abrirListaRelatorio(tipo, index) {
 }
 
 // ============================================================================
-// 4. LOGICA DE PROCEDIMENTOS MÚLTIPLOS
+// 4. LOGICA DE PROCEDIMENTOS MÚLTIPLOS & SALVAMENTO
 // ============================================================================
 
 function adicionarProcedimentoNaLista() {
@@ -329,6 +304,7 @@ function adicionarProcedimentoNaLista() {
     listaProcedimentosTemp.push(item);
     renderizarTabelaProcedimentos();
     
+    // Limpa campos do card
     ['field_especialidade', 'field_procedimento', 'field_local', 'field_tipo', 
      'field_valor', 'field_data_marcacao', 'field_data_risco', 'field_data_conclusao', 
      'field_obs_atendimento'].forEach(id => {
@@ -392,6 +368,62 @@ function checkStatusConclusao() {
             selStatus.value = 'PENDENTE';
             if(fieldStatus) fieldStatus.value = 'PENDENTE';
         }
+    }
+}
+
+async function submitAtendimento(e) {
+    if(e) e.preventDefault(); // Garante que não recarrega a página
+    const id = document.getElementById('atend_id_hidden').value;
+
+    // --- MODO EDIÇÃO (Single) ---
+    if (id) {
+        const data = {
+            id: id,
+            cpf_paciente: document.getElementById('hidden_cpf').value,
+            nome_paciente: document.getElementById('hidden_nome').value,
+            data_abertura: document.getElementById('data_abertura').value,
+            prontuario: document.getElementById('field_prontuario').value,
+            tipo_servico: document.getElementById('field_tipo_servico').value,
+            parceiro: document.getElementById('field_parceiro').value,
+            especialidade: document.getElementById('field_especialidade').value,
+            procedimento: document.getElementById('field_procedimento').value,
+            local: document.getElementById('field_local').value,
+            tipo: document.getElementById('field_tipo').value,
+            valor: document.getElementById('field_valor').value,
+            data_marcacao: document.getElementById('field_data_marcacao').value,
+            data_risco: document.getElementById('field_data_risco').value,
+            data_conclusao: document.getElementById('field_data_conclusao').value,
+            status: document.getElementById('field_status_atendimento').value,
+            obs_atendimento: document.getElementById('field_obs_atendimento').value
+        };
+
+        if(await sendData('registerService', data, 'loading-atendimento')) { 
+            if(typeof resetFormAtendimento === 'function') resetFormAtendimento(); 
+            switchTab('lista-atendimentos');
+        }
+        return;
+    }
+
+    // --- MODO CRIAÇÃO (Lote/Batch) ---
+    if (typeof listaProcedimentosTemp === 'undefined' || listaProcedimentosTemp.length === 0) {
+        alert("Adicione pelo menos um procedimento à lista antes de salvar.");
+        return;
+    }
+
+    const cpf = document.getElementById('hidden_cpf').value;
+    const nome = document.getElementById('hidden_nome').value;
+
+    if(!cpf && !nome) { alert("Busque o munícipe."); return; }
+
+    const batch = listaProcedimentosTemp.map(item => ({
+        ...item,
+        cpf_paciente: cpf,
+        nome_paciente: nome
+    }));
+
+    if(await sendData('registerServiceBatch', batch, 'loading-atendimento')) { 
+        if(typeof resetFormAtendimento === 'function') resetFormAtendimento(); 
+        switchTab('lista-atendimentos');
     }
 }
 
@@ -719,6 +751,39 @@ function abrirAtendimentoDireto(cpf, id) {
     if(typeof buscarPacienteParaAtendimento === 'function') buscarPacienteParaAtendimento();
 }
 
+async function buscarPacienteParaAtendimento() {
+    const termo = document.getElementById('busca_cpf').value;
+    const resDiv = document.getElementById('resultado_busca');
+    if(termo.length < 3) return; 
+    
+    resDiv.innerText = "Buscando..."; 
+    document.getElementById('resto-form-atendimento').classList.add('hidden');
+    
+    try {
+        const res = await fetch(`${SCRIPT_URL}?action=findPatient&busca=${encodeURIComponent(termo)}&tipo=cpf`);
+        const json = await res.json();
+        if(json.found) {
+            resDiv.innerHTML = `<span class="text-emerald-600 font-bold flex items-center gap-1"><i data-lucide="check" class="w-4 h-4"></i> ${json.nome}</span>`;
+            document.getElementById('hidden_cpf').value = json.cpf || '';
+            document.getElementById('hidden_nome').value = json.nome;
+            document.getElementById('resto-form-atendimento').classList.remove('hidden');
+        } else resDiv.innerHTML = `<span class="text-red-500 font-medium">Munícipe não encontrado.</span>`;
+        if(typeof lucide !== 'undefined') lucide.createIcons();
+    } catch(e) { resDiv.innerText = "Erro na busca."; }
+}
+
+async function submitPaciente(e) {
+    e.preventDefault();
+    const data = Object.fromEntries(new FormData(e.target).entries());
+    data.cpf = document.getElementById('paciente_cpf_check').value;
+    if(!data.cpf || data.cpf.length < 5) { alert("CPF obrigatório."); return; }
+    
+    if(await sendData('registerPatient', data, 'loading-paciente')) { 
+        if(typeof resetFormPaciente === 'function') resetFormPaciente(); 
+        if(typeof voltarInicio === 'function') voltarInicio(); 
+    }
+}
+
 function calcularDataRisco() {
     const dataMarcacao = document.getElementById('field_data_marcacao').value;
     const campoEspec = document.getElementById('field_especialidade');
@@ -848,6 +913,224 @@ function filtrarRelatorioEleitoral() {
 
     document.getElementById('contador-eleitoral').innerText = `${lista.length} registros encontrados`;
     if(typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+function imprimirRelatorioEleitoral() {
+    if (!dashboardRawData || !dashboardRawData.pacientes) {
+        alert("Aguarde o carregamento dos dados.");
+        return;
+    }
+
+    const printArea = document.getElementById('printable-area');
+    if (!printArea) return;
+
+    const filtro = document.getElementById('filtro-modal-eleitoral').value;
+    
+    const lista = dashboardRawData.pacientes.filter(p => {
+        const st = p.status_titulo ? p.status_titulo.trim().toUpperCase() : 'N/I';
+        if (filtro && st !== filtro) return false;
+        return true;
+    });
+
+    const tituloRelatorio = filtro ? `Relatório Eleitoral - Status: ${filtro}` : 'Relatório Eleitoral - Geral';
+
+    let html = `
+        <div style="font-family: 'Segoe UI', Tahoma, sans-serif; padding: 20px; color: #333;">
+            <div style="text-align: center; border-bottom: 2px solid #333; margin-bottom: 20px; padding-bottom: 10px;">
+                <h1 style="margin: 0; font-size: 18px; text-transform: uppercase;">${tituloRelatorio}</h1>
+                <p style="margin: 5px 0 0; font-size: 12px; color: #666;">Gabinete Família Tudo a Ver | Total: ${lista.length} registros | Emissão: ${new Date().toLocaleString('pt-BR')}</p>
+            </div>
+            <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+                <thead>
+                    <tr style="background-color: #f1f5f9; text-align: left;">
+                        <th style="padding: 8px 5px; border-bottom: 1px solid #ccc;">NOME / CPF</th>
+                        <th style="padding: 8px 5px; border-bottom: 1px solid #ccc;">CONTATO</th>
+                        <th style="padding: 8px 5px; border-bottom: 1px solid #ccc;">LOCALIZAÇÃO</th>
+                        <th style="padding: 8px 5px; border-bottom: 1px solid #ccc; text-align: center;">STATUS</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+
+    if (lista.length === 0) {
+        html += `<tr><td colspan="4" style="padding: 15px; text-align: center; color: #666;">Nenhum registro encontrado.</td></tr>`;
+    } else {
+        lista.forEach((p, index) => {
+            const bg = index % 2 === 0 ? '#fff' : '#f8fafc';
+            const st = p.status_titulo ? p.status_titulo.toUpperCase() : 'N/I';
+            
+            html += `
+                <tr style="background-color: ${bg}; border-bottom: 1px solid #eee;">
+                    <td style="padding: 6px 5px;">
+                        <strong style="text-transform: uppercase;">${p.nome}</strong><br>
+                        ${p.cpf || '-'}
+                    </td>
+                    <td style="padding: 6px 5px;">${p.tel || '-'}</td>
+                    <td style="padding: 6px 5px; text-transform: uppercase;">${p.bairro || '-'}</td>
+                    <td style="padding: 6px 5px; text-align: center; font-weight: bold;">${st}</td>
+                </tr>
+            `;
+        });
+    }
+
+    html += `</tbody></table>
+        <div style="margin-top: 20px; font-size: 10px; text-align: right; color: #999;">Sistema de Gestão Interna</div>
+    </div>`;
+
+    printArea.innerHTML = html;
+    window.print();
+}
+
+function imprimirFichaEmBranco() {
+    const printArea = document.getElementById('printable-area');
+    if(!printArea) return;
+
+    // Estilos inline para garantir a formatação na impressão
+    const styleLabel = "display: block; font-size: 10px; color: #64748b; font-weight: bold; text-transform: uppercase; margin-bottom: 2px;";
+    const styleInput = "border-bottom: 1px solid #333; height: 20px; width: 100%; margin-bottom: 10px;";
+    const styleSection = "margin-bottom: 15px; border: 1px solid #cbd5e1; border-radius: 4px; padding: 15px;";
+    const styleTitle = "margin-top: 0; font-size: 14px; font-weight: bold; color: #334155; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px; margin-bottom: 10px;";
+
+    const html = `
+        <div style="font-family: 'Segoe UI', sans-serif; padding: 20px; color: #333; max-width: 100%;">
+            
+            <!-- CABEÇALHO -->
+            <div style="text-align: center; border-bottom: 2px solid #333; padding-bottom: 15px; margin-bottom: 20px;">
+                <h1 style="margin: 0; font-size: 20px; font-weight: 800; text-transform: uppercase;">Ficha de Atendimento</h1>
+                <p style="margin: 2px 0 0; color: #555; font-size: 12px;">Gabinete Família Tudo a Ver</p>
+            </div>
+
+            <!-- DADOS PESSOAIS -->
+            <div style="${styleSection}">
+                <h2 style="${styleTitle}">1. DADOS DO MUNÍCIPE</h2>
+                
+                <div style="display: flex; gap: 15px;">
+                    <div style="flex: 3;">
+                        <span style="${styleLabel}">Nome Completo</span>
+                        <div style="${styleInput}"></div>
+                    </div>
+                    <div style="flex: 1;">
+                        <span style="${styleLabel}">CPF</span>
+                        <div style="${styleInput}"></div>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 15px;">
+                    <div style="flex: 1;">
+                        <span style="${styleLabel}">Data Nasc.</span>
+                        <div style="${styleInput}"></div>
+                    </div>
+                    <div style="flex: 1;">
+                        <span style="${styleLabel}">RG</span>
+                        <div style="${styleInput}"></div>
+                    </div>
+                    <div style="flex: 1;">
+                        <span style="${styleLabel}">Telefone 1</span>
+                        <div style="${styleInput}"></div>
+                    </div>
+                    <div style="flex: 1;">
+                        <span style="${styleLabel}">Telefone 2</span>
+                        <div style="${styleInput}"></div>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 15px;">
+                    <div style="flex: 1;">
+                        <span style="${styleLabel}">CEP</span>
+                        <div style="${styleInput}"></div>
+                    </div>
+                    <div style="flex: 3;">
+                        <span style="${styleLabel}">Endereço (Rua, Nº, Compl)</span>
+                        <div style="${styleInput}"></div>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 15px;">
+                    <div style="flex: 1;">
+                        <span style="${styleLabel}">Bairro</span>
+                        <div style="${styleInput}"></div>
+                    </div>
+                    <div style="flex: 1;">
+                        <span style="${styleLabel}">Município</span>
+                        <div style="${styleInput}"></div>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 15px;">
+                    <div style="flex: 1;">
+                        <span style="${styleLabel}">Situação Eleitoral</span>
+                        <div style="${styleInput}"></div>
+                    </div>
+                    <div style="flex: 1;">
+                        <span style="${styleLabel}">Zona / Seção</span>
+                        <div style="${styleInput}"></div>
+                    </div>
+                    <div style="flex: 2;">
+                        <span style="${styleLabel}">Local de Votação</span>
+                        <div style="${styleInput}"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DADOS DO SERVIÇO -->
+            <div style="${styleSection}">
+                <h2 style="${styleTitle}">2. DADOS DO SERVIÇO / ATENDIMENTO</h2>
+                
+                <div style="display: flex; gap: 15px;">
+                    <div style="flex: 1;">
+                        <span style="${styleLabel}">Data Abertura</span>
+                        <div style="${styleInput}"></div>
+                    </div>
+                    <div style="flex: 2;">
+                        <span style="${styleLabel}">Liderança / Indicação</span>
+                        <div style="${styleInput}"></div>
+                    </div>
+                    <div style="flex: 1;">
+                        <span style="${styleLabel}">Tipo Serviço</span>
+                        <div style="${styleInput}"></div>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 15px;">
+                    <div style="flex: 2;">
+                        <span style="${styleLabel}">Especialidade / Procedimento</span>
+                        <div style="${styleInput}"></div>
+                    </div>
+                    <div style="flex: 2;">
+                        <span style="${styleLabel}">Local de Atendimento</span>
+                        <div style="${styleInput}"></div>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 15px;">
+                    <div style="flex: 2;">
+                        <span style="${styleLabel}">Parceiro / Médico</span>
+                        <div style="${styleInput}"></div>
+                    </div>
+                    <div style="flex: 1;">
+                        <span style="${styleLabel}">Data Marcação</span>
+                        <div style="${styleInput}"></div>
+                    </div>
+                    <div style="flex: 1;">
+                        <span style="${styleLabel}">Valor (R$)</span>
+                        <div style="${styleInput}"></div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 10px;">
+                    <span style="${styleLabel}">Observações do Pedido</span>
+                    <div style="${styleInput} height: 60px; border: 1px solid #333;"></div>
+                </div>
+            </div>
+
+            <div style="text-align: center; font-size: 10px; color: #888; margin-top: 20px;">
+                Impresso em ${new Date().toLocaleString('pt-BR')} - Sistema de Gestão Interna
+            </div>
+        </div>
+    `;
+
+    printArea.innerHTML = html;
+    window.print();
 }
 
 function abrirDetalheSituacaoEleitoral(label) {
