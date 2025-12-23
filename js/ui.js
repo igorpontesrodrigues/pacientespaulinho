@@ -1,44 +1,148 @@
-/**
- * js/ui.js
- * Funções de manipulação da interface (DOM) e lógica de visualização.
- */
-
-// ============================================================================
-// VARIÁVEIS GLOBAIS DE UI
-// ============================================================================
-let listaProcedimentosTemp = []; // Armazena os itens adicionados antes de salvar
-window.historicoAtualCache = []; // Armazena o histórico do munícipe atual para impressão
-
-// ============================================================================
-// 1. LOGIN E PERMISSÕES
-// ============================================================================
-
-document.addEventListener('DOMContentLoaded', function() {
-    const inputSenha = document.getElementById('login-senha');
-    if (inputSenha) {
-        inputSenha.addEventListener('keydown', function(event) {
-            if (event.key === 'Enter') {
-                event.preventDefault(); 
-                fazerLogin();
-            }
-        });
+// CORREÇÃO DO BUG DA LIDERANÇA
+async function initParceiros() {
+    if(!dashboardRawData) {
+        try {
+            const res = await fetch(`${SCRIPT_URL}?action=getAnalyticsData`);
+            const json = await res.json();
+            if(json.status === 'success') dashboardRawData = json.data;
+        } catch(e) { console.error(e); return; }
     }
-});
 
-function fazerLogin() {
-    const senhaEl = document.getElementById('login-senha');
-    const msg = document.getElementById('login-msg');
+    if(!dashboardRawData) return;
 
-    if (!senhaEl) return;
-    const senha = senhaEl.value;
+    const selAno = document.getElementById('parc-filter-ano');
+    if(selAno.options.length <= 1) {
+        const anos = new Set();
+        dashboardRawData.atendimentos.forEach(at => { if(at.data_abertura) anos.add(at.data_abertura.split('-')[0]); });
+        Array.from(anos).sort().reverse().forEach(a => selAno.innerHTML += `<option value="${a}">${a}</option>`);
+    }
 
-    if (senha === 'simone123') {
-        currentUserRole = 'ADMIN';
-        iniciarSistema('Administrador');
+    const fStatus = document.getElementById('parc-filter-status').value;
+    const fMes = document.getElementById('parc-filter-mes').value;
+    const fAno = document.getElementById('parc-filter-ano').value;
+    const hoje = new Date();
+
+    const filtrados = dashboardRawData.atendimentos.filter(at => {
+        const [y, m, d] = at.data_abertura ? at.data_abertura.split('-') : ['','',''];
+        if(fStatus && at.status !== fStatus) return false;
+        if(fMes && m !== fMes) return false;
+        if(fAno && y !== fAno) return false;
+        return true;
+    });
+
+    if(typeof createChart === 'function' && typeof countByField === 'function') {
+        const dadosParceiros = countByField(filtrados, 'parceiro');
+        createChart('chartParceirosRanking', 'bar', 
+            dadosParceiros.map(d => d[0]), 
+            dadosParceiros.map(d => d[1]), 
+            { 
+                indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+                scales: { x: { beginAtZero: true } }, backgroundColor: '#10b981'
+            }
+        );
+        
+        const dadosProc = countByField(filtrados, 'procedimento');
+        const topProc = dadosProc.slice(0, 15);
+        createChart('chartProcedimentosGeral', 'bar', 
+            topProc.map(d => d[0]), topProc.map(d => d[1]), 
+            { 
+                responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true } }, backgroundColor: '#8b5cf6'
+            }
+        );
+    }
+
+    // JOIN no Frontend
+    const mapPacientes = {};
+    if (dashboardRawData.pacientes) {
+        dashboardRawData.pacientes.forEach(p => mapPacientes[p.cpf] = p);
+    }
+
+    const liderancaStats = {};
+    
+    // CORREÇÃO: Prioriza o campo 'indicacao' do cadastro do munícipe (Nome da liderança)
+    // Se usar .lideranca pega SIM/NAO. Se usar .indicacao pega o nome.
+    filtrados.forEach(at => {
+        let lider = null;
+        
+        // Tenta buscar no cadastro do munícipe primeiro (é o mais confiável hoje)
+        if (at.cpf_paciente && mapPacientes[at.cpf_paciente]) {
+             lider = mapPacientes[at.cpf_paciente].indicacao; // Alterado de .lideranca para .indicacao
+        }
+        
+        // Fallback: Se não achou no munícipe, vê se tem salvo no próprio atendimento
+        if (!lider) {
+            lider = at.indicacao || at.lideranca; // Prioriza indicação aqui também
+        }
+        
+        // Normalização
+        if (!lider || lider.trim() === '' || lider === 'null' || lider === 'undefined') {
+            lider = 'SEM INDICAÇÃO';
+        } else {
+            lider = lider.trim().toUpperCase();
+        }
+        
+        if(!liderancaStats[lider]) {
+            liderancaStats[lider] = { nome: lider, total: 0, concluido: 0, pendente: 0, qtd: 0, lista: [] };
+        }
+        
+        const stat = liderancaStats[lider];
+        stat.total++;
+        stat.qtd++;
+        if(at.status === 'CONCLUIDO') stat.concluido++; else stat.pendente++;
+        
+        // Cálculo de dias para a lista detalhada
+        let dias = 0;
+        if(at.data_abertura) {
+            const inicio = new Date(at.data_abertura);
+            let fim = hoje;
+            if(at.data_marcacao) fim = new Date(at.data_marcacao);
+            const diffTime = Math.abs(fim - inicio);
+            dias = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        }
+
+        stat.lista.push({ 
+            ...at, 
+            id: at.id, 
+            cpf: at.cpf_paciente || at.cpf, 
+            nome: at.nome_paciente || at.nome || 'Nome não carregado', 
+            diasEspera: dias 
+        });
+    });
+
+    const listaLideranca = Object.values(liderancaStats).sort((a,b) => b.total - a.total);
+    window.dadosRelatorioCache['lideranca'] = listaLideranca;
+
+    const tbody = document.getElementById('tabela-lideranca-body');
+    tbody.innerHTML = '';
+    
+    if(listaLideranca.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-slate-400 text-xs">Sem dados com estes filtros.</td></tr>';
     } else {
-        msg.innerText = "Senha incorreta.";
-        senhaEl.classList.add('border-red-500');
-        setTimeout(() => senhaEl.classList.remove('border-red-500'), 2000);
+        listaLideranca.forEach((stat, index) => {
+            const perc = Math.round((stat.concluido / stat.total) * 100) || 0;
+            const corBarra = perc > 70 ? 'bg-emerald-500' : (perc > 40 ? 'bg-blue-500' : 'bg-orange-400');
+            
+            tbody.innerHTML += `
+                <tr class="hover:bg-blue-50 border-b border-slate-50 transition cursor-pointer group" onclick="abrirListaRelatorio('lideranca', ${index})">
+                    <td class="px-2 py-2 font-bold text-slate-700 text-xs truncate max-w-[120px] group-hover:text-blue-700" title="${stat.nome}">
+                        ${stat.nome} <i data-lucide="search" class="w-3 h-3 inline opacity-0 group-hover:opacity-100 ml-1"></i>
+                    </td>
+                    <td class="px-2 py-2 text-center font-mono font-bold text-slate-800">${stat.total}</td>
+                    <td class="px-2 py-2 text-center font-mono text-emerald-600">${stat.concluido}</td>
+                    <td class="px-2 py-2 text-center font-mono text-orange-600">${stat.pendente}</td>
+                    <td class="px-2 py-2 text-right">
+                        <div class="flex items-center justify-end gap-2">
+                            <span class="text-[10px] font-bold text-slate-500">${perc}%</span>
+                            <div class="w-8 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                                <div class="h-full ${corBarra}" style="width: ${perc}%"></div>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        });
+        if(typeof lucide !== 'undefined') lucide.createIcons();
     }
 }
 
