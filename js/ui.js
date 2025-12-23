@@ -260,154 +260,7 @@ function abrirListaRelatorio(tipo, index) {
 }
 
 // ============================================================================
-// 4. LISTAGEM E FILTRAGEM (ESSENCIAIS)
-// ============================================================================
-
-async function carregarListaAtendimentos() {
-    const tbody = document.getElementById('tabela-atendimentos-body');
-    if(tbody) tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-slate-400">Buscando...</td></tr>';
-    try {
-        const res = await fetch(`${SCRIPT_URL}?action=getServicesList`);
-        const json = await res.json();
-        todosAtendimentos = json.data; // Cache global
-        if(typeof atualizarFiltrosData === 'function') atualizarFiltrosData();
-        if(typeof filtrarAtendimentos === 'function') filtrarAtendimentos();
-    } catch(e) { if(tbody) tbody.innerHTML = '<tr><td colspan="5" class="text-center text-red-500 py-4">Erro.</td></tr>'; }
-}
-
-function atualizarFiltrosData() {
-    const anos = new Set();
-    const meses = new Set();
-    todosAtendimentos.forEach(at => {
-        if(at.data_abertura) {
-            const [y, m] = at.data_abertura.split('-');
-            if(y) anos.add(y); if(m) meses.add(m);
-        }
-    });
-    let htmlAno = '<option value="">Todos Anos</option>';
-    Array.from(anos).sort().reverse().forEach(a => htmlAno += `<option value="${a}">${a}</option>`);
-    document.getElementById('filtro-ano').innerHTML = htmlAno;
-
-    const nomesMeses = {"01":"Janeiro","02":"Fevereiro","03":"Março","04":"Abril","05":"Maio","06":"Junho","07":"Julho","08":"Agosto","09":"Setembro","10":"Outubro","11":"Novembro","12":"Dezembro"};
-    let htmlMes = '<option value="">Todos Meses</option>';
-    Array.from(meses).sort().forEach(m => { if(nomesMeses[m]) htmlMes += `<option value="${m}">${m} - ${nomesMeses[m]}</option>`; });
-    document.getElementById('filtro-mes').innerHTML = htmlMes;
-}
-
-function filtrarAtendimentos() {
-    const mes = document.getElementById('filtro-mes').value;
-    const ano = document.getElementById('filtro-ano').value;
-    const status = document.getElementById('filtro-status').value;
-    const buscaTexto = document.getElementById('filtro-atendimento-input').value.toLowerCase().trim();
-    const tbody = document.getElementById('tabela-atendimentos-body');
-
-    const filtrados = todosAtendimentos.filter(at => {
-        const [y, m] = at.data_abertura ? at.data_abertura.split('-') : ['',''];
-        
-        // Filtros Dropdown
-        if (mes && m !== mes) return false;
-        if (ano && y !== ano) return false;
-        if (status && at.status !== status) return false;
-        
-        // Filtro de Texto
-        if (buscaTexto) {
-            const check = (val) => (val ? String(val).toLowerCase() : '').includes(buscaTexto);
-            const match = check(at.nome) || 
-                          check(at.nome_paciente) || 
-                          check(at.cpf) || 
-                          check(at.cpf_paciente) || 
-                          check(at.prontuario) || 
-                          check(at.tipo_servico) || 
-                          check(at.especialidade) || 
-                          check(at.procedimento) ||
-                          check(at.local);
-            if (!match) return false;
-        }
-        return true;
-    });
-
-    tbody.innerHTML = '';
-    if(filtrados.length === 0) { tbody.innerHTML = '<tr><td colspan="7" class="px-6 py-8 text-center text-slate-500">Nenhum registro.</td></tr>'; return; }
-    
-    filtrados.forEach(at => {
-        let color = at.status === 'CONCLUIDO' ? 'bg-emerald-100 text-emerald-700' : (at.status === 'PENDENTE' ? 'bg-amber-100 text-amber-700' : (at.status === 'CANCELADO' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600'));
-        
-        const tempId = 'at_' + Math.random().toString(36).substr(2, 9);
-        window[tempId] = at;
-
-        const nomeExibir = at.nome_paciente || at.nome || 'NOME N/D';
-        const cpfExibir = at.cpf_paciente || at.cpf || '';
-        
-        // MUDANÇA: Estrutura da linha alterada para incluir novas colunas
-        const tr = document.createElement('tr');
-        tr.className = "border-b border-slate-100 hover:bg-blue-50 transition-colors cursor-pointer";
-        tr.innerHTML = `
-            <td class="px-4 py-4 font-mono text-slate-600 text-xs">${at.data_abertura ? at.data_abertura.split('-').reverse().join('/') : '-'}</td>
-            <td class="px-4 py-4 font-medium text-slate-800 uppercase text-sm">${nomeExibir}<br><span class="text-slate-400 font-normal text-xs">${cpfExibir}</span></td>
-            <td class="px-4 py-4 text-slate-600 uppercase text-xs font-bold">${at.tipo_servico || '-'}</td>
-            <td class="px-4 py-4 text-slate-600 uppercase text-xs">${at.especialidade || '-'}</td>
-            <td class="px-4 py-4 text-slate-600 uppercase text-xs">${at.procedimento || '-'}</td>
-            <td class="px-4 py-4"><span class="${color} px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-black/5">${at.status}</span></td>
-            <td class="px-4 py-4 text-right"><button onclick="event.stopPropagation(); abrirEdicaoAtendimentoId('${at.id}')" class="btn-action bg-blue-100 text-blue-700 p-2 rounded-lg hover:bg-blue-200 transition" title="Editar"><i data-lucide="edit-2" class="w-4 h-4"></i></button></td>
-        `;
-        tr.onclick = () => abrirDetalheAtendimento(window[tempId]);
-        tbody.appendChild(tr);
-    });
-    document.getElementById('contador-atendimentos').innerText = `Exibindo ${filtrados.length} registros`;
-    if(typeof lucide !== 'undefined') lucide.createIcons();
-    
-    if(typeof aplicarPermissoes === 'function' && typeof currentUserRole !== 'undefined') aplicarPermissoes();
-}
-
-function renderizarTabelaPacientes(lista) {
-    const tbody = document.getElementById('tabela-pacientes-body');
-    tbody.innerHTML = '';
-    if(lista.length === 0) { 
-        tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-slate-500">Nenhum registro encontrado.</td></tr>'; return; 
-    }
-    lista.forEach(p => {
-        const tr = document.createElement('tr');
-        tr.className = "border-b border-slate-100 hover:bg-blue-50 cursor-pointer transition-colors";
-        const pStr = JSON.stringify(p).replace(/"/g, '&quot;');
-        
-        const btnEditClass = currentUserRole === 'VISITOR' ? 'hidden' : '';
-        
-        tr.innerHTML = `
-            <td class="px-6 py-4 font-medium text-slate-800 uppercase" onclick="verHistoricoCompleto(${pStr})">${p.nome}</td>
-            <td class="px-6 py-4 text-slate-600" onclick="verHistoricoCompleto(${pStr})">${p.cpf || '<span class="text-orange-500 text-xs font-bold px-2 py-1 bg-orange-100 rounded">SEM CPF</span>'}</td>
-            <td class="px-6 py-4 hidden sm:table-cell text-slate-500" onclick="verHistoricoCompleto(${pStr})">${p.tel||'-'}</td>
-            <td class="px-6 py-4 hidden md:table-cell uppercase text-slate-500" onclick="verHistoricoCompleto(${pStr})">${p.municipio||'-'}</td>
-            <td class="px-6 py-4 text-right">
-                <button onclick="event.stopPropagation(); abrirAtendimentoDireto('${p.cpf}','${p.id}')" class="btn-action bg-emerald-100 text-emerald-700 p-2 rounded-lg mr-2 hover:bg-emerald-200 transition ${btnEditClass}" title="Novo Atendimento"><i data-lucide="plus" class="w-4 h-4"></i></button>
-                <button onclick="event.stopPropagation(); abrirEdicaoDireta('${p.cpf}','${p.id}')" class="btn-action bg-blue-100 text-blue-700 p-2 rounded-lg hover:bg-blue-200 transition ${btnEditClass}" title="Editar"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
-            </td>`;
-        tbody.appendChild(tr);
-    });
-    if(typeof lucide !== 'undefined') lucide.createIcons();
-}
-
-function renderizarTorreGenero(pacientes) {
-    let masc = 0, fem = 0;
-    pacientes.forEach(p => {
-        const s = p.sexo ? p.sexo.toUpperCase() : '';
-        if(s === 'M' || s === 'MASCULINO') masc++;
-        else if(s === 'F' || s === 'FEMININO') fem++;
-    });
-    const total = masc + fem || 1;
-    const pMasc = Math.round((masc / total) * 100);
-    const pFem = Math.round((fem / total) * 100);
-    document.getElementById('val-masc').innerText = masc;
-    document.getElementById('val-fem').innerText = fem;
-    setTimeout(() => {
-        const tMasc = document.getElementById('tower-masc');
-        const tFem = document.getElementById('tower-fem');
-        if(tMasc) tMasc.style.height = `${pMasc}%`;
-        if(tFem) tFem.style.height = `${pFem}%`;
-    }, 100);
-}
-
-// ============================================================================
-// 5. LOGICA DE PROCEDIMENTOS MÚLTIPLOS (FORM ATENDIMENTO)
+// 4. LOGICA DE PROCEDIMENTOS MÚLTIPLOS
 // ============================================================================
 
 function adicionarProcedimentoNaLista() {
@@ -519,7 +372,7 @@ function checkStatusConclusao() {
 }
 
 // ============================================================================
-// 6. FORMULÁRIOS E AUXILIARES
+// 5. FORMULÁRIOS E PREENCHIMENTO
 // ============================================================================
 
 function renderizarSelectsVazios() {
@@ -590,6 +443,53 @@ function preencherSelectInteligente(id, valor) {
         }
         sel.value = valor;
     }
+}
+
+function renderizarTabelaPacientes(lista) {
+    const tbody = document.getElementById('tabela-pacientes-body');
+    tbody.innerHTML = '';
+    if(lista.length === 0) { 
+        tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-slate-500">Nenhum registro encontrado.</td></tr>'; return; 
+    }
+    lista.forEach(p => {
+        const tr = document.createElement('tr');
+        tr.className = "border-b border-slate-100 hover:bg-blue-50 cursor-pointer transition-colors";
+        const pStr = JSON.stringify(p).replace(/"/g, '&quot;');
+        
+        const btnEditClass = currentUserRole === 'VISITOR' ? 'hidden' : '';
+        
+        tr.innerHTML = `
+            <td class="px-6 py-4 font-medium text-slate-800 uppercase" onclick="verHistoricoCompleto(${pStr})">${p.nome}</td>
+            <td class="px-6 py-4 text-slate-600" onclick="verHistoricoCompleto(${pStr})">${p.cpf || '<span class="text-orange-500 text-xs font-bold px-2 py-1 bg-orange-100 rounded">SEM CPF</span>'}</td>
+            <td class="px-6 py-4 hidden sm:table-cell text-slate-500" onclick="verHistoricoCompleto(${pStr})">${p.tel||'-'}</td>
+            <td class="px-6 py-4 hidden md:table-cell uppercase text-slate-500" onclick="verHistoricoCompleto(${pStr})">${p.municipio||'-'}</td>
+            <td class="px-6 py-4 text-right">
+                <button onclick="event.stopPropagation(); abrirAtendimentoDireto('${p.cpf}','${p.id}')" class="btn-action bg-emerald-100 text-emerald-700 p-2 rounded-lg mr-2 hover:bg-emerald-200 transition ${btnEditClass}" title="Novo Atendimento"><i data-lucide="plus" class="w-4 h-4"></i></button>
+                <button onclick="event.stopPropagation(); abrirEdicaoDireta('${p.cpf}','${p.id}')" class="btn-action bg-blue-100 text-blue-700 p-2 rounded-lg hover:bg-blue-200 transition ${btnEditClass}" title="Editar"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
+            </td>`;
+        tbody.appendChild(tr);
+    });
+    if(typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+function renderizarTorreGenero(pacientes) {
+    let masc = 0, fem = 0;
+    pacientes.forEach(p => {
+        const s = p.sexo ? p.sexo.toUpperCase() : '';
+        if(s === 'M' || s === 'MASCULINO') masc++;
+        else if(s === 'F' || s === 'FEMININO') fem++;
+    });
+    const total = masc + fem || 1;
+    const pMasc = Math.round((masc / total) * 100);
+    const pFem = Math.round((fem / total) * 100);
+    document.getElementById('val-masc').innerText = masc;
+    document.getElementById('val-fem').innerText = fem;
+    setTimeout(() => {
+        const tMasc = document.getElementById('tower-masc');
+        const tFem = document.getElementById('tower-fem');
+        if(tMasc) tMasc.style.height = `${pMasc}%`;
+        if(tFem) tFem.style.height = `${pFem}%`;
+    }, 100);
 }
 
 function resetFormPaciente() {
@@ -755,6 +655,10 @@ function calcularDataRisco() {
     document.getElementById('field_data_risco').value = `${yyyy}-${mm}-${dd}`;
 }
 
+// ============================================================================
+// 6. FUNÇÕES DE EXCLUSÃO (UI HANDLERS)
+// ============================================================================
+
 function confirmarExclusaoPaciente() {
     if(!pacienteAtual) return;
     const confirmacao = confirm(`ATENÇÃO: Você está prestes a excluir o eleitor ${pacienteAtual.nome}.\n\nISSO APAGARÁ TAMBÉM TODOS OS ATENDIMENTOS DELE.\n\nTem certeza absoluta?`);
@@ -773,7 +677,7 @@ function confirmarExclusaoAtendimento() {
 }
 
 // ============================================================================
-// 7. RELATÓRIOS E IMPRESSÃO (FUNÇÕES ADICIONADAS)
+// 7. RELATÓRIO ELEITORAL (NOVO)
 // ============================================================================
 
 function abrirRelatorioEleitoral() {
@@ -1258,21 +1162,38 @@ function imprimirFicha() {
     const styleTitle = "margin-top: 0; font-size: 14px; font-weight: bold; color: #334155; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px; margin-bottom: 10px;";
     const val = (v) => v || '';
 
-    // Gera linhas da tabela de histórico
+    // Gera linhas da tabela de histórico COM MAIS DETALHES
     let tableRows = '';
     if (historico.length === 0) {
         tableRows = '<tr><td colspan="5" style="padding: 15px; text-align: center; color: #666; font-style: italic;">Nenhum histórico de atendimento registrado.</td></tr>';
     } else {
         historico.forEach(at => {
             const dataFmt = at.data_abertura ? at.data_abertura.split('-').reverse().join('/') : '-';
-            const detalhe = `${at.especialidade || ''} ${at.procedimento || ''}`.trim();
+            const dataMarc = at.data_marcacao ? at.data_marcacao.split('-').reverse().join('/') : null;
+            
+            // Construção dos blocos de texto para a tabela
+            let blocoServico = `<div style="font-weight: bold; font-size: 11px; margin-bottom: 2px;">${at.tipo_servico || 'N/I'}</div>`;
+            if(at.especialidade) blocoServico += `<div style="font-size: 10px;">Espec: ${at.especialidade}</div>`;
+            if(at.procedimento) blocoServico += `<div style="font-size: 10px;">Proc: ${at.procedimento}</div>`;
+            if(at.tipo) blocoServico += `<div style="font-size: 10px; font-style: italic;">(${at.tipo})</div>`;
+
+            let blocoLocal = `<div style="font-size: 11px; font-weight: bold;">${at.local || '-'}</div>`;
+            if(at.parceiro) blocoLocal += `<div style="font-size: 10px; margin-top: 2px;">Méd/Parceiro: ${at.parceiro}</div>`;
+            if(at.prontuario) blocoLocal += `<div style="font-size: 10px;">Prontuário: ${at.prontuario}</div>`;
+
+            let blocoStatus = `<div style="font-weight: bold; font-size: 11px;">${at.status}</div>`;
+            if(dataMarc) blocoStatus += `<div style="font-size: 10px; margin-top: 2px;">Marcado: ${dataMarc}</div>`;
+            if(at.data_conclusao) blocoStatus += `<div style="font-size: 10px;">Fim: ${at.data_conclusao.split('-').reverse().join('/')}</div>`;
+
             tableRows += `
-                <tr style="border-bottom: 1px solid #eee;">
-                    <td style="padding: 8px 4px; font-size: 11px;">${dataFmt}</td>
-                    <td style="padding: 8px 4px; font-size: 11px; font-weight: bold;">${at.tipo_servico || '-'}</td>
-                    <td style="padding: 8px 4px; font-size: 11px;">${detalhe || '-'}</td>
-                    <td style="padding: 8px 4px; font-size: 11px;">${at.local || '-'}</td>
-                    <td style="padding: 8px 4px; font-size: 11px; text-align: right; font-weight: bold;">${at.status}</td>
+                <tr style="border-bottom: 1px solid #ccc;">
+                    <td style="padding: 8px 4px; vertical-align: top; width: 10%; font-size: 11px;">${dataFmt}</td>
+                    <td style="padding: 8px 4px; vertical-align: top; width: 30%;">${blocoServico}</td>
+                    <td style="padding: 8px 4px; vertical-align: top; width: 25%;">${blocoLocal}</td>
+                    <td style="padding: 8px 4px; vertical-align: top; width: 15%;">${blocoStatus}</td>
+                    <td style="padding: 8px 4px; vertical-align: top; width: 20%; font-size: 10px; font-style: italic; background-color: #f9f9f9;">
+                        ${at.obs_atendimento || ''}
+                    </td>
                 </tr>
             `;
         });
@@ -1305,58 +1226,50 @@ function imprimirFicha() {
                         <span style="${styleLabel}">Data Nasc.</span>
                         <div style="${styleInput}">${p.nascimento ? p.nascimento.split('-').reverse().join('/') : ''}</div>
                     </div>
-                    <div style="flex: 1;">
-                        <span style="${styleLabel}">RG</span>
-                        <div style="${styleInput}">${val(p.rg)}</div>
+                    <div style="flex: 2;">
+                        <span style="${styleLabel}">Referência (Apelido)</span>
+                        <div style="${styleInput}">${val(p.apelido)}</div>
                     </div>
                     <div style="flex: 1;">
                         <span style="${styleLabel}">Telefone 1</span>
                         <div style="${styleInput}">${val(p.tel1)}</div>
                     </div>
-                    <div style="flex: 1;">
-                        <span style="${styleLabel}">Telefone 2</span>
-                        <div style="${styleInput}">${val(p.tel2)}</div>
-                    </div>
                 </div>
 
                 <div style="display: flex; gap: 15px;">
-                    <div style="flex: 1;">
-                        <span style="${styleLabel}">CEP</span>
-                        <div style="${styleInput}">${val(p.cep)}</div>
-                    </div>
                     <div style="flex: 3;">
                         <span style="${styleLabel}">Endereço</span>
-                        <div style="${styleInput}">${val(p.logradouro)}</div>
+                        <div style="${styleInput}">${val(p.logradouro)}, ${val(p.bairro)} - ${val(p.municipio)}</div>
+                    </div>
+                    <div style="flex: 1;">
+                        <span style="${styleLabel}">Ponto Ref. (Endereço)</span>
+                        <div style="${styleInput}">${val(p.referencia)}</div>
                     </div>
                 </div>
 
                 <div style="display: flex; gap: 15px;">
                     <div style="flex: 1;">
-                        <span style="${styleLabel}">Bairro</span>
-                        <div style="${styleInput}">${val(p.bairro)}</div>
+                        <span style="${styleLabel}">Título / Zona / Seção</span>
+                        <div style="${styleInput}">${val(p.titulo)} / ${val(p.zona)} / ${val(p.secao)}</div>
                     </div>
                     <div style="flex: 1;">
-                        <span style="${styleLabel}">Município</span>
-                        <div style="${styleInput}">${val(p.municipio)}</div>
-                    </div>
-                    <div style="flex: 1;">
-                        <span style="${styleLabel}">Título Eleitor</span>
-                        <div style="${styleInput}">${val(p.titulo)}</div>
+                        <span style="${styleLabel}">Liderança / Indicação</span>
+                        <div style="${styleInput}">${val(p.lideranca)} / ${val(p.indicacao)}</div>
                     </div>
                 </div>
             </div>
 
             <!-- TABELA DE HISTÓRICO -->
             <div style="${styleSection}">
-                <h2 style="${styleTitle}">2. HISTÓRICO DE ATENDIMENTOS</h2>
+                <h2 style="${styleTitle}">2. HISTÓRICO COMPLETO DE ATENDIMENTOS</h2>
                 <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
                     <thead>
-                        <tr style="background-color: #f1f5f9; text-align: left;">
-                            <th style="padding: 8px 4px; font-size: 10px; text-transform: uppercase; color: #64748b;">Data</th>
-                            <th style="padding: 8px 4px; font-size: 10px; text-transform: uppercase; color: #64748b;">Tipo Serviço</th>
-                            <th style="padding: 8px 4px; font-size: 10px; text-transform: uppercase; color: #64748b;">Detalhe</th>
-                            <th style="padding: 8px 4px; font-size: 10px; text-transform: uppercase; color: #64748b;">Local</th>
-                            <th style="padding: 8px 4px; font-size: 10px; text-transform: uppercase; color: #64748b; text-align: right;">Status</th>
+                        <tr style="background-color: #f1f5f9; text-align: left; border-bottom: 2px solid #ccc;">
+                            <th style="padding: 8px 4px; font-size: 10px; text-transform: uppercase; color: #333;">Abertura</th>
+                            <th style="padding: 8px 4px; font-size: 10px; text-transform: uppercase; color: #333;">Serviço / Detalhes</th>
+                            <th style="padding: 8px 4px; font-size: 10px; text-transform: uppercase; color: #333;">Local / Parceiro</th>
+                            <th style="padding: 8px 4px; font-size: 10px; text-transform: uppercase; color: #333;">Situação</th>
+                            <th style="padding: 8px 4px; font-size: 10px; text-transform: uppercase; color: #333;">Obs</th>
                         </tr>
                     </thead>
                     <tbody>
