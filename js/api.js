@@ -112,7 +112,7 @@ async function carregarFiltros() {
 }
 
 // ============================================================================
-// 2. ELEITORES (PACIENTES) E HISTÓRICO
+// 2. MUNÍCIPES (ANTIGOS PACIENTES) E HISTÓRICO
 // ============================================================================
 
 async function carregarListaPacientes() {
@@ -267,7 +267,7 @@ async function verificarPorId(id) {
             const cpfStr = json.cpf ? String(json.cpf) : '';
 
             if (cpfStr.length > 4) {
-                msgElement.innerHTML = `<span class="text-blue-700 font-bold flex items-center gap-1"><i data-lucide="check" class="w-4 h-4"></i> Eleitor Encontrado: ${json.nome}</span>`;
+                msgElement.innerHTML = `<span class="text-blue-700 font-bold flex items-center gap-1"><i data-lucide="check" class="w-4 h-4"></i> Munícipe Encontrado: ${json.nome}</span>`;
             } else {
                 msgElement.innerHTML = `<span class="text-orange-600 font-bold flex items-center gap-1"><i data-lucide="alert-circle" class="w-4 h-4"></i> Editando cadastro sem CPF (ID: ${id})</span>`;
             }
@@ -315,7 +315,7 @@ async function buscarPacienteParaAtendimento() {
             document.getElementById('hidden_cpf').value = json.cpf || '';
             document.getElementById('hidden_nome').value = json.nome;
             document.getElementById('resto-form-atendimento').classList.remove('hidden');
-        } else resDiv.innerHTML = `<span class="text-red-500 font-medium">Eleitor não encontrado.</span>`;
+        } else resDiv.innerHTML = `<span class="text-red-500 font-medium">Munícipe não encontrado.</span>`;
         if(typeof lucide !== 'undefined') lucide.createIcons();
     } catch(e) { resDiv.innerText = "Erro na busca."; }
 }
@@ -347,7 +347,7 @@ async function submitAtendimento(e) {
     const cpf = document.getElementById('hidden_cpf').value;
     const nome = document.getElementById('hidden_nome').value;
 
-    if(!cpf && !nome) { alert("Busque o eleitor."); return; }
+    if(!cpf && !nome) { alert("Busque o munícipe."); return; }
 
     const batch = listaProcedimentosTemp.map(item => ({
         ...item,
@@ -379,11 +379,9 @@ async function carregarListaAtendimentos() {
         
         atualizarFiltrosData(); // Popula selects de Ano e Mês
         
-        // Chama a função de renderização no UI.js (que iremos criar em breve)
         if(typeof renderizarTabelaAtendimentos === 'function') {
             renderizarTabelaAtendimentos(todosAtendimentos);
         } else {
-             // Fallback temporário caso o ui.js ainda não tenha sido atualizado
              if(tbody) tbody.innerHTML = '<tr><td colspan="7" class="text-center text-red-500 py-4">Erro: renderizarTabelaAtendimentos não encontrada (Atualize o ui.js)</td></tr>';
         }
         
@@ -558,6 +556,7 @@ function calcularMetricasTempo(atendimentos) {
     document.getElementById('dash-tempo-total').innerText = mediaEspera;
 }
 
+// CORREÇÃO DO BUG DA LIDERANÇA
 async function initParceiros() {
     if(!dashboardRawData) {
         try {
@@ -611,41 +610,63 @@ async function initParceiros() {
         );
     }
 
-    // JOIN no Frontend (necessário para Liderança vinda do Eleitor)
+    // JOIN no Frontend
     const mapPacientes = {};
     if (dashboardRawData.pacientes) {
         dashboardRawData.pacientes.forEach(p => mapPacientes[p.cpf] = p);
     }
 
     const liderancaStats = {};
-    const calcularDiasLocal = (at) => {
-        if(!at.data_abertura) return 0;
-        const inicio = new Date(at.data_abertura);
-        let fim = hoje;
-        if(at.data_marcacao) fim = new Date(at.data_marcacao);
-        const diffTime = Math.abs(fim - inicio);
-        return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    };
-
+    
+    // CORREÇÃO: Prioriza o campo 'lideranca' do cadastro do munícipe (que vem da planilha Pessoas col 22)
+    // Se o atendimento tiver um campo 'indicacao' ou 'lideranca' explícito, usa ele (legado),
+    // senão busca no cadastro do munícipe.
     filtrados.forEach(at => {
-        // Tenta pegar liderança do atendimento (legado) ou do paciente (novo)
-        let lider = at.lideranca || at.indicacao;
-        // Se vazio, tenta buscar no paciente (cruzamento de dados)
-        if (!lider && at.cpf_paciente && mapPacientes[at.cpf_paciente]) {
-             lider = mapPacientes[at.cpf_paciente].lideranca; // Assumindo que o campo venha do backend
+        let lider = null;
+        
+        // Tenta buscar no cadastro do munícipe primeiro (é o mais confiável hoje)
+        if (at.cpf_paciente && mapPacientes[at.cpf_paciente]) {
+             lider = mapPacientes[at.cpf_paciente].lideranca; 
         }
         
-        lider = lider ? lider.trim().toUpperCase() : 'SEM INDICAÇÃO';
+        // Fallback: Se não achou no munícipe, vê se tem salvo no próprio atendimento
+        if (!lider) {
+            lider = at.lideranca || at.indicacao;
+        }
+        
+        // Normalização
+        if (!lider || lider.trim() === '' || lider === 'null' || lider === 'undefined') {
+            lider = 'SEM INDICAÇÃO';
+        } else {
+            lider = lider.trim().toUpperCase();
+        }
         
         if(!liderancaStats[lider]) {
             liderancaStats[lider] = { nome: lider, total: 0, concluido: 0, pendente: 0, qtd: 0, lista: [] };
         }
+        
         const stat = liderancaStats[lider];
         stat.total++;
         stat.qtd++;
         if(at.status === 'CONCLUIDO') stat.concluido++; else stat.pendente++;
-        const dias = calcularDiasLocal(at);
-        stat.lista.push({ ...at, id: at.id, cpf: at.cpf_paciente || at.cpf, nome: at.nome_paciente || at.nome || 'Nome não carregado', diasEspera: dias });
+        
+        // Cálculo de dias para a lista detalhada
+        let dias = 0;
+        if(at.data_abertura) {
+            const inicio = new Date(at.data_abertura);
+            let fim = hoje;
+            if(at.data_marcacao) fim = new Date(at.data_marcacao);
+            const diffTime = Math.abs(fim - inicio);
+            dias = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        }
+
+        stat.lista.push({ 
+            ...at, 
+            id: at.id, 
+            cpf: at.cpf_paciente || at.cpf, 
+            nome: at.nome_paciente || at.nome || 'Nome não carregado', 
+            diasEspera: dias 
+        });
     });
 
     const listaLideranca = Object.values(liderancaStats).sort((a,b) => b.total - a.total);
