@@ -1,68 +1,40 @@
-function filtrarAtendimentos() {
-    const mes = document.getElementById('filtro-mes').value;
-    const ano = document.getElementById('filtro-ano').value;
-    const status = document.getElementById('filtro-status').value;
-    const buscaTexto = document.getElementById('filtro-atendimento-input').value.toLowerCase(); // NOVO FILTRO
-    const tbody = document.getElementById('tabela-atendimentos-body');
+/**
+ * js/ui.js
+ * Funções de manipulação da interface (DOM) e lógica de visualização.
+ */
 
-    const filtrados = todosAtendimentos.filter(at => {
-        const [y, m] = at.data_abertura ? at.data_abertura.split('-') : ['',''];
-        
-        // Filtros Dropdown
-        if (mes && m !== mes) return false;
-        if (ano && y !== ano) return false;
-        if (status && at.status !== status) return false;
-        
-        // Filtro de Texto (Nome, CPF, Prontuário, Serviço)
-        if (buscaTexto) {
-            // Verifica a existência de cada propriedade antes de chamar .toLowerCase()
-            const nomeMatch = (at.nome_paciente || at.nome || '').toLowerCase().includes(buscaTexto);
-            const cpfMatch = (at.cpf_paciente || at.cpf || '').includes(buscaTexto);
-            const prontuarioMatch = (at.prontuario || '').toLowerCase().includes(buscaTexto);
-            const tipoMatch = (at.tipo_servico || '').toLowerCase().includes(buscaTexto);
-            const especMatch = (at.especialidade || '').toLowerCase().includes(buscaTexto);
-            const procMatch = (at.procedimento || '').toLowerCase().includes(buscaTexto);
+// ============================================================================
+// VARIÁVEIS GLOBAIS DE UI
+// ============================================================================
+let listaProcedimentosTemp = []; // Armazena os itens adicionados antes de salvar
 
-            if (!nomeMatch && !cpfMatch && !prontuarioMatch && !tipoMatch && !especMatch && !procMatch) {
-                return false;
+// ============================================================================
+// 1. LOGIN E PERMISSÕES
+// ============================================================================
+
+// Adiciona listener para tecla Enter no campo de senha assim que o script carrega
+document.addEventListener('DOMContentLoaded', function() {
+    const inputSenha = document.getElementById('login-senha');
+    if (inputSenha) {
+        inputSenha.addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault(); // Evita recarregamento padrão se houver
+                fazerLogin();
             }
-        }
-        
-        return true;
-    });
+        });
+    }
+});
 
-    tbody.innerHTML = '';
-    if(filtrados.length === 0) { tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-slate-500">Nenhum registro encontrado.</td></tr>'; return; }
-    
-    filtrados.forEach(at => {
-        let color = at.status === 'CONCLUIDO' ? 'bg-emerald-100 text-emerald-700' : (at.status === 'PENDENTE' ? 'bg-amber-100 text-amber-700' : (at.status === 'CANCELADO' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600'));
-        
-        const tempId = 'at_' + Math.random().toString(36).substr(2, 9);
-        window[tempId] = at;
+function fazerLogin() {
+    const senha = document.getElementById('login-senha').value;
+    const msg = document.getElementById('login-msg');
 
-        // Usa os campos corretos para exibição (com fallback para compatibilidade)
-        const nomeExibir = at.nome_paciente || at.nome || 'NOME N/D';
-        const cpfExibir = at.cpf_paciente || at.cpf || '';
-        const servicoExibir = at.tipo_servico || '-';
-        const detalheExibir = at.local || at.especialidade || '';
-
-        const tr = document.createElement('tr');
-        tr.className = "border-b border-slate-100 hover:bg-blue-50 transition-colors cursor-pointer";
-        tr.innerHTML = `
-            <td class="px-6 py-4 font-mono text-slate-600 text-xs">${at.data_abertura ? at.data_abertura.split('-').reverse().join('/') : '-'}</td>
-            <td class="px-6 py-4 font-medium text-slate-800 uppercase text-sm">${nomeExibir}<br><span class="text-slate-400 font-normal text-xs">${cpfExibir}</span></td>
-            <td class="px-6 py-4 text-slate-600 uppercase text-xs"><span class="font-bold text-slate-700">${servicoExibir}</span><br>${detalheExibir}</td>
-            <td class="px-6 py-4"><span class="${color} px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-black/5">${at.status}</span></td>
-            <td class="px-6 py-4 text-right"><button onclick="event.stopPropagation(); abrirEdicaoAtendimentoId('${at.id}')" class="btn-action bg-blue-100 text-blue-700 p-2 rounded-lg hover:bg-blue-200 transition" title="Editar"><i data-lucide="edit-2" class="w-4 h-4"></i></button></td>
-        `;
-        tr.onclick = () => abrirDetalheAtendimento(window[tempId]);
-        tbody.appendChild(tr);
-    });
-    document.getElementById('contador-atendimentos').innerText = `Exibindo ${filtrados.length} registros`;
-    if(typeof lucide !== 'undefined') lucide.createIcons();
-    
-    if(typeof aplicarPermissoes === 'function' && typeof currentUserRole !== 'undefined') aplicarPermissoes();
-}
+    if (senha === 'simone123') {
+        currentUserRole = 'ADMIN';
+        iniciarSistema('Administrador');
+    } else {
+        msg.innerText = "Senha incorreta.";
+    }
 }
 
 function loginVisitante() {
@@ -399,8 +371,111 @@ function checkStatusConclusao() {
 }
 
 // ============================================================================
-// 5. IMPRESSÃO E RELATÓRIOS (CORRIGIDO)
+// 5. IMPRESSÃO E RELATÓRIOS
 // ============================================================================
+
+// --- FUNÇÕES DE RELATÓRIO ELEITORAL RESTAURADAS ---
+
+function abrirRelatorioEleitoral() {
+    if (!dashboardRawData || !dashboardRawData.pacientes) {
+        alert("Dados do dashboard ainda não carregados. Aguarde um momento.");
+        return;
+    }
+
+    const modal = document.getElementById('modal-relatorio-eleitoral');
+    modal.classList.remove('hidden');
+
+    // Popula o select de filtro com os status existentes
+    const statusSet = new Set();
+    dashboardRawData.pacientes.forEach(p => {
+        // Trata vazio/null como "N/I" e garante que "N/I" sempre entre na lista
+        const st = p.status_titulo ? p.status_titulo.trim().toUpperCase() : 'N/I';
+        statusSet.add(st);
+    });
+    
+    const sel = document.getElementById('filtro-modal-eleitoral');
+    sel.innerHTML = '<option value="">Todos os Status</option>';
+    Array.from(statusSet).sort().forEach(s => {
+        sel.innerHTML += `<option value="${s}">${s}</option>`;
+    });
+
+    filtrarRelatorioEleitoral();
+}
+
+function filtrarRelatorioEleitoral() {
+    const filtro = document.getElementById('filtro-modal-eleitoral').value;
+    const tbody = document.getElementById('tbody-relatorio-eleitoral');
+    const theadTr = document.querySelector('#modal-relatorio-eleitoral thead tr');
+    
+    // Atualiza o cabeçalho para ter a coluna de Ação, caso não tenha (prevenção)
+    if(theadTr && theadTr.children.length === 4) {
+        const thAcao = document.createElement('th');
+        thAcao.className = "px-6 py-3 text-right";
+        thAcao.innerText = "Ação";
+        theadTr.appendChild(thAcao);
+    }
+
+    tbody.innerHTML = '';
+
+    const lista = dashboardRawData.pacientes.filter(p => {
+        // Normaliza o status do paciente para N/I se estiver vazio
+        const st = p.status_titulo ? p.status_titulo.trim().toUpperCase() : 'N/I';
+        
+        // Se houver filtro selecionado, compara exatamente
+        if (filtro && st !== filtro) return false;
+        
+        return true;
+    });
+
+    if (lista.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-slate-400">Nenhum registro encontrado.</td></tr>';
+        document.getElementById('contador-eleitoral').innerText = '0 registros';
+        return;
+    }
+
+    lista.forEach(p => {
+        const tr = document.createElement('tr');
+        tr.className = "border-b border-slate-100 hover:bg-blue-50 transition-colors";
+        
+        let statusColor = "bg-slate-100 text-slate-600";
+        const st = p.status_titulo ? p.status_titulo.toUpperCase() : 'N/I';
+        if (st.includes('REGULAR')) statusColor = "bg-green-100 text-green-700";
+        else if (st.includes('CANCELADO') || st.includes('SUSPENSO')) statusColor = "bg-red-100 text-red-700";
+        else if (st.includes('TRANSFERIDO')) statusColor = "bg-orange-100 text-orange-700";
+
+        // Preparar dados para o clique (visualizar histórico)
+        const pStr = JSON.stringify(p).replace(/"/g, '&quot;');
+
+        // CONTROLE DO BOTÃO DE EDIÇÃO PARA VISITANTES
+        const btnEditClass = currentUserRole === 'VISITOR' ? 'hidden' : '';
+
+        tr.innerHTML = `
+            <td class="px-6 py-3">
+                <div class="font-bold text-slate-800 text-sm uppercase cursor-pointer hover:text-blue-600" onclick="verHistoricoCompleto(${pStr})">${p.nome}</div>
+                <div class="text-xs text-slate-400 font-mono">${p.cpf || 'SEM CPF'}</div>
+            </td>
+            <td class="px-6 py-3 text-sm text-slate-600">
+                <div class="flex items-center gap-1"><i data-lucide="phone" class="w-3 h-3"></i> ${p.tel || '-'}</div>
+            </td>
+            <td class="px-6 py-3 text-sm text-slate-600">
+                <div class="uppercase text-xs font-bold">${p.bairro || '-'}</div>
+                <div class="text-[10px] text-slate-400">Bairro</div>
+            </td>
+            <td class="px-6 py-3 text-center">
+                <span class="${statusColor} px-2 py-1 rounded text-[10px] font-bold uppercase border border-black/5">${st}</span>
+            </td>
+            <td class="px-6 py-3 text-right">
+                <button onclick="document.getElementById('modal-relatorio-eleitoral').classList.add('hidden'); abrirEdicaoDireta('${p.cpf}', '${p.id}')" class="text-blue-600 hover:bg-blue-100 p-2 rounded border border-transparent hover:border-blue-200 transition ${btnEditClass}" title="Editar Cadastro">
+                    <i data-lucide="edit-2" class="w-4 h-4"></i>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    document.getElementById('contador-eleitoral').innerText = `${lista.length} registros encontrados`;
+    if(typeof lucide !== 'undefined') lucide.createIcons();
+}
 
 function imprimirRelatorioEleitoral() {
     if (!dashboardRawData || !dashboardRawData.pacientes) {
