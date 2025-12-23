@@ -367,6 +367,93 @@ async function submitAtendimento(e) {
     }
 }
 
+async function carregarListaAtendimentos() {
+    const tbody = document.getElementById('tabela-atendimentos-body');
+    if(tbody) tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-slate-400">Buscando...</td></tr>';
+    try {
+        const res = await fetch(`${SCRIPT_URL}?action=getServicesList`);
+        const json = await res.json();
+        todosAtendimentos = json.data; // Cache global
+        if(typeof atualizarFiltrosData === 'function') atualizarFiltrosData();
+        if(typeof filtrarAtendimentos === 'function') filtrarAtendimentos();
+    } catch(e) { if(tbody) tbody.innerHTML = '<tr><td colspan="5" class="text-center text-red-500 py-4">Erro.</td></tr>'; }
+}
+
+function atualizarFiltrosData() {
+    const anos = new Set();
+    const meses = new Set();
+    todosAtendimentos.forEach(at => {
+        if(at.data_abertura) {
+            const [y, m] = at.data_abertura.split('-');
+            if(y) anos.add(y); if(m) meses.add(m);
+        }
+    });
+    let htmlAno = '<option value="">Todos Anos</option>';
+    Array.from(anos).sort().reverse().forEach(a => htmlAno += `<option value="${a}">${a}</option>`);
+    document.getElementById('filtro-ano').innerHTML = htmlAno;
+
+    const nomesMeses = {"01":"Janeiro","02":"Fevereiro","03":"Março","04":"Abril","05":"Maio","06":"Junho","07":"Julho","08":"Agosto","09":"Setembro","10":"Outubro","11":"Novembro","12":"Dezembro"};
+    let htmlMes = '<option value="">Todos Meses</option>';
+    Array.from(meses).sort().forEach(m => { if(nomesMeses[m]) htmlMes += `<option value="${m}">${m} - ${nomesMeses[m]}</option>`; });
+    document.getElementById('filtro-mes').innerHTML = htmlMes;
+}
+
+function filtrarAtendimentos() {
+    const mes = document.getElementById('filtro-mes').value;
+    const ano = document.getElementById('filtro-ano').value;
+    const status = document.getElementById('filtro-status').value;
+    const buscaTexto = document.getElementById('filtro-atendimento-input').value.toLowerCase(); // NOVO FILTRO
+    const tbody = document.getElementById('tabela-atendimentos-body');
+
+    const filtrados = todosAtendimentos.filter(at => {
+        const [y, m] = at.data_abertura ? at.data_abertura.split('-') : ['',''];
+        
+        // Filtros Dropdown
+        if (mes && m !== mes) return false;
+        if (ano && y !== ano) return false;
+        if (status && at.status !== status) return false;
+        
+        // Filtro de Texto (Nome, CPF, Prontuário, Serviço)
+        if (buscaTexto) {
+            const match = (at.nome || '').toLowerCase().includes(buscaTexto) ||
+                          (at.cpf || '').includes(buscaTexto) ||
+                          (at.prontuario || '').toLowerCase().includes(buscaTexto) || // Se houver
+                          (at.tipo_servico || '').toLowerCase().includes(buscaTexto) ||
+                          (at.especialidade || '').toLowerCase().includes(buscaTexto) ||
+                          (at.procedimento || '').toLowerCase().includes(buscaTexto);
+            if (!match) return false;
+        }
+        
+        return true;
+    });
+
+    tbody.innerHTML = '';
+    if(filtrados.length === 0) { tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-slate-500">Nenhum registro.</td></tr>'; return; }
+    
+    filtrados.forEach(at => {
+        let color = at.status === 'CONCLUIDO' ? 'bg-emerald-100 text-emerald-700' : (at.status === 'PENDENTE' ? 'bg-amber-100 text-amber-700' : (at.status === 'CANCELADO' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600'));
+        
+        const tempId = 'at_' + Math.random().toString(36).substr(2, 9);
+        window[tempId] = at;
+
+        const tr = document.createElement('tr');
+        tr.className = "border-b border-slate-100 hover:bg-blue-50 transition-colors cursor-pointer";
+        tr.innerHTML = `
+            <td class="px-6 py-4 font-mono text-slate-600 text-xs">${at.data_abertura.split('-').reverse().join('/')}</td>
+            <td class="px-6 py-4 font-medium text-slate-800 uppercase text-sm">${at.nome}<br><span class="text-slate-400 font-normal text-xs">${at.cpf}</span></td>
+            <td class="px-6 py-4 text-slate-600 uppercase text-xs"><span class="font-bold text-slate-700">${at.tipo_servico || '-'}</span><br>${at.local||at.especialidade}</td>
+            <td class="px-6 py-4"><span class="${color} px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-black/5">${at.status}</span></td>
+            <td class="px-6 py-4 text-right"><button onclick="event.stopPropagation(); abrirEdicaoAtendimentoId('${at.id}')" class="btn-action bg-blue-100 text-blue-700 p-2 rounded-lg hover:bg-blue-200 transition" title="Editar"><i data-lucide="edit-2" class="w-4 h-4"></i></button></td>
+        `;
+        tr.onclick = () => abrirDetalheAtendimento(window[tempId]);
+        tbody.appendChild(tr);
+    });
+    document.getElementById('contador-atendimentos').innerText = `Exibindo ${filtrados.length} registros`;
+    if(typeof lucide !== 'undefined') lucide.createIcons();
+    
+    if(typeof aplicarPermissoes === 'function' && typeof currentUserRole !== 'undefined') aplicarPermissoes();
+}
+
 async function loadDashboard() {
     try {
         const res = await fetch(`${SCRIPT_URL}?action=getAnalyticsData`);
@@ -519,9 +606,11 @@ async function initParceiros() {
         );
     }
 
-    // JOIN no Frontend:
+    // JOIN no Frontend (necessário para Liderança vinda do Eleitor)
     const mapPacientes = {};
-    dashboardRawData.pacientes.forEach(p => mapPacientes[p.cpf] = p);
+    if (dashboardRawData.pacientes) {
+        dashboardRawData.pacientes.forEach(p => mapPacientes[p.cpf] = p);
+    }
 
     const liderancaStats = {};
     const calcularDiasLocal = (at) => {
@@ -534,7 +623,13 @@ async function initParceiros() {
     };
 
     filtrados.forEach(at => {
-        let lider = at.indicacao;
+        // Tenta pegar liderança do atendimento (legado) ou do paciente (novo)
+        let lider = at.lideranca || at.indicacao;
+        // Se vazio, tenta buscar no paciente (cruzamento de dados)
+        if (!lider && at.cpf_paciente && mapPacientes[at.cpf_paciente]) {
+             lider = mapPacientes[at.cpf_paciente].lideranca; // Assumindo que o campo venha do backend
+        }
+        
         lider = lider ? lider.trim().toUpperCase() : 'SEM INDICAÇÃO';
         
         if(!liderancaStats[lider]) {
