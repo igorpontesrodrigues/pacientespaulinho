@@ -14,11 +14,11 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxNtohug1LnuzYn56ySQ
 // ============================================================================
 // Mapeia os campos dropdown que puxam opções da planilha 'Filtros'
 const CONFIG_SELECTS = [
-    // Formulário Eleitor
+    // Formulário Munícipe (Antigo Eleitor)
     { id: 'municipio', label: 'Município', container: 'container_municipio', key: 'MUNICIPIO' },
     { id: 'bairro', label: 'Bairro', container: 'container_bairro', key: 'BAIRRO' },
-    { id: 'status_titulo', label: 'Status Título', container: 'container_status_titulo', key: 'STATUS_TITULO' },
-    { id: 'indicacao', label: 'Indicação (Liderança)', container: 'container_indicacao', key: 'INDICACAO' }, // Movido para Eleitor
+    { id: 'status_titulo', label: 'Situação do Título', container: 'container_status_titulo', key: 'STATUS_TITULO' },
+    { id: 'indicacao', label: 'Indicação (Liderança)', container: 'container_indicacao', key: 'INDICACAO' }, 
 
     // Formulário Atendimento
     { id: 'tipo_servico', label: 'Tipo Serviço', container: 'container_tipo_servico', key: 'TIPO_SERVICO' },
@@ -33,7 +33,7 @@ const CONFIG_SELECTS = [
 // ============================================================================
 // 3. VARIÁVEIS DE ESTADO GLOBAL (CACHE)
 // ============================================================================
-let pacienteAtual = null;
+let pacienteAtual = null; // Mantendo o nome da variável técnica, mas no contexto é o Munícipe
 let histPacienteAtual = null; 
 let todosAtendimentos = [];
 let todosPacientes = []; 
