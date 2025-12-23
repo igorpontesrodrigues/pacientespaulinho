@@ -350,11 +350,6 @@ function renderizarTabelaProcedimentos() {
     if(typeof lucide !== 'undefined') lucide.createIcons();
 }
 
-function removerItemTemp(index) {
-    listaProcedimentosTemp.splice(index, 1);
-    renderizarTabelaProcedimentos();
-}
-
 function checkStatusConclusao() {
     const dataConc = document.getElementById('field_data_conclusao').value;
     const selStatus = document.getElementById('sel_status_atendimento');
@@ -469,6 +464,64 @@ function renderizarTabelaPacientes(lista) {
             </td>`;
         tbody.appendChild(tr);
     });
+    if(typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+// ADICIONADO: FUNÇÃO DE RENDERIZAR TABELA DE ATENDIMENTOS (CORREÇÃO DO BUG)
+function renderizarTabelaAtendimentos(lista) {
+    const tbody = document.getElementById('tabela-atendimentos-body');
+    const contador = document.getElementById('contador-atendimentos');
+    
+    if(!tbody) return;
+    tbody.innerHTML = '';
+    
+    if (lista.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="px-6 py-8 text-center text-slate-400">Nenhum atendimento encontrado.</td></tr>';
+        if(contador) contador.innerText = "0 registros";
+        return;
+    }
+
+    lista.forEach(at => {
+        const tr = document.createElement('tr');
+        tr.className = "border-b border-slate-100 hover:bg-blue-50 transition-colors cursor-pointer group";
+        
+        // Formata data
+        const dataFmt = at.data_abertura ? at.data_abertura.split('-').reverse().join('/') : '-';
+        
+        // Cores do status
+        let statusClass = "bg-slate-100 text-slate-600";
+        if(at.status === 'CONCLUIDO') statusClass = "bg-emerald-100 text-emerald-700";
+        if(at.status === 'PENDENTE') statusClass = "bg-amber-100 text-amber-700";
+        if(at.status === 'CANCELADO') statusClass = "bg-red-100 text-red-700";
+
+        // JSON para passar no clique (salva em window para evitar bugs de aspas)
+        const tempId = 'at_' + Math.random().toString(36).substr(2, 9);
+        window[tempId] = at; 
+
+        tr.onclick = () => abrirDetalheAtendimento(window[tempId]);
+
+        tr.innerHTML = `
+            <td class="px-4 py-4 font-mono text-xs text-slate-500">${dataFmt}</td>
+            <td class="px-4 py-4">
+                <div class="font-bold text-slate-700 text-sm uppercase">${at.nome_paciente || at.nome || 'Sem Nome'}</div>
+                <div class="text-xs text-slate-400 font-mono">${at.cpf_paciente || at.cpf || '...'}</div>
+            </td>
+            <td class="px-4 py-4 text-xs uppercase text-slate-600 font-bold">${at.tipo_servico || '-'}</td>
+            <td class="px-4 py-4 text-xs uppercase text-slate-500">${at.especialidade || '-'}</td>
+            <td class="px-4 py-4 text-xs uppercase text-slate-500">${at.procedimento || '-'}</td>
+            <td class="px-4 py-4">
+                <span class="${statusClass} px-2 py-1 rounded text-[10px] font-bold uppercase border border-black/5">${at.status}</span>
+            </td>
+            <td class="px-4 py-4 text-right">
+                <button onclick="event.stopPropagation(); abrirEdicaoAtendimentoId('${at.id}')" class="text-blue-600 hover:bg-blue-100 p-2 rounded border border-transparent hover:border-blue-200 transition" title="Editar">
+                    <i data-lucide="edit-2" class="w-4 h-4"></i>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    if(contador) contador.innerText = `${lista.length} registros exibidos`;
     if(typeof lucide !== 'undefined') lucide.createIcons();
 }
 
