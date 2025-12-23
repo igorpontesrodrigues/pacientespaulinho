@@ -1,148 +1,45 @@
-// CORREÇÃO DO BUG DA LIDERANÇA
-async function initParceiros() {
-    if(!dashboardRawData) {
-        try {
-            const res = await fetch(`${SCRIPT_URL}?action=getAnalyticsData`);
-            const json = await res.json();
-            if(json.status === 'success') dashboardRawData = json.data;
-        } catch(e) { console.error(e); return; }
-    }
+/**
+ * js/ui.js
+ * Funções de manipulação da interface (DOM) e lógica de visualização.
+ */
 
-    if(!dashboardRawData) return;
+// ============================================================================
+// VARIÁVEIS GLOBAIS DE UI
+// ============================================================================
+let listaProcedimentosTemp = []; // Armazena os itens adicionados antes de salvar
+window.historicoAtualCache = []; // Armazena o histórico do munícipe atual para impressão
 
-    const selAno = document.getElementById('parc-filter-ano');
-    if(selAno.options.length <= 1) {
-        const anos = new Set();
-        dashboardRawData.atendimentos.forEach(at => { if(at.data_abertura) anos.add(at.data_abertura.split('-')[0]); });
-        Array.from(anos).sort().reverse().forEach(a => selAno.innerHTML += `<option value="${a}">${a}</option>`);
-    }
+// ============================================================================
+// 1. LOGIN E PERMISSÕES
+// ============================================================================
 
-    const fStatus = document.getElementById('parc-filter-status').value;
-    const fMes = document.getElementById('parc-filter-mes').value;
-    const fAno = document.getElementById('parc-filter-ano').value;
-    const hoje = new Date();
-
-    const filtrados = dashboardRawData.atendimentos.filter(at => {
-        const [y, m, d] = at.data_abertura ? at.data_abertura.split('-') : ['','',''];
-        if(fStatus && at.status !== fStatus) return false;
-        if(fMes && m !== fMes) return false;
-        if(fAno && y !== fAno) return false;
-        return true;
-    });
-
-    if(typeof createChart === 'function' && typeof countByField === 'function') {
-        const dadosParceiros = countByField(filtrados, 'parceiro');
-        createChart('chartParceirosRanking', 'bar', 
-            dadosParceiros.map(d => d[0]), 
-            dadosParceiros.map(d => d[1]), 
-            { 
-                indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
-                scales: { x: { beginAtZero: true } }, backgroundColor: '#10b981'
+// Listener para tecla Enter no login
+document.addEventListener('DOMContentLoaded', function() {
+    const inputSenha = document.getElementById('login-senha');
+    if (inputSenha) {
+        inputSenha.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault(); 
+                fazerLogin();
             }
-        );
-        
-        const dadosProc = countByField(filtrados, 'procedimento');
-        const topProc = dadosProc.slice(0, 15);
-        createChart('chartProcedimentosGeral', 'bar', 
-            topProc.map(d => d[0]), topProc.map(d => d[1]), 
-            { 
-                responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
-                scales: { y: { beginAtZero: true } }, backgroundColor: '#8b5cf6'
-            }
-        );
-    }
-
-    // JOIN no Frontend
-    const mapPacientes = {};
-    if (dashboardRawData.pacientes) {
-        dashboardRawData.pacientes.forEach(p => mapPacientes[p.cpf] = p);
-    }
-
-    const liderancaStats = {};
-    
-    // CORREÇÃO: Prioriza o campo 'indicacao' do cadastro do munícipe (Nome da liderança)
-    // Se usar .lideranca pega SIM/NAO. Se usar .indicacao pega o nome.
-    filtrados.forEach(at => {
-        let lider = null;
-        
-        // Tenta buscar no cadastro do munícipe primeiro (é o mais confiável hoje)
-        if (at.cpf_paciente && mapPacientes[at.cpf_paciente]) {
-             lider = mapPacientes[at.cpf_paciente].indicacao; // Alterado de .lideranca para .indicacao
-        }
-        
-        // Fallback: Se não achou no munícipe, vê se tem salvo no próprio atendimento
-        if (!lider) {
-            lider = at.indicacao || at.lideranca; // Prioriza indicação aqui também
-        }
-        
-        // Normalização
-        if (!lider || lider.trim() === '' || lider === 'null' || lider === 'undefined') {
-            lider = 'SEM INDICAÇÃO';
-        } else {
-            lider = lider.trim().toUpperCase();
-        }
-        
-        if(!liderancaStats[lider]) {
-            liderancaStats[lider] = { nome: lider, total: 0, concluido: 0, pendente: 0, qtd: 0, lista: [] };
-        }
-        
-        const stat = liderancaStats[lider];
-        stat.total++;
-        stat.qtd++;
-        if(at.status === 'CONCLUIDO') stat.concluido++; else stat.pendente++;
-        
-        // Cálculo de dias para a lista detalhada
-        let dias = 0;
-        if(at.data_abertura) {
-            const inicio = new Date(at.data_abertura);
-            let fim = hoje;
-            if(at.data_marcacao) fim = new Date(at.data_marcacao);
-            const diffTime = Math.abs(fim - inicio);
-            dias = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        }
-
-        stat.lista.push({ 
-            ...at, 
-            id: at.id, 
-            cpf: at.cpf_paciente || at.cpf, 
-            nome: at.nome_paciente || at.nome || 'Nome não carregado', 
-            diasEspera: dias 
         });
-    });
+    }
+});
 
-    const listaLideranca = Object.values(liderancaStats).sort((a,b) => b.total - a.total);
-    window.dadosRelatorioCache['lideranca'] = listaLideranca;
+function fazerLogin() {
+    const senhaEl = document.getElementById('login-senha');
+    const msg = document.getElementById('login-msg');
 
-    const tbody = document.getElementById('tabela-lideranca-body');
-    tbody.innerHTML = '';
-    
-    if(listaLideranca.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-slate-400 text-xs">Sem dados com estes filtros.</td></tr>';
+    if (!senhaEl) return;
+    const senha = senhaEl.value;
+
+    if (senha === 'simone123') {
+        currentUserRole = 'ADMIN';
+        iniciarSistema('Administrador');
     } else {
-        listaLideranca.forEach((stat, index) => {
-            const perc = Math.round((stat.concluido / stat.total) * 100) || 0;
-            const corBarra = perc > 70 ? 'bg-emerald-500' : (perc > 40 ? 'bg-blue-500' : 'bg-orange-400');
-            
-            tbody.innerHTML += `
-                <tr class="hover:bg-blue-50 border-b border-slate-50 transition cursor-pointer group" onclick="abrirListaRelatorio('lideranca', ${index})">
-                    <td class="px-2 py-2 font-bold text-slate-700 text-xs truncate max-w-[120px] group-hover:text-blue-700" title="${stat.nome}">
-                        ${stat.nome} <i data-lucide="search" class="w-3 h-3 inline opacity-0 group-hover:opacity-100 ml-1"></i>
-                    </td>
-                    <td class="px-2 py-2 text-center font-mono font-bold text-slate-800">${stat.total}</td>
-                    <td class="px-2 py-2 text-center font-mono text-emerald-600">${stat.concluido}</td>
-                    <td class="px-2 py-2 text-center font-mono text-orange-600">${stat.pendente}</td>
-                    <td class="px-2 py-2 text-right">
-                        <div class="flex items-center justify-end gap-2">
-                            <span class="text-[10px] font-bold text-slate-500">${perc}%</span>
-                            <div class="w-8 h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                                <div class="h-full ${corBarra}" style="width: ${perc}%"></div>
-                            </div>
-                        </div>
-                    </td>
-                </tr>
-            `;
-        });
-        if(typeof lucide !== 'undefined') lucide.createIcons();
+        msg.innerText = "Senha incorreta.";
+        senhaEl.classList.add('border-red-500');
+        setTimeout(() => senhaEl.classList.remove('border-red-500'), 2000);
     }
 }
 
@@ -749,6 +646,8 @@ function resetFormPaciente() {
 function resetFormAtendimento() {
     document.getElementById('frmAtendimento').reset();
     document.getElementById('atend_id_hidden').value = "";
+    document.getElementById('titulo_form_atend').innerText = "Novo Atendimento";
+    document.getElementById('txt_btn_atend').innerText = "Salvar Todos os Atendimentos";
     document.getElementById('resultado_busca').innerText = '';
     document.getElementById('resto-form-atendimento').classList.add('hidden');
     
@@ -1413,158 +1312,4 @@ function verHistoricoCompleto(p) {
         timeline.innerHTML = '<p class="text-red-500 pl-4">Erro ao carregar histórico.</p>';
         console.error(e);
     }
-}
-
-// ============================================================================
-// FUNÇÃO IMPRIMIR FICHA (NOVA - HISTÓRICO COMPLETO)
-// ============================================================================
-
-function imprimirFicha() {
-    if (!pacienteAtual) {
-        alert("Nenhum munícipe selecionado para impressão.");
-        return;
-    }
-
-    const printArea = document.getElementById('printable-area');
-    if(!printArea) return;
-
-    const p = pacienteAtual;
-    const historico = window.historicoAtualCache || [];
-
-    // Estilos de impressão
-    const styleLabel = "display: block; font-size: 10px; color: #64748b; font-weight: bold; text-transform: uppercase; margin-bottom: 2px;";
-    const styleInput = "border-bottom: 1px solid #333; min-height: 20px; width: 100%; margin-bottom: 10px; font-family: 'Courier New', monospace; font-weight: bold; font-size: 13px; text-transform: uppercase; color: #000;";
-    const styleSection = "margin-bottom: 15px; border: 1px solid #cbd5e1; border-radius: 4px; padding: 15px;";
-    const styleTitle = "margin-top: 0; font-size: 14px; font-weight: bold; color: #334155; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px; margin-bottom: 10px;";
-    const val = (v) => v || '';
-
-    // Gera linhas da tabela de histórico COM MAIS DETALHES
-    let tableRows = '';
-    if (historico.length === 0) {
-        tableRows = '<tr><td colspan="5" style="padding: 15px; text-align: center; color: #666; font-style: italic;">Nenhum histórico de atendimento registrado.</td></tr>';
-    } else {
-        historico.forEach(at => {
-            const dataFmt = at.data_abertura ? at.data_abertura.split('-').reverse().join('/') : '-';
-            const dataMarc = at.data_marcacao ? at.data_marcacao.split('-').reverse().join('/') : null;
-            
-            // Construção dos blocos de texto para a tabela
-            let blocoServico = `<div style="font-weight: bold; font-size: 11px; margin-bottom: 2px;">${at.tipo_servico || 'N/I'}</div>`;
-            if(at.especialidade) blocoServico += `<div style="font-size: 10px;">Espec: ${at.especialidade}</div>`;
-            if(at.procedimento) blocoServico += `<div style="font-size: 10px;">Proc: ${at.procedimento}</div>`;
-            if(at.tipo) blocoServico += `<div style="font-size: 10px; font-style: italic;">(${at.tipo})</div>`;
-
-            let blocoLocal = `<div style="font-size: 11px; font-weight: bold;">${at.local || '-'}</div>`;
-            if(at.parceiro) blocoLocal += `<div style="font-size: 10px; margin-top: 2px;">Méd/Parceiro: ${at.parceiro}</div>`;
-            if(at.prontuario) blocoLocal += `<div style="font-size: 10px;">Prontuário: ${at.prontuario}</div>`;
-
-            let blocoStatus = `<div style="font-weight: bold; font-size: 11px;">${at.status}</div>`;
-            if(dataMarc) blocoStatus += `<div style="font-size: 10px; margin-top: 2px;">Marcado: ${dataMarc}</div>`;
-            if(at.data_conclusao) blocoStatus += `<div style="font-size: 10px;">Fim: ${at.data_conclusao.split('-').reverse().join('/')}</div>`;
-
-            tableRows += `
-                <tr style="border-bottom: 1px solid #ccc;">
-                    <td style="padding: 8px 4px; vertical-align: top; width: 10%; font-size: 11px;">${dataFmt}</td>
-                    <td style="padding: 8px 4px; vertical-align: top; width: 30%;">${blocoServico}</td>
-                    <td style="padding: 8px 4px; vertical-align: top; width: 25%;">${blocoLocal}</td>
-                    <td style="padding: 8px 4px; vertical-align: top; width: 15%;">${blocoStatus}</td>
-                    <td style="padding: 8px 4px; vertical-align: top; width: 20%; font-size: 10px; font-style: italic; background-color: #f9f9f9;">
-                        ${at.obs_atendimento || ''}
-                    </td>
-                </tr>
-            `;
-        });
-    }
-
-    const html = `
-        <div style="font-family: 'Segoe UI', sans-serif; padding: 20px; color: #333; max-width: 100%;">
-            <div style="text-align: center; border-bottom: 2px solid #333; padding-bottom: 15px; margin-bottom: 20px;">
-                <h1 style="margin: 0; font-size: 20px; font-weight: 800; text-transform: uppercase;">Histórico do Munícipe</h1>
-                <p style="margin: 2px 0 0; color: #555; font-size: 12px;">Gabinete Família Tudo a Ver</p>
-                <p style="margin: 2px 0 0; color: #888; font-size: 10px;">Cadastrado em: ${p.data_criacao || 'N/I'}</p>
-            </div>
-
-            <!-- DADOS DO MUNÍCIPE -->
-            <div style="${styleSection}">
-                <h2 style="${styleTitle}">1. DADOS CADASTRAIS</h2>
-                
-                <div style="display: flex; gap: 15px;">
-                    <div style="flex: 3;">
-                        <span style="${styleLabel}">Nome Completo</span>
-                        <div style="${styleInput}">${val(p.nome)}</div>
-                    </div>
-                    <div style="flex: 1;">
-                        <span style="${styleLabel}">CPF</span>
-                        <div style="${styleInput}">${val(p.cpf)}</div>
-                    </div>
-                </div>
-
-                <div style="display: flex; gap: 15px;">
-                    <div style="flex: 1;">
-                        <span style="${styleLabel}">Data Nasc.</span>
-                        <div style="${styleInput}">${p.nascimento ? p.nascimento.split('-').reverse().join('/') : ''}</div>
-                    </div>
-                    <div style="flex: 2;">
-                        <span style="${styleLabel}">Referência (Apelido)</span>
-                        <div style="${styleInput}">${val(p.apelido)}</div>
-                    </div>
-                    <div style="flex: 1;">
-                        <span style="${styleLabel}">Telefone 1</span>
-                        <div style="${styleInput}">${val(p.tel1)}</div>
-                    </div>
-                </div>
-
-                <div style="display: flex; gap: 15px;">
-                    <div style="flex: 3;">
-                        <span style="${styleLabel}">Endereço</span>
-                        <div style="${styleInput}">${val(p.logradouro)}, ${val(p.bairro)} - ${val(p.municipio)}</div>
-                    </div>
-                    <div style="flex: 1;">
-                        <span style="${styleLabel}">Ponto Ref. (Endereço)</span>
-                        <div style="${styleInput}">${val(p.referencia)}</div>
-                    </div>
-                </div>
-
-                <div style="display: flex; gap: 15px;">
-                    <div style="flex: 1;">
-                        <span style="${styleLabel}">Situação Eleitoral</span>
-                        <div style="${styleInput}">${val(p.status_titulo)}</div>
-                    </div>
-                    <div style="flex: 1;">
-                        <span style="${styleLabel}">Zona / Seção</span>
-                        <div style="${styleInput}">${val(p.zona)} / ${val(p.secao)}</div>
-                    </div>
-                    <div style="flex: 1;">
-                        <span style="${styleLabel}">Liderança / Indicação</span>
-                        <div style="${styleInput}">${val(p.lideranca)} / ${val(p.indicacao)}</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- TABELA DE HISTÓRICO -->
-            <div style="${styleSection}">
-                <h2 style="${styleTitle}">2. HISTÓRICO COMPLETO DE ATENDIMENTOS</h2>
-                <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
-                    <thead>
-                        <tr style="background-color: #f1f5f9; text-align: left; border-bottom: 2px solid #ccc;">
-                            <th style="padding: 8px 4px; font-size: 10px; text-transform: uppercase; color: #333;">Abertura</th>
-                            <th style="padding: 8px 4px; font-size: 10px; text-transform: uppercase; color: #333;">Serviço / Detalhes</th>
-                            <th style="padding: 8px 4px; font-size: 10px; text-transform: uppercase; color: #333;">Local / Parceiro</th>
-                            <th style="padding: 8px 4px; font-size: 10px; text-transform: uppercase; color: #333;">Situação</th>
-                            <th style="padding: 8px 4px; font-size: 10px; text-transform: uppercase; color: #333;">Obs</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${tableRows}
-                    </tbody>
-                </table>
-            </div>
-
-            <div style="text-align: center; font-size: 10px; color: #888; margin-top: 20px;">
-                Relatório emitido em ${new Date().toLocaleString('pt-BR')} - Sistema de Gestão Interna
-            </div>
-        </div>
-    `;
-
-    printArea.innerHTML = html;
-    window.print();
 }
