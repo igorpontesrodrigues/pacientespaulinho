@@ -12,13 +12,13 @@ let listaProcedimentosTemp = []; // Armazena os itens adicionados antes de salva
 // 1. LOGIN E PERMISSÕES
 // ============================================================================
 
-// CORREÇÃO: Listener robusto para tecla Enter no login
+// Listener para tecla Enter no login
 document.addEventListener('DOMContentLoaded', function() {
     const inputSenha = document.getElementById('login-senha');
     if (inputSenha) {
         inputSenha.addEventListener('keydown', function(event) {
             if (event.key === 'Enter') {
-                event.preventDefault(); // Impede o submit padrão do form se houver conflito
+                event.preventDefault(); 
                 fazerLogin();
             }
         });
@@ -37,7 +37,6 @@ function fazerLogin() {
         iniciarSistema('Administrador');
     } else {
         msg.innerText = "Senha incorreta.";
-        // Adiciona efeito visual de erro
         senhaEl.classList.add('border-red-500');
         setTimeout(() => senhaEl.classList.remove('border-red-500'), 2000);
     }
@@ -51,16 +50,12 @@ function loginVisitante() {
 function iniciarSistema(roleName) {
     document.getElementById('view-login').classList.add('hidden');
     document.getElementById('user-role-display').innerText = roleName;
-    
-    // Mostra dashboard inicial
     switchTab('dashboard');
-    
-    // Aplica permissões visuais
     aplicarPermissoes();
 }
 
 function logout() {
-    location.reload(); // Recarrega a página para limpar tudo
+    location.reload(); 
 }
 
 function aplicarPermissoes() {
@@ -205,7 +200,7 @@ function abrirDetalheAtendimento(at) {
     document.getElementById('det-servico').innerText = at.especialidade || '-';
     document.getElementById('det-local').innerText = at.local || '-';
     document.getElementById('det-parceiro').innerText = at.parceiro || '-';
-    document.getElementById('det-indicacao').innerText = at.indicacao || '-';
+    // document.getElementById('det-indicacao').innerText = at.indicacao || '-'; // Removido
     
     document.getElementById('det-marcacao').innerText = at.data_marcacao ? at.data_marcacao.split('-').reverse().join('/') : '-';
     document.getElementById('det-risco').innerText = at.data_risco ? at.data_risco.split('-').reverse().join('/') : '-';
@@ -265,7 +260,159 @@ function abrirListaRelatorio(tipo, index) {
 }
 
 // ============================================================================
-// 4. LOGICA DE PROCEDIMENTOS MÚLTIPLOS
+// 4. LISTAGEM E FILTRAGEM (ESSENCIAIS)
+// ============================================================================
+
+async function carregarListaAtendimentos() {
+    const tbody = document.getElementById('tabela-atendimentos-body');
+    if(tbody) tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-slate-400">Buscando...</td></tr>';
+    try {
+        const res = await fetch(`${SCRIPT_URL}?action=getServicesList`);
+        const json = await res.json();
+        todosAtendimentos = json.data; // Cache global
+        if(typeof atualizarFiltrosData === 'function') atualizarFiltrosData();
+        if(typeof filtrarAtendimentos === 'function') filtrarAtendimentos();
+    } catch(e) { if(tbody) tbody.innerHTML = '<tr><td colspan="5" class="text-center text-red-500 py-4">Erro.</td></tr>'; }
+}
+
+function atualizarFiltrosData() {
+    const anos = new Set();
+    const meses = new Set();
+    todosAtendimentos.forEach(at => {
+        if(at.data_abertura) {
+            const [y, m] = at.data_abertura.split('-');
+            if(y) anos.add(y); if(m) meses.add(m);
+        }
+    });
+    let htmlAno = '<option value="">Todos Anos</option>';
+    Array.from(anos).sort().reverse().forEach(a => htmlAno += `<option value="${a}">${a}</option>`);
+    document.getElementById('filtro-ano').innerHTML = htmlAno;
+
+    const nomesMeses = {"01":"Janeiro","02":"Fevereiro","03":"Março","04":"Abril","05":"Maio","06":"Junho","07":"Julho","08":"Agosto","09":"Setembro","10":"Outubro","11":"Novembro","12":"Dezembro"};
+    let htmlMes = '<option value="">Todos Meses</option>';
+    Array.from(meses).sort().forEach(m => { if(nomesMeses[m]) htmlMes += `<option value="${m}">${m} - ${nomesMeses[m]}</option>`; });
+    document.getElementById('filtro-mes').innerHTML = htmlMes;
+}
+
+function filtrarAtendimentos() {
+    const mes = document.getElementById('filtro-mes').value;
+    const ano = document.getElementById('filtro-ano').value;
+    const status = document.getElementById('filtro-status').value;
+    const buscaTexto = document.getElementById('filtro-atendimento-input').value.toLowerCase().trim();
+    const tbody = document.getElementById('tabela-atendimentos-body');
+
+    const filtrados = todosAtendimentos.filter(at => {
+        const [y, m] = at.data_abertura ? at.data_abertura.split('-') : ['',''];
+        
+        // Filtros Dropdown
+        if (mes && m !== mes) return false;
+        if (ano && y !== ano) return false;
+        if (status && at.status !== status) return false;
+        
+        // Filtro de Texto (Nome, CPF, Prontuário, Serviço) - BUSCA ABRANGENTE
+        if (buscaTexto) {
+            // Helper function para verificar se contém o texto de forma segura
+            const check = (val) => (val ? String(val).toLowerCase() : '').includes(buscaTexto);
+
+            // Verifica em múltiplos campos para garantir que encontre
+            const match = check(at.nome) || 
+                          check(at.nome_paciente) || 
+                          check(at.cpf) || 
+                          check(at.cpf_paciente) || 
+                          check(at.prontuario) || 
+                          check(at.tipo_servico) || 
+                          check(at.especialidade) || 
+                          check(at.procedimento) ||
+                          check(at.local);
+
+            if (!match) return false;
+        }
+        
+        return true;
+    });
+
+    tbody.innerHTML = '';
+    if(filtrados.length === 0) { tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-slate-500">Nenhum registro.</td></tr>'; return; }
+    
+    filtrados.forEach(at => {
+        let color = at.status === 'CONCLUIDO' ? 'bg-emerald-100 text-emerald-700' : (at.status === 'PENDENTE' ? 'bg-amber-100 text-amber-700' : (at.status === 'CANCELADO' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600'));
+        
+        const tempId = 'at_' + Math.random().toString(36).substr(2, 9);
+        window[tempId] = at;
+
+        // Usa os campos corretos para exibição (com fallback para compatibilidade)
+        const nomeExibir = at.nome_paciente || at.nome || 'NOME N/D';
+        const cpfExibir = at.cpf_paciente || at.cpf || '';
+        const servicoExibir = at.tipo_servico || '-';
+        const detalheExibir = at.local || at.especialidade || '';
+
+        const tr = document.createElement('tr');
+        tr.className = "border-b border-slate-100 hover:bg-blue-50 transition-colors cursor-pointer";
+        tr.innerHTML = `
+            <td class="px-6 py-4 font-mono text-slate-600 text-xs">${at.data_abertura ? at.data_abertura.split('-').reverse().join('/') : '-'}</td>
+            <td class="px-6 py-4 font-medium text-slate-800 uppercase text-sm">${nomeExibir}<br><span class="text-slate-400 font-normal text-xs">${cpfExibir}</span></td>
+            <td class="px-6 py-4 text-slate-600 uppercase text-xs"><span class="font-bold text-slate-700">${servicoExibir}</span><br>${detalheExibir}</td>
+            <td class="px-6 py-4"><span class="${color} px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-black/5">${at.status}</span></td>
+            <td class="px-6 py-4 text-right"><button onclick="event.stopPropagation(); abrirEdicaoAtendimentoId('${at.id}')" class="btn-action bg-blue-100 text-blue-700 p-2 rounded-lg hover:bg-blue-200 transition" title="Editar"><i data-lucide="edit-2" class="w-4 h-4"></i></button></td>
+        `;
+        tr.onclick = () => abrirDetalheAtendimento(window[tempId]);
+        tbody.appendChild(tr);
+    });
+    document.getElementById('contador-atendimentos').innerText = `Exibindo ${filtrados.length} registros`;
+    if(typeof lucide !== 'undefined') lucide.createIcons();
+    
+    if(typeof aplicarPermissoes === 'function' && typeof currentUserRole !== 'undefined') aplicarPermissoes();
+}
+
+function renderizarTabelaPacientes(lista) {
+    const tbody = document.getElementById('tabela-pacientes-body');
+    tbody.innerHTML = '';
+    if(lista.length === 0) { 
+        tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-slate-500">Nenhum registro encontrado.</td></tr>'; return; 
+    }
+    lista.forEach(p => {
+        const tr = document.createElement('tr');
+        tr.className = "border-b border-slate-100 hover:bg-blue-50 cursor-pointer transition-colors";
+        const pStr = JSON.stringify(p).replace(/"/g, '&quot;');
+        
+        const btnEditClass = currentUserRole === 'VISITOR' ? 'hidden' : '';
+        
+        tr.innerHTML = `
+            <td class="px-6 py-4 font-medium text-slate-800 uppercase" onclick="verHistoricoCompleto(${pStr})">${p.nome}</td>
+            <td class="px-6 py-4 text-slate-600" onclick="verHistoricoCompleto(${pStr})">${p.cpf || '<span class="text-orange-500 text-xs font-bold px-2 py-1 bg-orange-100 rounded">SEM CPF</span>'}</td>
+            <td class="px-6 py-4 hidden sm:table-cell text-slate-500" onclick="verHistoricoCompleto(${pStr})">${p.tel||'-'}</td>
+            <td class="px-6 py-4 hidden md:table-cell uppercase text-slate-500" onclick="verHistoricoCompleto(${pStr})">${p.municipio||'-'}</td>
+            <td class="px-6 py-4 text-right">
+                <button onclick="event.stopPropagation(); abrirAtendimentoDireto('${p.cpf}','${p.id}')" class="btn-action bg-emerald-100 text-emerald-700 p-2 rounded-lg mr-2 hover:bg-emerald-200 transition ${btnEditClass}" title="Novo Atendimento"><i data-lucide="plus" class="w-4 h-4"></i></button>
+                <button onclick="event.stopPropagation(); abrirEdicaoDireta('${p.cpf}','${p.id}')" class="btn-action bg-blue-100 text-blue-700 p-2 rounded-lg hover:bg-blue-200 transition ${btnEditClass}" title="Editar"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
+            </td>`;
+        tbody.appendChild(tr);
+    });
+    if(typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+function renderizarTorreGenero(pacientes) {
+    let masc = 0, fem = 0;
+    pacientes.forEach(p => {
+        const s = p.sexo ? p.sexo.toUpperCase() : '';
+        if(s === 'M' || s === 'MASCULINO') masc++;
+        else if(s === 'F' || s === 'FEMININO') fem++;
+    });
+    const total = masc + fem || 1;
+    const pMasc = Math.round((masc / total) * 100);
+    const pFem = Math.round((fem / total) * 100);
+    document.getElementById('val-masc').innerText = masc;
+    document.getElementById('val-fem').innerText = fem;
+    setTimeout(() => {
+        const tMasc = document.getElementById('tower-masc');
+        const tFem = document.getElementById('tower-fem');
+        if(tMasc) tMasc.style.height = `${pMasc}%`;
+        if(tFem) tFem.style.height = `${pFem}%`;
+    }, 100);
+}
+
+// ============================================================================
+// 5. LOGICA DE PROCEDIMENTOS MÚLTIPLOS (FORM ATENDIMENTO)
 // ============================================================================
 
 function adicionarProcedimentoNaLista() {
@@ -377,112 +524,7 @@ function checkStatusConclusao() {
 }
 
 // ============================================================================
-// 4. ATENDIMENTOS E FILTROS (ATUALIZADO COM BUSCA INTELIGENTE)
-// ============================================================================
-
-async function carregarListaAtendimentos() {
-    const tbody = document.getElementById('tabela-atendimentos-body');
-    if(tbody) tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-slate-400">Buscando...</td></tr>';
-    try {
-        const res = await fetch(`${SCRIPT_URL}?action=getServicesList`);
-        const json = await res.json();
-        todosAtendimentos = json.data; // Cache global
-        if(typeof atualizarFiltrosData === 'function') atualizarFiltrosData();
-        if(typeof filtrarAtendimentos === 'function') filtrarAtendimentos();
-    } catch(e) { if(tbody) tbody.innerHTML = '<tr><td colspan="5" class="text-center text-red-500 py-4">Erro.</td></tr>'; }
-}
-
-function atualizarFiltrosData() {
-    const anos = new Set();
-    const meses = new Set();
-    todosAtendimentos.forEach(at => {
-        if(at.data_abertura) {
-            const [y, m] = at.data_abertura.split('-');
-            if(y) anos.add(y); if(m) meses.add(m);
-        }
-    });
-    let htmlAno = '<option value="">Todos Anos</option>';
-    Array.from(anos).sort().reverse().forEach(a => htmlAno += `<option value="${a}">${a}</option>`);
-    document.getElementById('filtro-ano').innerHTML = htmlAno;
-
-    const nomesMeses = {"01":"Janeiro","02":"Fevereiro","03":"Março","04":"Abril","05":"Maio","06":"Junho","07":"Julho","08":"Agosto","09":"Setembro","10":"Outubro","11":"Novembro","12":"Dezembro"};
-    let htmlMes = '<option value="">Todos Meses</option>';
-    Array.from(meses).sort().forEach(m => { if(nomesMeses[m]) htmlMes += `<option value="${m}">${m} - ${nomesMeses[m]}</option>`; });
-    document.getElementById('filtro-mes').innerHTML = htmlMes;
-}
-
-function filtrarAtendimentos() {
-    const mes = document.getElementById('filtro-mes').value;
-    const ano = document.getElementById('filtro-ano').value;
-    const status = document.getElementById('filtro-status').value;
-    const buscaTexto = document.getElementById('filtro-atendimento-input').value.toLowerCase().trim(); // NOVO FILTRO
-    const tbody = document.getElementById('tabela-atendimentos-body');
-
-    const filtrados = todosAtendimentos.filter(at => {
-        const [y, m] = at.data_abertura ? at.data_abertura.split('-') : ['',''];
-        
-        // Filtros Dropdown
-        if (mes && m !== mes) return false;
-        if (ano && y !== ano) return false;
-        if (status && at.status !== status) return false;
-        
-        // Filtro de Texto (Nome, CPF, Prontuário, Serviço) - BUSCA ABRANGENTE
-        if (buscaTexto) {
-            // Helper function para verificar se contém o texto de forma segura
-            const check = (val) => (val ? String(val).toLowerCase() : '').includes(buscaTexto);
-
-            // Verifica em múltiplos campos para garantir que encontre
-            const match = check(at.nome) || 
-                          check(at.nome_paciente) || 
-                          check(at.cpf) || 
-                          check(at.cpf_paciente) || 
-                          check(at.prontuario) || 
-                          check(at.tipo_servico) || 
-                          check(at.especialidade) || 
-                          check(at.procedimento) ||
-                          check(at.local);
-
-            if (!match) return false;
-        }
-        
-        return true;
-    });
-
-    tbody.innerHTML = '';
-    if(filtrados.length === 0) { tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-slate-500">Nenhum registro.</td></tr>'; return; }
-    
-    filtrados.forEach(at => {
-        let color = at.status === 'CONCLUIDO' ? 'bg-emerald-100 text-emerald-700' : (at.status === 'PENDENTE' ? 'bg-amber-100 text-amber-700' : (at.status === 'CANCELADO' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600'));
-        
-        const tempId = 'at_' + Math.random().toString(36).substr(2, 9);
-        window[tempId] = at;
-
-        // Usa os campos corretos para exibição (com fallback para compatibilidade)
-        const nomeExibir = at.nome_paciente || at.nome || 'NOME N/D';
-        const cpfExibir = at.cpf_paciente || at.cpf || '';
-        const servicoExibir = at.tipo_servico || '-';
-        const detalheExibir = at.local || at.especialidade || '';
-
-        const tr = document.createElement('tr');
-        tr.className = "border-b border-slate-100 hover:bg-blue-50 transition-colors cursor-pointer";
-        tr.innerHTML = `
-            <td class="px-6 py-4 font-mono text-slate-600 text-xs">${at.data_abertura ? at.data_abertura.split('-').reverse().join('/') : '-'}</td>
-            <td class="px-6 py-4 font-medium text-slate-800 uppercase text-sm">${nomeExibir}<br><span class="text-slate-400 font-normal text-xs">${cpfExibir}</span></td>
-            <td class="px-6 py-4 text-slate-600 uppercase text-xs"><span class="font-bold text-slate-700">${servicoExibir}</span><br>${detalheExibir}</td>
-            <td class="px-6 py-4"><span class="${color} px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-black/5">${at.status}</span></td>
-            <td class="px-6 py-4 text-right"><button onclick="event.stopPropagation(); abrirEdicaoAtendimentoId('${at.id}')" class="btn-action bg-blue-100 text-blue-700 p-2 rounded-lg hover:bg-blue-200 transition" title="Editar"><i data-lucide="edit-2" class="w-4 h-4"></i></button></td>
-        `;
-        tr.onclick = () => abrirDetalheAtendimento(window[tempId]);
-        tbody.appendChild(tr);
-    });
-    document.getElementById('contador-atendimentos').innerText = `Exibindo ${filtrados.length} registros`;
-    if(typeof lucide !== 'undefined') lucide.createIcons();
-    
-    if(typeof aplicarPermissoes === 'function' && typeof currentUserRole !== 'undefined') aplicarPermissoes();
-}
-
-// ============================================================================
-// 5. FORMULÁRIOS E PREENCHIMENTO
+// 6. FORMULÁRIOS E AUXILIARES
 // ============================================================================
 
 function renderizarSelectsVazios() {
@@ -553,53 +595,6 @@ function preencherSelectInteligente(id, valor) {
         }
         sel.value = valor;
     }
-}
-
-function renderizarTabelaPacientes(lista) {
-    const tbody = document.getElementById('tabela-pacientes-body');
-    tbody.innerHTML = '';
-    if(lista.length === 0) { 
-        tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-slate-500">Nenhum registro encontrado.</td></tr>'; return; 
-    }
-    lista.forEach(p => {
-        const tr = document.createElement('tr');
-        tr.className = "border-b border-slate-100 hover:bg-blue-50 cursor-pointer transition-colors";
-        const pStr = JSON.stringify(p).replace(/"/g, '&quot;');
-        
-        const btnEditClass = currentUserRole === 'VISITOR' ? 'hidden' : '';
-        
-        tr.innerHTML = `
-            <td class="px-6 py-4 font-medium text-slate-800 uppercase" onclick="verHistoricoCompleto(${pStr})">${p.nome}</td>
-            <td class="px-6 py-4 text-slate-600" onclick="verHistoricoCompleto(${pStr})">${p.cpf || '<span class="text-orange-500 text-xs font-bold px-2 py-1 bg-orange-100 rounded">SEM CPF</span>'}</td>
-            <td class="px-6 py-4 hidden sm:table-cell text-slate-500" onclick="verHistoricoCompleto(${pStr})">${p.tel||'-'}</td>
-            <td class="px-6 py-4 hidden md:table-cell uppercase text-slate-500" onclick="verHistoricoCompleto(${pStr})">${p.municipio||'-'}</td>
-            <td class="px-6 py-4 text-right">
-                <button onclick="event.stopPropagation(); abrirAtendimentoDireto('${p.cpf}','${p.id}')" class="btn-action bg-emerald-100 text-emerald-700 p-2 rounded-lg mr-2 hover:bg-emerald-200 transition ${btnEditClass}" title="Novo Atendimento"><i data-lucide="plus" class="w-4 h-4"></i></button>
-                <button onclick="event.stopPropagation(); abrirEdicaoDireta('${p.cpf}','${p.id}')" class="btn-action bg-blue-100 text-blue-700 p-2 rounded-lg hover:bg-blue-200 transition ${btnEditClass}" title="Editar"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
-            </td>`;
-        tbody.appendChild(tr);
-    });
-    if(typeof lucide !== 'undefined') lucide.createIcons();
-}
-
-function renderizarTorreGenero(pacientes) {
-    let masc = 0, fem = 0;
-    pacientes.forEach(p => {
-        const s = p.sexo ? p.sexo.toUpperCase() : '';
-        if(s === 'M' || s === 'MASCULINO') masc++;
-        else if(s === 'F' || s === 'FEMININO') fem++;
-    });
-    const total = masc + fem || 1;
-    const pMasc = Math.round((masc / total) * 100);
-    const pFem = Math.round((fem / total) * 100);
-    document.getElementById('val-masc').innerText = masc;
-    document.getElementById('val-fem').innerText = fem;
-    setTimeout(() => {
-        const tMasc = document.getElementById('tower-masc');
-        const tFem = document.getElementById('tower-fem');
-        if(tMasc) tMasc.style.height = `${pMasc}%`;
-        if(tFem) tFem.style.height = `${pFem}%`;
-    }, 100);
 }
 
 function resetFormPaciente() {
@@ -765,10 +760,6 @@ function calcularDataRisco() {
     document.getElementById('field_data_risco').value = `${yyyy}-${mm}-${dd}`;
 }
 
-// ============================================================================
-// 6. FUNÇÕES DE EXCLUSÃO (UI HANDLERS)
-// ============================================================================
-
 function confirmarExclusaoPaciente() {
     if(!pacienteAtual) return;
     const confirmacao = confirm(`ATENÇÃO: Você está prestes a excluir o eleitor ${pacienteAtual.nome}.\n\nISSO APAGARÁ TAMBÉM TODOS OS ATENDIMENTOS DELE.\n\nTem certeza absoluta?`);
@@ -787,7 +778,7 @@ function confirmarExclusaoAtendimento() {
 }
 
 // ============================================================================
-// 7. RELATÓRIO ELEITORAL (NOVO)
+// 7. RELATÓRIOS E IMPRESSÃO (FUNÇÕES ADICIONADAS)
 // ============================================================================
 
 function abrirRelatorioEleitoral() {
@@ -1163,29 +1154,69 @@ function verHistoricoCompleto(p) {
                             const itemsHtml = history.map(at => {
                                 const dataFmt = at.data_abertura ? at.data_abertura.split('-').reverse().join('/') : '-';
                                 let statusColor = "bg-slate-100 text-slate-600";
-                                if(at.status === 'CONCLUIDO') statusColor = "bg-emerald-100 text-emerald-700";
-                                if(at.status === 'PENDENTE') statusColor = "bg-amber-100 text-amber-700";
-                                if(at.status === 'CANCELADO') statusColor = "bg-red-100 text-red-700";
+                                let borderColor = "border-slate-300";
+                                
+                                if(at.status === 'CONCLUIDO') { statusColor = "bg-emerald-100 text-emerald-700"; borderColor = "border-emerald-500"; }
+                                if(at.status === 'PENDENTE') { statusColor = "bg-amber-100 text-amber-700"; borderColor = "border-amber-500"; }
+                                if(at.status === 'CANCELADO') { statusColor = "bg-red-100 text-red-700"; borderColor = "border-red-500"; }
 
                                 const tempId = 'hist_' + Math.random().toString(36).substr(2, 9);
                                 window[tempId] = at;
 
                                 return `
-                                    <div class="relative pl-4 pb-6 cursor-pointer hover:opacity-80 transition" onclick="abrirDetalheAtendimento(window['${tempId}'])">
-                                        <div class="absolute -left-[9px] top-0 w-4 h-4 bg-blue-500 rounded-full border-4 border-slate-100"></div>
-                                        <div class="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
-                                            <div class="flex justify-between items-start mb-2">
-                                                <span class="font-bold text-slate-800">${dataFmt}</span>
-                                                <span class="${statusColor} text-[10px] px-2 py-0.5 rounded font-bold uppercase">${at.status}</span>
+                                    <div class="relative pl-4 pb-6 cursor-pointer hover:opacity-90 transition group" onclick="abrirDetalheAtendimento(window['${tempId}'])">
+                                        <div class="absolute -left-[9px] top-0 w-4 h-4 bg-white rounded-full border-4 ${borderColor}"></div>
+                                        <div class="bg-white p-4 rounded-lg border border-slate-200 shadow-sm group-hover:shadow-md transition-all">
+                                            
+                                            <!-- CABEÇALHO DO CARD -->
+                                            <div class="flex justify-between items-start mb-3 border-b border-slate-50 pb-2">
+                                                <div class="flex flex-col">
+                                                    <span class="text-xs font-bold text-slate-400 uppercase">Data Abertura</span>
+                                                    <span class="font-bold text-slate-800 text-lg">${dataFmt}</span>
+                                                </div>
+                                                <span class="${statusColor} text-[10px] px-3 py-1 rounded-full font-bold uppercase tracking-wide border border-black/5">${at.status}</span>
                                             </div>
-                                            <div class="text-sm text-slate-700">
-                                                <span class="font-bold">${at.tipo_servico || 'SERVIÇO'}</span> 
-                                                <span class="text-slate-400 mx-1">•</span> 
-                                                ${at.especialidade || at.local || 'Geral'}
+
+                                            <!-- CORPO DO CARD (MAIS DETALHES) -->
+                                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-4 text-sm text-slate-700">
+                                                
+                                                <div class="col-span-2 sm:col-span-1">
+                                                    <span class="text-[10px] font-bold text-slate-400 uppercase block">Tipo / Serviço</span>
+                                                    <span class="font-bold text-blue-900">${at.tipo_servico || 'N/I'}</span>
+                                                </div>
+
+                                                <div class="col-span-2 sm:col-span-1">
+                                                    <span class="text-[10px] font-bold text-slate-400 uppercase block">Especialidade / Proc.</span>
+                                                    <span class="font-medium">${at.especialidade || at.procedimento || '-'}</span>
+                                                </div>
+
+                                                <div class="col-span-2">
+                                                    <span class="text-[10px] font-bold text-slate-400 uppercase block">Local / Detalhe</span>
+                                                    <span>${at.local || '-'} ${at.tipo ? `(${at.tipo})` : ''}</span>
+                                                </div>
+
+                                                ${at.parceiro ? `
+                                                <div class="col-span-2">
+                                                    <span class="text-[10px] font-bold text-slate-400 uppercase block">Parceiro</span>
+                                                    <span class="text-emerald-700 font-medium"><i data-lucide="handshake" class="w-3 h-3 inline mr-1"></i>${at.parceiro}</span>
+                                                </div>` : ''}
+
+                                                ${at.data_marcacao ? `
+                                                <div class="col-span-2 sm:col-span-1 bg-blue-50 p-2 rounded border border-blue-100 mt-2">
+                                                    <span class="text-[10px] font-bold text-blue-400 uppercase block">Marcado Para</span>
+                                                    <span class="font-bold text-blue-800">${at.data_marcacao.split('-').reverse().join('/')}</span>
+                                                </div>` : ''}
+
+                                                ${at.obs_atendimento ? `
+                                                <div class="col-span-2 mt-2 pt-2 border-t border-slate-100">
+                                                    <span class="text-[10px] font-bold text-slate-400 uppercase block">Observações</span>
+                                                    <p class="text-slate-500 italic text-xs line-clamp-2">${at.obs_atendimento}</p>
+                                                </div>` : ''}
                                             </div>
-                                            <div class="text-xs text-slate-500 mt-2 flex justify-between items-center">
-                                                <span>Clique para ver detalhes</span>
-                                                <i data-lucide="chevron-right" class="w-4 h-4"></i>
+
+                                            <div class="text-xs text-slate-400 mt-3 flex justify-end items-center gap-1 group-hover:text-blue-500 transition-colors">
+                                                <span>Ver detalhes completos</span>
+                                                <i data-lucide="arrow-right" class="w-3 h-3"></i>
                                             </div>
                                         </div>
                                     </div>
@@ -1203,4 +1234,53 @@ function verHistoricoCompleto(p) {
         timeline.innerHTML = '<p class="text-red-500 pl-4">Erro ao carregar histórico.</p>';
         console.error(e);
     }
+}
+
+// ============================================================================
+// FUNÇÃO IMPRIMIR FICHA (NOVA)
+// ============================================================================
+
+function imprimirFicha() {
+    if (!pacienteAtual) {
+        alert("Nenhum eleitor selecionado para impressão.");
+        return;
+    }
+
+    const printArea = document.getElementById('printable-area');
+    if(!printArea) return;
+
+    const p = pacienteAtual;
+    const styleLabel = "display: block; font-size: 10px; color: #64748b; font-weight: bold; text-transform: uppercase; margin-bottom: 2px;";
+    const styleInput = "border-bottom: 1px solid #333; min-height: 20px; width: 100%; margin-bottom: 10px; font-family: 'Courier New', monospace; font-weight: bold; font-size: 14px; text-transform: uppercase; color: #000;";
+    const styleSection = "margin-bottom: 15px; border: 1px solid #cbd5e1; border-radius: 4px; padding: 15px;";
+    const styleTitle = "margin-top: 0; font-size: 14px; font-weight: bold; color: #334155; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px; margin-bottom: 10px;";
+    const val = (v) => v || '';
+
+    const html = `
+        <div style="font-family: 'Segoe UI', sans-serif; padding: 20px; color: #333; max-width: 100%;">
+            <div style="text-align: center; border-bottom: 2px solid #333; padding-bottom: 15px; margin-bottom: 20px;">
+                <h1 style="margin: 0; font-size: 20px; font-weight: 800; text-transform: uppercase;">Ficha de Eleitor</h1>
+                <p style="margin: 2px 0 0; color: #555; font-size: 12px;">Gabinete Família Tudo a Ver</p>
+            </div>
+            <div style="${styleSection}">
+                <h2 style="${styleTitle}">1. DADOS DO ELEITOR</h2>
+                <div style="display: flex; gap: 15px;"><div style="flex: 3;"><span style="${styleLabel}">Nome Completo</span><div style="${styleInput}">${val(p.nome)}</div></div><div style="flex: 1;"><span style="${styleLabel}">CPF</span><div style="${styleInput}">${val(p.cpf)}</div></div></div>
+                <div style="display: flex; gap: 15px;"><div style="flex: 1;"><span style="${styleLabel}">Data Nasc.</span><div style="${styleInput}">${p.nascimento ? p.nascimento.split('-').reverse().join('/') : ''}</div></div><div style="flex: 1;"><span style="${styleLabel}">RG</span><div style="${styleInput}">${val(p.rg)}</div></div><div style="flex: 1;"><span style="${styleLabel}">Telefone 1</span><div style="${styleInput}">${val(p.tel1)}</div></div><div style="flex: 1;"><span style="${styleLabel}">Telefone 2</span><div style="${styleInput}">${val(p.tel2)}</div></div></div>
+                <div style="display: flex; gap: 15px;"><div style="flex: 1;"><span style="${styleLabel}">CEP</span><div style="${styleInput}">${val(p.cep)}</div></div><div style="flex: 3;"><span style="${styleLabel}">Endereço</span><div style="${styleInput}">${val(p.logradouro)}</div></div></div>
+                <div style="display: flex; gap: 15px;"><div style="flex: 1;"><span style="${styleLabel}">Bairro</span><div style="${styleInput}">${val(p.bairro)}</div></div><div style="flex: 1;"><span style="${styleLabel}">Município</span><div style="${styleInput}">${val(p.municipio)}</div></div><div style="flex: 1;"><span style="${styleLabel}">Ponto Referência</span><div style="${styleInput}">${val(p.referencia)}</div></div></div>
+                <div style="display: flex; gap: 15px;"><div style="flex: 1;"><span style="${styleLabel}">Título Eleitor</span><div style="${styleInput}">${val(p.titulo)}</div></div><div style="flex: 1;"><span style="${styleLabel}">Zona / Seção</span><div style="${styleInput}">${val(p.zona)} / ${val(p.secao)}</div></div><div style="flex: 2;"><span style="${styleLabel}">Liderança / Indicação</span><div style="${styleInput}">${val(p.lideranca)} / ${val(p.indicacao)}</div></div></div>
+                ${p.obs ? `<div style="margin-top: 10px;"><span style="${styleLabel}">Observações Cadastrais</span><div style="${styleInput} font-style: italic; font-weight: normal;">${p.obs}</div></div>` : ''}
+            </div>
+            <div style="${styleSection}">
+                <h2 style="${styleTitle}">2. REGISTRO DE ATENDIMENTO (USO INTERNO)</h2>
+                <div style="display: flex; gap: 15px;"><div style="flex: 1;"><span style="${styleLabel}">Data Abertura</span><div style="${styleInput} height: 30px;"></div></div><div style="flex: 2;"><span style="${styleLabel}">Tipo de Serviço / Demanda</span><div style="${styleInput} height: 30px;"></div></div></div>
+                <div style="display: flex; gap: 15px; margin-top: 10px;"><div style="flex: 2;"><span style="${styleLabel}">Especialidade / Procedimento</span><div style="${styleInput} height: 30px;"></div></div><div style="flex: 2;"><span style="${styleLabel}">Local de Encaminhamento</span><div style="${styleInput} height: 30px;"></div></div></div>
+                <div style="margin-top: 15px;"><span style="${styleLabel}">Observações e Detalhes do Pedido</span><div style="${styleInput} height: 80px; border: 1px solid #333;"></div></div>
+            </div>
+            <div style="text-align: center; font-size: 10px; color: #888; margin-top: 20px;">Documento emitido em ${new Date().toLocaleString('pt-BR')}</div>
+        </div>
+    `;
+
+    printArea.innerHTML = html;
+    window.print();
 }
